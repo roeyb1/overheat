@@ -1,0 +1,4 @@
+# hide compilation artifacts
+*.exe
+*.pdb
+.build/
