@@ -9,7 +9,10 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "sapped.exe",
-            "console":"externalTerminal",
+            "args": [
+                "client"
+            ],
+            "console":"integratedTerminal",
             "logging": {
                 "moduleLoad": false,
                 "trace": true

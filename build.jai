@@ -9,6 +9,7 @@ build :: () {
     // Set the executable name.
     target_options := get_build_options(w);
     target_options.output_executable_name = "sapped";
+    target_options.output_path = "bin";
 
     set_build_options(target_options, w);
 
