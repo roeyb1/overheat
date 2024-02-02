@@ -36,7 +36,19 @@ NetworkingArgs :: struct {
     port: u16 = 27015;
 }
 
+PacketType :: enum u32 {
+    Ping;
+    PlayerMove;
+}
+
+NetworkingPacket :: struct {
+    type: PacketType;
+
+}
+
 networking_init :: () -> bool {
+    log("Initializing networking systems...");
+
     if !GameNetworkingSockets.Initialize() {
         log_error("Failed to initialize GNS");
         return false;
@@ -71,6 +83,8 @@ networking_init :: () -> bool {
         return false;
     }
 
+
+    log("Rendering systems initialized successfully");
     return true;
 }
 

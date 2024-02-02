@@ -1,21 +1,35 @@
 delta_time: float64 = 0.013;
 
-should_exit: bool = false;
+g_should_exit: bool = false;
 
 main :: () {
+    rendering_init();
     networking_init();
 
-    while !should_exit {
+    last_time := seconds_since_init();
+
+    while !g_should_exit {
         networking_update();
-        sleep_milliseconds(500);
+
+        rendering_begin_frame();
+
+        // #todo: remove sleep
+        sleep_milliseconds(16);
+
+        now := seconds_since_init();
+        delta_time = (now - last_time);
+        last_time = now;
 
         simulate(delta_time);
+
+        rendering_end_frame();
 
         // Reset temporary storage at the end of each frame
         reset_temporary_storage();
     }
 
     networking_shutdown();
+    rendering_shutdown();
 }
 
 simulate :: (delta_time: float64) {
@@ -26,8 +40,7 @@ simulate :: (delta_time: float64) {
 
 
 #import "Basic";
-#import "Window_Creation";
-#import "Simp";
 #import "Input";
 
 #load "networking.jai";
+#load "rendering.jai";
