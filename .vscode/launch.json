@@ -14,11 +14,11 @@
             ],
             "console":"integratedTerminal",
             "logging": {
-                "moduleLoad": false,
+                "moduleLoad": true,
                 "trace": true
             },
             "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceRoot}/bin",
             "preLaunchTask": "build"
         }
     ]
