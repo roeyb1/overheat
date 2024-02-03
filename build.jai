@@ -51,10 +51,22 @@ message_loop :: () {
 
         if message.kind == {
           case .TYPECHECKED;
+            typechecked := cast(*Message_Typechecked) message;
+            for tc : typechecked.procedure_headers {
+                header := tc.expression;
+                if has_note(header, "RegisterInputAction") {
+                    array_add(*key_mapped_actions, header);
+                }
+            }
             
           case .PHASE;
             phase := cast(*Message_Phase) message;
             if phase.phase == .TYPECHECKED_ALL_WE_CAN {
+
+                if !generated_keymap_actions {
+                    generate_keymap_actions(message.workspace);
+                    generated_keymap_actions = true;
+                }
             }
             
           case .COMPLETE;
@@ -69,6 +81,42 @@ has_note :: (header: *Code_Procedure_Header, note: string) -> bool {
     for header.notes  if it.text == note  return true;
     return false;
 }
+
+KEYMAP_ACTION_INSERT :: #string DONE
+    array_add(*key_map.actions, .{action_name = "%1", proc = %1});
+DONE
+
+generate_keymap_actions :: (w: Workspace) {
+    builder: String_Builder;
+    defer free_buffers(*builder);
+
+    print_to_builder(*builder, "register_all_input_actions :: (key_map: *Keymap) {\n");
+    for mapped_action : key_mapped_actions {
+        assert(mapped_action.arguments.count == 1, 
+            "Mapped input action '%' doesn't have any parameters! Expected signature: (key_state: Key_Current_State) -> ()", mapped_action.name);
+
+        assert(mapped_action.arguments[0].type_inst.result.type == .ENUM, 
+            "Mapped input action '%' has incorrect parameter types! Expected signature: (key_state: Key_Current_State) -> ()", mapped_action.name);
+
+        enum_type := cast(*Type_Info_Enum) mapped_action.arguments[0].type_inst.result;
+
+        assert(enum_type.name == "Key_Current_State", 
+            "Mapped input action '%' has incorrect parameter types! Expected signature: (key_state: Key_Current_State) -> ()", mapped_action.name);
+
+        assert(mapped_action.returns.count == 0, 
+            "Mapped input action '%' has a return type! Expected signature: (key_state: Key_Current_State) -> ()", mapped_action.name);
+
+        print_to_builder(*builder, KEYMAP_ACTION_INSERT, mapped_action.name);
+    }
+    print_to_builder(*builder, "}\n");
+
+    build_string := builder_to_string(*builder);
+    add_build_string(build_string, w);
+}
+
+
+key_mapped_actions: [..] *Code_Procedure_Header;
+generated_keymap_actions := false;
 
 #import "Basic";
 #import "Compiler";

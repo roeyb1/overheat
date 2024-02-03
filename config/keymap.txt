@@ -1,0 +1,11 @@
+[1] # version
+
+# Movement keys
+
+W   MovePlayerUp
+A   MovePlayerLeft
+S   MovePlayerDown
+D   MovePlayerRight
+
+# Other keys
+S-Esc ExitGame

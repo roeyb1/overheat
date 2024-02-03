@@ -43,7 +43,7 @@ PacketType :: enum u32 {
 
 NetworkingPacket :: struct {
     type: PacketType;
-
+    
 }
 
 networking_init :: () -> bool {

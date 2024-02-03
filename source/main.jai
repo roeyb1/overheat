@@ -2,8 +2,16 @@ delta_time: float64 = 0.013;
 
 g_should_exit: bool = false;
 
+ExitGame :: (key_state: Key_Current_State) {
+    g_should_exit = true;
+} @RegisterInputAction
+
 main :: () {
+    // set the working direction to be the root of the repository
+    set_working_directory("../");
+
     rendering_init();
+    input_manager_initialize();
     networking_init();
 
     last_time := seconds_since_init();
@@ -11,16 +19,17 @@ main :: () {
     while !g_should_exit {
         networking_update();
 
-        rendering_begin_frame();
+        input_manager_update();
 
-        // #todo: remove sleep
-        sleep_milliseconds(16);
+        rendering_begin_frame();
 
         now := seconds_since_init();
         delta_time = (now - last_time);
         last_time = now;
 
         simulate(delta_time);
+
+        draw_scene();
 
         rendering_end_frame();
 
@@ -29,13 +38,24 @@ main :: () {
     }
 
     networking_shutdown();
+    input_manager_shutdown();
     rendering_shutdown();
 }
 
 simulate :: (delta_time: float64) {
-    networking_send_packet(tprint("%s Ping", delta_time));
+    // update player position based on velocity:
+    update_player_controller();
+    g_local_player.position += g_local_player.velocity * cast(float32) delta_time;
+}
 
-    networking_broadcast("Message from the server");
+draw_scene :: () {
+    quad_size: Vector2 = .{32., 32.};
+    center := g_local_player.position;
+    bottom_left := center - quad_size;
+    top_right := center + quad_size;
+
+    Simp.set_shader_for_color(true);
+    Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, Vector4.{0.227, 0.204, 0.921, 1.});
 }
 
 
@@ -44,3 +64,5 @@ simulate :: (delta_time: float64) {
 
 #load "networking.jai";
 #load "rendering.jai";
+#load "player.jai";
+#load "input.jai";
