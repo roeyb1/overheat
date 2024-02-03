@@ -5,6 +5,8 @@ Client :: struct {
     connection: NetConnection;
 
     should_disconnect: bool = false;
+
+    inbound_packet_queue: [..] NetworkingPacket;
 }
 
 Server :: struct {
@@ -23,6 +25,8 @@ Server :: struct {
     next_valid_player_id: u64 = 0;
 
     should_shutdown: bool = false;
+
+    inbound_packet_queue: [..] NetworkingPacket;
 }
 
 g_server: Server;
@@ -36,14 +40,9 @@ NetworkingArgs :: struct {
     port: u16 = 27015;
 }
 
-PacketType :: enum u32 {
-    Ping;
-    PlayerMove;
-}
-
 NetworkingPacket :: struct {
-    type: PacketType;
-    
+    // #todo: different packet types, proper deserialize
+    data: [..] u8;
 }
 
 networking_init :: () -> bool {
@@ -152,6 +151,8 @@ server_init :: (server: *Server) -> bool {
         return false;
     }
 
+    // Set the allocator for the packet queue to the global temp allocator. This will ensure it gets cleared every frame:
+    server.inbound_packet_queue.allocator = temporary_allocator;
     log("Server is now listening on port %", server.listen_port);
     return true;
 }
@@ -173,7 +174,7 @@ server_update :: (server: *Server) {
             message: *NetworkingMessage = incoming_msgs[it];
             defer NetworkingMessage.Release(message);
 
-            message_view: string;
+            message_view: [] u8;
             message_view.data = message.m_pData;
             message_view.count = message.m_cbSize;
 
@@ -188,7 +189,9 @@ server_update :: (server: *Server) {
             }
             assert(sender != null);
 
-            log("Received message from client %: \n\t%", sender.player_id, message_view);
+            // #todo: should be transformed into a real deserialize function
+            packet := array_add(*server.inbound_packet_queue);
+            array_copy(*packet.data, message_view);
         }
     }
 
@@ -228,6 +231,8 @@ client_init :: (client: *Client) -> bool {
         return false;
     }
 
+    // Set the allocator for the packet queue to the global temp allocator. This will ensure it gets cleared every frame:
+    client.inbound_packet_queue.allocator = temporary_allocator;
     return true;
 }
 
@@ -247,15 +252,15 @@ client_update :: (client: *Client) {
             message: *NetworkingMessage = incoming_msgs[it];
             defer NetworkingMessage.Release(message);
 
-            message_view: string;
+            message_view: [] u8;
             message_view.data = message.m_pData;
             message_view.count = message.m_cbSize;
 
             if message_view.count == 0 then continue;
 
-            // #todo: do something with message from server
-
-            log("received message from server: %", message_view);
+            // #todo: should be transformed into a real deserialize function
+            packet := array_add(*client.inbound_packet_queue);
+            array_copy(*packet.data, message_view);
         }
     }
 
@@ -430,3 +435,5 @@ view_of_c_string :: (c_string : *s8) -> string
 
 #import "gns";
 #import "Command_Line";
+
+#load "byte_buffer.jai";
