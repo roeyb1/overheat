@@ -57,6 +57,9 @@ message_loop :: () {
                 if has_note(header, "RegisterInputAction") {
                     array_add(*key_mapped_actions, header);
                 }
+                if has_note(header, "UnitTest") {
+                    array_add(*unit_test_functions, header);
+                }
             }
             
           case .PHASE;
@@ -66,6 +69,11 @@ message_loop :: () {
                 if !generated_keymap_actions {
                     generate_keymap_actions(message.workspace);
                     generated_keymap_actions = true;
+                }
+
+                if !generated_unit_test_actions {
+                    generate_unit_test_actions(message.workspace);
+                    generated_unit_test_actions = true;
                 }
             }
             
@@ -114,9 +122,30 @@ generate_keymap_actions :: (w: Workspace) {
     add_build_string(build_string, w);
 }
 
+UNIT_TEST_INSERT :: #string DONE
+    array_add(*g_unit_test_functions, %1);
+DONE
+generate_unit_test_actions :: (w: Workspace) {
+    builder: String_Builder;
+    defer free_buffers(*builder);
+
+    print_to_builder(*builder, "register_unit_tests :: () {\n");
+    for unit_test_functions {
+        print_to_builder(*builder, UNIT_TEST_INSERT, it.name);
+    }
+    print_to_builder(*builder, "}\n");
+
+    build_string := builder_to_string(*builder);
+    add_build_string(build_string, w);
+}
 
 key_mapped_actions: [..] *Code_Procedure_Header;
 generated_keymap_actions := false;
+
+
+unit_test_functions: [..] *Code_Procedure_Header;
+generated_unit_test_actions := false;
+
 
 #import "Basic";
 #import "Compiler";

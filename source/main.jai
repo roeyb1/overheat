@@ -7,6 +7,8 @@ ExitGame :: (key_state: Key_Current_State) {
 } @RegisterInputAction
 
 main :: () {
+    execute_unit_tests();
+
     // set the working direction to be the root of the repository
     set_working_directory("../");
 
@@ -44,7 +46,9 @@ main :: () {
 
 simulate :: (delta_time: float64) {
     // update player position based on velocity:
-    update_player_controller();
+    if update_player_controller() {
+        // #todo: send a packet indicating the movement to other clients:
+    }
     g_local_player.position += g_local_player.velocity * cast(float32) delta_time;
 }
 
@@ -66,3 +70,4 @@ draw_scene :: () {
 #load "rendering.jai";
 #load "player.jai";
 #load "input.jai";
+#load "unit_test.jai";
