@@ -16,7 +16,27 @@ byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info) {
         case .STRING;
             // #todo: should be the same as arrays
         case .ARRAY;
-            // #todo
+            array_info := cast(*Type_Info_Array) info;
+
+            // resizable arrays/arrays views have the same layout in memory so we can cast the data pointer to an array to grab the count member:
+            array_count: s64 = array_info.array_count;
+            if array_count == -1 {
+                array_count = (cast(*[] int) data).count;
+            }
+            assert(array_count != -1);
+
+            byte_buffer_write(out_buffer, *array_count, type_info(s64));
+
+            array_data: *void = ifx array_info.array_type == .RESIZABLE {
+                (cast(*[] int) data).data;
+            } else {
+                (cast(*[1] int) data).data;
+            };
+
+            for 0..array_count-1 {
+                byte_buffer_write(out_buffer, array_data, array_info.element_type);
+                array_data += array_info.element_type.runtime_size;
+            }
         case .STRUCT;
             struct_info := cast(*Type_Info_Struct) info;
             write_struct_members(out_buffer, data, struct_info.members);
@@ -38,7 +58,40 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info) {
         case .STRING;
             // #todo: should be the same as arrays
         case .ARRAY;
-            // #todo
+            array_info := cast(*Type_Info_Array) info;
+
+            array_count: s64;
+            byte_buffer_read(buffer, *array_count, type_info(s64));
+            
+            // if the type is non-resizable, we can add validation to ensure the serialized count matches
+            if array_info.array_type != .RESIZABLE {
+                assert(array_info.array_count == array_count);
+            }
+
+            result := cast(*[..] u8) data_out;
+
+            // if the array is a dynamic array, we need to realloc a memory block for it.
+            // otherwise, use the data pointer already stored there
+            array_data: *void = ifx array_info.array_type == .RESIZABLE {
+                realloc(result.data, array_count * array_info.element_type.runtime_size, 0);
+            }
+            else {
+                (cast(*[1] u8)data_out).data;
+            }
+            result.data = array_data;
+
+            for 0..array_count-1 {
+                byte_buffer_read(buffer, array_data, array_info.element_type);
+                array_data += array_info.element_type.runtime_size;
+            }
+
+            // build the final struct at the resulting memory location, using a skeleton array type to fill members:
+
+            if array_info.array_type == .RESIZABLE {
+            result.count = array_count;
+                result.allocated = array_count;
+            }
+
         case .STRUCT;
             struct_info := cast(*Type_Info_Struct) info;
             read_struct_members(buffer, data_out, struct_info.members);
@@ -122,6 +175,102 @@ test_binary_serialization :: () -> bool {
         assert(read_actual.y == test_data.y);
         assert(read_actual.z == test_data.z);
         assert(read_actual.type == test_data.type);
+    }
+
+    // Test array serialization 
+    {
+        test_data: [..] u32;
+
+        array_add(*test_data, 2);
+        array_add(*test_data, 3);
+        array_add(*test_data, 4);
+        array_add(*test_data, 5);
+
+        buffer: ByteBuffer;
+        defer free(*buffer);
+
+        byte_buffer_write(*buffer, *test_data, type_info(type_of(test_data)));
+
+        buffer.cursor = 0;
+
+        actual_data: [..] u32;
+        byte_buffer_read(*buffer, *actual_data, type_info(type_of(actual_data)));
+
+        assert(actual_data.count == test_data.count);
+        assert(actual_data.allocated == actual_data.count);
+        for 0..test_data.count-1 {
+            assert(actual_data[it] == test_data[it]);
+        }
+    }
+
+    ComplexStruct :: struct {
+        x: u32;
+        arr: [4] float32;
+        data: BasicStruct;
+    }
+    // Test complex nested types
+    {
+        test_data: ComplexStruct;
+        test_data.x = 24;
+        test_data.arr = .[2, 4, 6, 8];
+        test_data.data = .{.Foo, 9 ,8 ,7};
+
+        buffer: ByteBuffer;
+        defer free(*buffer);
+
+        byte_buffer_write(*buffer, *test_data, type_info(type_of(test_data)));
+
+        buffer.cursor = 0;
+
+        actual_data: ComplexStruct;
+        byte_buffer_read(*buffer, *actual_data, type_info(type_of(actual_data)));
+
+        assert(actual_data.arr.count == test_data.arr.count);
+        for 0..test_data.arr.count-1 {
+            assert(actual_data.arr[it] == test_data.arr[it]);
+        }
+    }
+
+    NestedByteBuffer :: struct {
+        a: u8;
+        buff: ByteBuffer;
+    }
+    // byte buffer inside struct:
+    {
+        test_nested_data: ComplexStruct;
+        test_nested_data.x = 24;
+        test_nested_data.arr = .[2, 4, 6, 8];
+        test_nested_data.data = .{.Foo, 9 ,8 ,7};
+        
+        test_data: NestedByteBuffer;
+        test_data.a = 101;
+
+        byte_buffer_write(*test_data.buff, *test_nested_data, type_info(type_of(test_nested_data)));
+
+
+        buffer: ByteBuffer;
+        defer free(*buffer);
+
+        byte_buffer_write(*buffer, *test_data, type_info(type_of(test_data)));
+
+        actual_data: NestedByteBuffer;
+
+        buffer.cursor = 0;
+        byte_buffer_read(*buffer, *actual_data, type_info(type_of(actual_data)));
+
+        actual_nested_data: ComplexStruct;
+
+        actual_data.buff.cursor = 0;
+        byte_buffer_read(*actual_data.buff, *actual_nested_data, type_info(type_of(actual_nested_data)));
+
+        assert(actual_data.a  == test_data.a);
+        
+        assert(actual_nested_data.arr.count == test_nested_data.arr.count);
+        for 0..test_nested_data.arr.count-1 {
+            assert(actual_nested_data.arr[it] == test_nested_data.arr[it]);
+        }
+
+        assert(actual_nested_data.data.x == test_nested_data.data.x);
     }
 
     return true;
