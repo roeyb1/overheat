@@ -11,15 +11,20 @@ movement_input: Vector2;
 
 MOVE_SPEED :: 500;
 
-update_player_controller :: () {
+// Update the local player controller, returns true if the player has made an input this frame
+update_player_controller :: () -> bool {
+    move_len := length(movement_input);
     // Normalize the input vector to prevent diagonal movement being faster than horizontal
-    if length(movement_input) > 1 {
+    if move_len > 1 {
         movement_input = unit_vector(movement_input);
+        move_len = 1.;
     }
 
     g_local_player.velocity = movement_input * MOVE_SPEED;
 
     movement_input = .{0, 0};
+    
+    return move_len != 0;
 }
 
 MovePlayerUp :: (key_state: Key_Current_State) {

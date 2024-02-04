@@ -1,8 +1,13 @@
 #scope_export
 
+// #todo: ByteBufferView struct would be very useful
 ByteBuffer :: struct {
     buff: [..] u8;
     cursor: s64;
+}
+
+byte_buffer_write :: (out_buffer: *ByteBuffer, data: *$Type) {
+    byte_buffer_write(out_buffer, data, type_info(Type));
 }
 
 byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info) {
@@ -45,6 +50,10 @@ byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info) {
         case;
             assert(false, "Unsupported type");
     }
+}
+
+byte_buffer_read :: (buffer: *ByteBuffer, data: *$Type) {
+    byte_buffer_read(buffer, data, type_info(Type));
 }
 
 byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info) {

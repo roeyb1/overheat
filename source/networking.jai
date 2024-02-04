@@ -6,7 +6,8 @@ Client :: struct {
 
     should_disconnect: bool = false;
 
-    inbound_packet_queue: [..] NetworkingPacket;
+    local_client_id: u64;
+    inbound_packet_queue: [..] RawNetworkingPacket;
 }
 
 Server :: struct {
@@ -22,27 +23,29 @@ Server :: struct {
     clients: [..] ClientConnection;
 
     // #todo: is this good enough to just increment every time?
-    next_valid_player_id: u64 = 0;
+    next_valid_player_id: u64 = 101;
 
     should_shutdown: bool = false;
 
-    inbound_packet_queue: [..] NetworkingPacket;
+    inbound_packet_queue: [..] RawNetworkingPacket;
 }
 
 g_server: Server;
 g_client: Client;
 
-is_server: bool = false;
-
-NetworkingArgs :: struct {
-    server := false;
-    ip := "127.0.0.1";
-    port: u16 = 27015;
+PacketType :: enum u8 {
+    CONNECTION_ESTABLISHED :: 10;
+    PLAYER_MOVE :: 11;
 }
 
-NetworkingPacket :: struct {
-    // #todo: different packet types, proper deserialize
-    data: [..] u8;
+/** Packet sent from the server to the client telling it what it's ID is. */
+ConnectionEstablished_Packet :: struct {
+    player_id: u64;
+}
+
+RawNetworkingPacket :: struct {
+    type: PacketType;
+    data: ByteBuffer;
 }
 
 networking_init :: () -> bool {
@@ -57,9 +60,9 @@ networking_init :: () -> bool {
 
     _, args, is_set_args := parse_arguments(NetworkingArgs);
 
-    is_server = args.server;
+    g_is_server = args.server;
 
-    if is_server {
+    if is_server() {
         g_server.listen_port = args.port;
 
         if !server_init(*g_server) {
@@ -89,7 +92,7 @@ networking_init :: () -> bool {
 
 networking_shutdown :: () {
     client_shutdown(*g_client);
-    if is_server {
+    if is_server() {
         server_shutdown(*g_server);
     }
 
@@ -97,7 +100,7 @@ networking_shutdown :: () {
 }
 
 networking_update :: () {
-    if is_server {
+    if is_server() {
         server_update(*g_server);
     }
     client_update(*g_client);
@@ -107,25 +110,48 @@ networking_update :: () {
  * Client -> Server 
  * Sends a packet of data from the client to the server.
  */
-networking_send_packet :: (data: string) {
-    Sockets.SendMessageToConnection(g_client.connection, data.data, xx data.count, .Reliable, null);
+networking_send_packet :: (packet: *RawNetworkingPacket) {
+    Sockets.SendMessageToConnection(g_client.connection, packet.data.buff.data, xx packet.data.buff.count, .Reliable, null);
 }
 
 /**
  * Server -> Clients 
  * Sends a packet of data from the server to all clients.
  */
-networking_broadcast :: (data: string) {
-    if is_server {
+networking_broadcast :: (packet: *RawNetworkingPacket) {
+    if is_server() {
         for * g_server.clients {
-            Sockets.SendMessageToConnection(it.connection, data.data, xx data.count, .Reliable, null);
+            Sockets.SendMessageToConnection(it.connection, packet.data.buff.data, xx packet.data.buff.count, .Reliable, null);
         }
     }
 }
 
-// #todo: need Server -> Target Client?
+/**
+ * Server -> Specific client
+ */
+networking_send_packet :: (client: *Server.ClientConnection, packet: *RawNetworkingPacket) {
+    if is_server() {
+        buffer: ByteBuffer;
+        byte_buffer_write(*buffer, packet);
+        defer free(*buffer);
+        Sockets.SendMessageToConnection(client.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
+    }
+}
+
+
+is_server :: inline () -> bool {
+    return g_is_server;
+}
 
 #scope_file
+
+g_is_server: bool = false;
+
+NetworkingArgs :: struct {
+    server := false;
+    ip := "127.0.0.1";
+    port: u16 = 27015;
+}
 
 server_init :: (server: *Server) -> bool {
     log("Starting server...");
@@ -189,9 +215,7 @@ server_update :: (server: *Server) {
             }
             assert(sender != null);
 
-            // #todo: should be transformed into a real deserialize function
-            packet := array_add(*server.inbound_packet_queue);
-            array_copy(*packet.data, message_view);
+            // #todo: deserialize
         }
     }
 
@@ -258,12 +282,29 @@ client_update :: (client: *Client) {
 
             if message_view.count == 0 then continue;
 
-            // #todo: should be transformed into a real deserialize function
-            packet := array_add(*client.inbound_packet_queue);
-            array_copy(*packet.data, message_view);
+            // copy the incoming data into the buffer
+            buffer: ByteBuffer;
+            defer free(*buffer);
+            array_copy(*buffer.buff, message_view);
+
+            buffer.cursor = 0;
+            
+            raw_packet: RawNetworkingPacket;
+            defer free(*raw_packet.data);
+            byte_buffer_read(*buffer, *raw_packet);
+
+            if raw_packet.type == {
+                case .CONNECTION_ESTABLISHED;
+                    conn_established: ConnectionEstablished_Packet;
+                    byte_buffer_read(*raw_packet.data, *conn_established);
+
+                    g_client.local_client_id = conn_established.player_id;
+                    log("Local player was assigned id %", conn_established.player_id);
+
+                case;
+            }
         }
     }
-
     Sockets.RunCallbacks();
 }
 
@@ -362,6 +403,14 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             new_client.player_id = new_player_id;
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
+
+            conn_established := ConnectionEstablished_Packet.{new_player_id};
+            raw_packet : RawNetworkingPacket;
+            raw_packet.type = .CONNECTION_ESTABLISHED;
+            byte_buffer_write(*raw_packet.data, *conn_established);
+            raw_packet.data.cursor = 0; // #todo: this shouldn't be necessary
+            networking_send_packet(*new_client, *raw_packet);
+            defer free(*raw_packet.data);
 
             // #todo: notify existing clients of new player
         }
