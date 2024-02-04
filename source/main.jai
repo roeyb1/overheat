@@ -9,8 +9,9 @@ ExitGame :: (key_state: Key_Current_State) {
 main :: () {
     execute_unit_tests();
 
-    // set the working direction to be the root of the repository
-    set_working_directory("../");
+    // set the working direction to be the root of the project (should always one directory up from the executable)
+    working_dir := (tprint("%/..", path_strip_filename(get_path_of_running_executable())));
+    set_working_directory(working_dir);
 
     rendering_init();
     input_manager_initialize();
