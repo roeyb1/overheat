@@ -33,13 +33,25 @@ Server :: struct {
 g_server: Server;
 g_client: Client;
 
-PacketType :: enum u8 {
-    CONNECTION_ESTABLISHED :: 10;
-    PLAYER_MOVE :: 11;
+PacketType :: enum u8 #specified {
+    INVALID                 :: 0;
+    CONNECTION_ESTABLISHED  :: 1;
+    PLAYER_MOVE             :: 2;
+    PLAYER_JOINED           :: 3;
+    PLAYER_LEFT             :: 4;
 }
 
-/** Packet sent from the server to the client telling it what it's ID is. */
+/** Packet sent from the server to the client assigning it a player id. */
 ConnectionEstablished_Packet :: struct {
+    player_id: u64;
+}
+
+/** Packet sent from the server to all clients indicating a new player has joined the game. */
+PlayerJoined_Packet :: struct {
+    player_id: u64;
+}
+
+PlayerLeft_Packet :: struct {
     player_id: u64;
 }
 
@@ -111,7 +123,11 @@ networking_update :: () {
  * Sends a packet of data from the client to the server.
  */
 networking_send_packet :: (packet: *RawNetworkingPacket) {
-    Sockets.SendMessageToConnection(g_client.connection, packet.data.buff.data, xx packet.data.buff.count, .Reliable, null);
+    buffer: ByteBuffer;
+    buffer.buff.allocator = temp;
+    byte_buffer_write(*buffer, packet);
+
+    Sockets.SendMessageToConnection(g_client.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
 }
 
 /**
@@ -120,8 +136,12 @@ networking_send_packet :: (packet: *RawNetworkingPacket) {
  */
 networking_broadcast :: (packet: *RawNetworkingPacket) {
     if is_server() {
+        buffer: ByteBuffer;
+        buffer.buff.allocator = temp;
+        byte_buffer_write(*buffer, packet);
+
         for * g_server.clients {
-            Sockets.SendMessageToConnection(it.connection, packet.data.buff.data, xx packet.data.buff.count, .Reliable, null);
+            Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
         }
     }
 }
@@ -132,8 +152,9 @@ networking_broadcast :: (packet: *RawNetworkingPacket) {
 networking_send_packet :: (client: *Server.ClientConnection, packet: *RawNetworkingPacket) {
     if is_server() {
         buffer: ByteBuffer;
+        buffer.buff.allocator = temp;
         byte_buffer_write(*buffer, packet);
-        defer free(*buffer);
+
         Sockets.SendMessageToConnection(client.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
     }
 }
@@ -284,13 +305,13 @@ client_update :: (client: *Client) {
 
             // copy the incoming data into the buffer
             buffer: ByteBuffer;
-            defer free(*buffer);
+            buffer.buff.allocator = temp;
             array_copy(*buffer.buff, message_view);
 
             buffer.cursor = 0;
             
             raw_packet: RawNetworkingPacket;
-            defer free(*raw_packet.data);
+            raw_packet.data.buff.allocator = temp;
             byte_buffer_read(*buffer, *raw_packet);
 
             if raw_packet.type == {
@@ -300,7 +321,11 @@ client_update :: (client: *Client) {
 
                     g_client.local_client_id = conn_established.player_id;
                     log("Local player was assigned id %", conn_established.player_id);
-
+                case .PLAYER_JOINED;
+                    player_joined: PlayerJoined_Packet;
+                    byte_buffer_read(*raw_packet.data, *player_joined);
+                    
+                    log("New player has joined the game: %", player_joined.player_id);
                 case;
             }
         }
@@ -404,15 +429,20 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
 
-            conn_established := ConnectionEstablished_Packet.{new_player_id};
-            raw_packet : RawNetworkingPacket;
-            raw_packet.type = .CONNECTION_ESTABLISHED;
-            byte_buffer_write(*raw_packet.data, *conn_established);
-            raw_packet.data.cursor = 0; // #todo: this shouldn't be necessary
-            networking_send_packet(*new_client, *raw_packet);
-            defer free(*raw_packet.data);
+            // Indicate to the newly joined player what it's ID is:
+            {
+                conn_established := ConnectionEstablished_Packet.{ new_player_id };
+                raw_packet : RawNetworkingPacket = create_packet(temp, *conn_established, .CONNECTION_ESTABLISHED);
+                networking_send_packet(*new_client, *raw_packet);
+            }
 
-            // #todo: notify existing clients of new player
+            // Notify all clients about the newly joined player:
+            {
+                player_joined := PlayerJoined_Packet.{ new_player_id };
+                raw_packet := create_packet(temp, *player_joined, .PLAYER_JOINED);
+                networking_broadcast(*raw_packet);
+            }
+
         }
         case .Connected;
         case;
@@ -468,8 +498,7 @@ gns_debug_callback :: (level: DebugOutputLevel, msg: *s8) -> void #c_call {
     }
 }
 
-view_of_c_string :: (c_string : *s8) -> string
-{
+view_of_c_string :: (c_string : *s8) -> string {
     ret : string;
     
     if (c_string == null)
@@ -481,6 +510,17 @@ view_of_c_string :: (c_string : *s8) -> string
     ret.count = c_style_strlen(xx c_string);
     return ret;
 }
+
+create_packet :: (allocator: Allocator, data: *$Type, packet_type: PacketType) -> RawNetworkingPacket{
+    result : RawNetworkingPacket;
+    result.data.buff.allocator = temp;
+    result.type = packet_type;
+    byte_buffer_write(*result.data, data);
+    result.data.cursor = 0; // #todo: this shouldn't be necessary
+
+    return result;
+}
+
 
 #import "gns";
 #import "Command_Line";
