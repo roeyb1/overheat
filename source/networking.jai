@@ -340,6 +340,7 @@ client_shutdown :: (client: *Client) {
 
 server_net_connection_status_changed_callback :: (info: *ConnectionStatusChanged) -> void #c_call {
     new_ctx: Context;
+    new_ctx.logger = logger;
     push_context new_ctx {
         handle_server_net_connection_status_changed(*g_server, info);
     }
@@ -451,6 +452,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
 
 client_net_connection_status_changed_callback :: (info: *ConnectionStatusChanged) -> void #c_call {
     new_ctx: Context;
+    new_ctx.logger = logger;
     push_context new_ctx {
         handle_client_net_connection_status_changed(*g_client, info);
     }
@@ -494,7 +496,7 @@ gns_debug_callback :: (level: DebugOutputLevel, msg: *s8) -> void #c_call {
     {
         msg_view := view_of_c_string(msg);
         
-        print("[gns] %\n", msg_view);
+        //log("[gns] %\n", msg_view);
     }
 }
 

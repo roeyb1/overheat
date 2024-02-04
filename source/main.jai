@@ -2,11 +2,15 @@ delta_time: float64 = 0.013;
 
 g_should_exit: bool = false;
 
+g_frame_number: u8 = 0;
+
 ExitGame :: (key_state: Key_Current_State) {
     g_should_exit = true;
 } @RegisterInputAction
 
 main :: () {
+    log_initialize();
+
     execute_unit_tests();
 
     // set the working direction to be the root of the project (should always one directory up from the executable)
@@ -38,6 +42,8 @@ main :: () {
 
         // Reset temporary storage at the end of each frame
         reset_temporary_storage();
+
+        g_frame_number += 1;
     }
 
     networking_shutdown();
@@ -67,6 +73,7 @@ draw_scene :: () {
 #import "Basic";
 #import "Input";
 
+#load "logging.jai";
 #load "networking.jai";
 #load "rendering.jai";
 #load "player.jai";
