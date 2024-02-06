@@ -5,12 +5,29 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch",
+            "name": "Launch (Server)",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "sapped.exe",
             "args": [
                 "-server"
+            ],
+            "console":"integratedTerminal",
+            "logging": {
+                "moduleLoad": true,
+                "trace": true
+            },
+            "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
+            "cwd": "${workspaceRoot}/bin",
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "Launch (Client)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "sapped.exe",
+            "args": [
+                "-client"
             ],
             "console":"integratedTerminal",
             "logging": {

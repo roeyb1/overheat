@@ -1,11 +1,6 @@
 #scope_export 
 
-Player :: struct {
-    position: Vector2;
-    velocity: Vector2;
-}
-
-g_local_player: Player;
+g_local_player: *Player;
 
 movement_input: Vector2;
 

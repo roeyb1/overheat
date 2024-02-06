@@ -44,15 +44,28 @@ PacketType :: enum u8 #specified {
 /** Packet sent from the server to the client assigning it a player id. */
 ConnectionEstablished_Packet :: struct {
     player_id: u64;
+    // #todo: this can include some information about what already exists in the world so the player joining an existing session can set up properly
+    // could start by just sending some position data about existing players.
+
+    // #hack: use the player joined packet
+    existing_players: [..] PlayerJoined_Packet;
 }
 
 /** Packet sent from the server to all clients indicating a new player has joined the game. */
 PlayerJoined_Packet :: struct {
     player_id: u64;
+    position: Vector2;
 }
 
 PlayerLeft_Packet :: struct {
     player_id: u64;
+}
+
+PlayerMove_Packet :: struct {
+    PACKET_TYPE :: PacketType.PLAYER_MOVE;
+
+    player_id: u64;
+    new_position: Vector2;
 }
 
 RawNetworkingPacket :: struct {
@@ -67,6 +80,12 @@ networking_init :: () -> bool {
         log_error("Failed to initialize GNS");
         return false;
     }
+
+    /*
+    Simulate lag
+    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Send, 30);
+    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Recv, 30);
+    */
 
     Utils.SetDebugOutputFunction(.Msg, gns_debug_callback);
 
@@ -122,6 +141,13 @@ networking_update :: () {
  * Client -> Server 
  * Sends a packet of data from the client to the server.
  */
+networking_send_packet :: (packet_data: *$Type) {
+    packet: RawNetworkingPacket;
+    packet.type = Type.PACKET_TYPE;
+    byte_buffer_write(*packet.data, packet_data);
+
+    networking_send_packet(*packet);
+}
 networking_send_packet :: (packet: *RawNetworkingPacket) {
     buffer: ByteBuffer;
     buffer.buff.allocator = temp;
@@ -236,7 +262,18 @@ server_update :: (server: *Server) {
             }
             assert(sender != null);
 
-            // #todo: deserialize
+            // copy the incoming data into the buffer
+            buffer: ByteBuffer;
+            buffer.buff.allocator = temp;
+            array_copy(*buffer.buff, message_view);
+
+            buffer.cursor = 0;
+            
+            raw_packet: RawNetworkingPacket;
+            raw_packet.data.buff.allocator = temp;
+            byte_buffer_read(*buffer, *raw_packet);
+
+            server_packet_handler(*raw_packet);
         }
     }
 
@@ -314,20 +351,7 @@ client_update :: (client: *Client) {
             raw_packet.data.buff.allocator = temp;
             byte_buffer_read(*buffer, *raw_packet);
 
-            if raw_packet.type == {
-                case .CONNECTION_ESTABLISHED;
-                    conn_established: ConnectionEstablished_Packet;
-                    byte_buffer_read(*raw_packet.data, *conn_established);
-
-                    g_client.local_client_id = conn_established.player_id;
-                    log("Local player was assigned id %", conn_established.player_id);
-                case .PLAYER_JOINED;
-                    player_joined: PlayerJoined_Packet;
-                    byte_buffer_read(*raw_packet.data, *player_joined);
-                    
-                    log("New player has joined the game: %", player_joined.player_id);
-                case;
-            }
+            client_packet_handler(*raw_packet);
         }
     }
     Sockets.RunCallbacks();
@@ -430,16 +454,26 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
 
-            // Indicate to the newly joined player what it's ID is:
+            // Indicate to the newly joined player what it's ID is and who is in the world:
             {
-                conn_established := ConnectionEstablished_Packet.{ new_player_id };
+                conn_established: ConnectionEstablished_Packet;
+                conn_established.player_id = new_player_id;
+
+                for :Player_It g_world {
+                    player_data := array_add(*conn_established.existing_players);
+                    player_data.player_id = it.player_id;
+                    player_data.position = it.position;
+                }
+
                 raw_packet : RawNetworkingPacket = create_packet(temp, *conn_established, .CONNECTION_ESTABLISHED);
                 networking_send_packet(*new_client, *raw_packet);
             }
 
             // Notify all clients about the newly joined player:
             {
-                player_joined := PlayerJoined_Packet.{ new_player_id };
+                player_joined: PlayerJoined_Packet = ---;
+                player_joined.player_id = new_player_id;
+                player_joined.position = .{0, 0};
                 raw_packet := create_packet(temp, *player_joined, .PLAYER_JOINED);
                 networking_broadcast(*raw_packet);
             }
@@ -523,6 +557,64 @@ create_packet :: (allocator: Allocator, data: *$Type, packet_type: PacketType) -
     return result;
 }
 
+client_packet_handler :: (raw_packet: *RawNetworkingPacket) {
+    raw_packet.data.cursor = 0;
+    if raw_packet.type == {
+        case .CONNECTION_ESTABLISHED;
+            conn_established: ConnectionEstablished_Packet;
+            conn_established.existing_players.allocator = temp;
+
+            byte_buffer_read(*raw_packet.data, *conn_established);
+
+            g_client.local_client_id = conn_established.player_id;
+            log("Local player was assigned id %", conn_established.player_id);
+
+            g_local_player = make_entity(*g_world, Player, tprint("Player_%", conn_established.player_id));
+            g_local_player.player_id = conn_established.player_id;
+
+            for player_data : conn_established.existing_players {
+                player := make_entity(*g_world, Player, tprint("Player_%", player_data.player_id));
+                player.position = player_data.position;
+                player.player_id = player_data.player_id;
+                log("Existing player initialized %", player.player_id);
+            }
+        case .PLAYER_JOINED;
+            player_joined: PlayerJoined_Packet;
+            byte_buffer_read(*raw_packet.data, *player_joined);
+            
+            log("New player has joined the game: %", player_joined.player_id);
+
+            player := make_entity(*g_world, Player, tprint("Player_%", player_joined.player_id));
+            player.position = player_joined.position;
+            player.player_id = player_joined.player_id;
+
+        case .PLAYER_MOVE;
+            log("Player moved");
+            player_move: PlayerMove_Packet;
+            byte_buffer_read(*raw_packet.data, *player_move);
+
+            // #todo: avoid redundant packets. let the client be authoritative on it's position (for now at least).
+            //assert(player_move.player_id != g_local_player.player_id);
+
+            for :Player_It g_world {
+                if it.player_id == player_move.player_id {
+                    it.position = player_move.new_position;
+                }
+            }
+        case;
+    }
+}
+
+server_packet_handler :: (raw_packet: *RawNetworkingPacket) {
+    raw_packet.data.cursor = 0;
+    if raw_packet.type == {
+        case .PLAYER_MOVE;
+            // #todo: we can do something to validate the correctness of the movement, but for now just forward it to all clients:
+
+            networking_broadcast(raw_packet);
+        case;
+    }
+}
 
 #import "gns";
 #import "Command_Line";

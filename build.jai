@@ -60,11 +60,21 @@ message_loop :: () {
                 if has_note(header, "UnitTest") {
                     array_add(*unit_test_functions, header);
                 }
+                if has_note(header, "RunWhenReady") {
+                    array_add(*procedures_to_run, header);
+                }
             }
             
           case .PHASE;
             phase := cast(*Message_Phase) message;
             if phase.phase == .TYPECHECKED_ALL_WE_CAN {
+                if !has_run_procedures {
+                    for procedures_to_run {
+                        s := tprint("#run %();", it.name);
+                        add_build_string(s, message.workspace);
+                    }
+                    has_run_procedures = true;
+                }
 
                 if !generated_keymap_actions {
                     generate_keymap_actions(message.workspace);
@@ -146,6 +156,8 @@ generated_keymap_actions := false;
 unit_test_functions: [..] *Code_Procedure_Header;
 generated_unit_test_actions := false;
 
+procedures_to_run: [..] *Code_Procedure_Header;
+has_run_procedures := false;
 
 #import "Basic";
 #import "Compiler";

@@ -23,6 +23,17 @@ main :: () {
 
     last_time := seconds_since_init();
 
+    // Only update networking while we attempt to connect to the server and don't yet have a player:
+    while g_local_player == null {
+        networking_update();
+        input_manager_update();
+
+        rendering_begin_frame();
+
+        rendering_end_frame();
+        reset_temporary_storage();
+    }
+
     while !g_should_exit {
         networking_update();
 
@@ -55,18 +66,32 @@ simulate :: (delta_time: float64) {
     // update player position based on velocity:
     if update_player_controller() {
         // #todo: send a packet indicating the movement to other clients:
+        g_local_player.position += g_local_player.velocity * cast(float32) delta_time;
+
+        player_moved: PlayerMove_Packet = ---;
+        player_moved.player_id = g_local_player.player_id;
+        player_moved.new_position = g_local_player.position;
+
+        networking_send_packet(*player_moved);;
     }
-    g_local_player.position += g_local_player.velocity * cast(float32) delta_time;
 }
 
 draw_scene :: () {
-    quad_size: Vector2 = .{32., 32.};
-    center := g_local_player.position;
-    bottom_left := center - quad_size;
-    top_right := center + quad_size;
-
     Simp.set_shader_for_color(true);
-    Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, Vector4.{0.227, 0.204, 0.921, 1.});
+    for :Player_It g_world {
+        quad_size: Vector2 = .{32., 32.};
+        center := it.position;
+        bottom_left := center - quad_size;
+        top_right := center + quad_size;
+
+        color := ifx it.player_id == g_client.local_client_id {
+            Vector4.{0.227, 0.204, 0.921, 1.};
+        } else {
+            Vector4.{1., 0., 0., 1.};
+        }
+
+        Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, color);
+    }
 }
 
 
@@ -79,3 +104,5 @@ draw_scene :: () {
 #load "player.jai";
 #load "input.jai";
 #load "unit_test.jai";
+#load "world.jai";
+#load "entities.jai";
