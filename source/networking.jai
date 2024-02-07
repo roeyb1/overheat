@@ -7,7 +7,6 @@ Client :: struct {
     should_disconnect: bool = false;
 
     local_client_id: u64;
-    inbound_packet_queue: [..] RawNetworkingPacket;
 }
 
 Server :: struct {
@@ -26,8 +25,6 @@ Server :: struct {
     next_valid_player_id: u64 = 101;
 
     should_shutdown: bool = false;
-
-    inbound_packet_queue: [..] RawNetworkingPacket;
 }
 
 g_server: Server;
@@ -43,6 +40,8 @@ PacketType :: enum u8 #specified {
 
 /** Packet sent from the server to the client assigning it a player id. */
 ConnectionEstablished_Packet :: struct {
+    PACKET_TYPE :: PacketType.CONNECTION_ESTABLISHED;
+
     player_id: u64;
     // #todo: this can include some information about what already exists in the world so the player joining an existing session can set up properly
     // could start by just sending some position data about existing players.
@@ -53,11 +52,15 @@ ConnectionEstablished_Packet :: struct {
 
 /** Packet sent from the server to all clients indicating a new player has joined the game. */
 PlayerJoined_Packet :: struct {
+    PACKET_TYPE :: PacketType.PLAYER_JOINED;
+
     player_id: u64;
     position: Vector2;
 }
 
 PlayerLeft_Packet :: struct {
+    PACKET_TYPE :: PacketType.PLAYER_LEFT;
+
     player_id: u64;
 }
 
@@ -66,11 +69,6 @@ PlayerMove_Packet :: struct {
 
     player_id: u64;
     new_position: Vector2;
-}
-
-RawNetworkingPacket :: struct {
-    type: PacketType;
-    data: ByteBuffer;
 }
 
 networking_init :: () -> bool {
@@ -142,16 +140,11 @@ networking_update :: () {
  * Sends a packet of data from the client to the server.
  */
 networking_send_packet :: (packet_data: *$Type) {
-    packet: RawNetworkingPacket;
-    packet.type = Type.PACKET_TYPE;
-    byte_buffer_write(*packet.data, packet_data);
-
-    networking_send_packet(*packet);
-}
-networking_send_packet :: (packet: *RawNetworkingPacket) {
     buffer: ByteBuffer;
     buffer.buff.allocator = temp;
-    byte_buffer_write(*buffer, packet);
+    packet_type := Type.PACKET_TYPE;
+    byte_buffer_write(*buffer, *packet_type);
+    byte_buffer_write(*buffer, packet_data);
 
     Sockets.SendMessageToConnection(g_client.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
 }
@@ -160,11 +153,14 @@ networking_send_packet :: (packet: *RawNetworkingPacket) {
  * Server -> Clients 
  * Sends a packet of data from the server to all clients.
  */
-networking_broadcast :: (packet: *RawNetworkingPacket) {
+networking_broadcast :: (packet_data: *$Type) {
     if is_server() {
         buffer: ByteBuffer;
         buffer.buff.allocator = temp;
-        byte_buffer_write(*buffer, packet);
+        packet_type := Type.PACKET_TYPE;
+
+        byte_buffer_write(*buffer, *packet_type);
+        byte_buffer_write(*buffer, packet_data);
 
         for * g_server.clients {
             Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
@@ -172,14 +168,19 @@ networking_broadcast :: (packet: *RawNetworkingPacket) {
     }
 }
 
+
+
 /**
  * Server -> Specific client
  */
-networking_send_packet :: (client: *Server.ClientConnection, packet: *RawNetworkingPacket) {
+networking_send_packet :: (client: *Server.ClientConnection, packet_data: *$Type) {
     if is_server() {
         buffer: ByteBuffer;
         buffer.buff.allocator = temp;
-        byte_buffer_write(*buffer, packet);
+
+        packet_type := Type.PACKET_TYPE;
+        byte_buffer_write(*buffer, *packet_type);
+        byte_buffer_write(*buffer, packet_data);
 
         Sockets.SendMessageToConnection(client.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
     }
@@ -224,8 +225,6 @@ server_init :: (server: *Server) -> bool {
         return false;
     }
 
-    // Set the allocator for the packet queue to the global temp allocator. This will ensure it gets cleared every frame:
-    server.inbound_packet_queue.allocator = temporary_allocator;
     log("Server is now listening on port %", server.listen_port);
     return true;
 }
@@ -268,12 +267,11 @@ server_update :: (server: *Server) {
             array_copy(*buffer.buff, message_view);
 
             buffer.cursor = 0;
-            
-            raw_packet: RawNetworkingPacket;
-            raw_packet.data.buff.allocator = temp;
-            byte_buffer_read(*buffer, *raw_packet);
 
-            server_packet_handler(*raw_packet);
+            packet_type: PacketType;
+            byte_buffer_read(*buffer, *packet_type);
+
+            server_packet_handler(packet_type, *buffer);
         }
     }
 
@@ -314,7 +312,6 @@ client_init :: (client: *Client) -> bool {
     }
 
     // Set the allocator for the packet queue to the global temp allocator. This will ensure it gets cleared every frame:
-    client.inbound_packet_queue.allocator = temporary_allocator;
     return true;
 }
 
@@ -346,12 +343,11 @@ client_update :: (client: *Client) {
             array_copy(*buffer.buff, message_view);
 
             buffer.cursor = 0;
-            
-            raw_packet: RawNetworkingPacket;
-            raw_packet.data.buff.allocator = temp;
-            byte_buffer_read(*buffer, *raw_packet);
 
-            client_packet_handler(*raw_packet);
+            packet_type: PacketType;
+            byte_buffer_read(*buffer, *packet_type);
+
+            client_packet_handler(packet_type, *buffer);
         }
     }
     Sockets.RunCallbacks();
@@ -465,8 +461,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                     player_data.position = it.position;
                 }
 
-                raw_packet : RawNetworkingPacket = create_packet(temp, *conn_established, .CONNECTION_ESTABLISHED);
-                networking_send_packet(*new_client, *raw_packet);
+                networking_send_packet(*new_client, *conn_established);
             }
 
             // Notify all clients about the newly joined player:
@@ -474,8 +469,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 player_joined: PlayerJoined_Packet = ---;
                 player_joined.player_id = new_player_id;
                 player_joined.position = .{0, 0};
-                raw_packet := create_packet(temp, *player_joined, .PLAYER_JOINED);
-                networking_broadcast(*raw_packet);
+                networking_broadcast(*player_joined);
             }
 
         }
@@ -547,24 +541,13 @@ view_of_c_string :: (c_string : *s8) -> string {
     return ret;
 }
 
-create_packet :: (allocator: Allocator, data: *$Type, packet_type: PacketType) -> RawNetworkingPacket{
-    result : RawNetworkingPacket;
-    result.data.buff.allocator = temp;
-    result.type = packet_type;
-    byte_buffer_write(*result.data, data);
-    result.data.cursor = 0; // #todo: this shouldn't be necessary
-
-    return result;
-}
-
-client_packet_handler :: (raw_packet: *RawNetworkingPacket) {
-    raw_packet.data.cursor = 0;
-    if raw_packet.type == {
+client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
+    if packet_type == {
         case .CONNECTION_ESTABLISHED;
             conn_established: ConnectionEstablished_Packet;
             conn_established.existing_players.allocator = temp;
 
-            byte_buffer_read(*raw_packet.data, *conn_established);
+            byte_buffer_read(buffer, *conn_established);
 
             g_client.local_client_id = conn_established.player_id;
             log("Local player was assigned id %", conn_established.player_id);
@@ -580,7 +563,7 @@ client_packet_handler :: (raw_packet: *RawNetworkingPacket) {
             }
         case .PLAYER_JOINED;
             player_joined: PlayerJoined_Packet;
-            byte_buffer_read(*raw_packet.data, *player_joined);
+            byte_buffer_read(buffer, *player_joined);
             
             log("New player has joined the game: %", player_joined.player_id);
 
@@ -589,9 +572,8 @@ client_packet_handler :: (raw_packet: *RawNetworkingPacket) {
             player.player_id = player_joined.player_id;
 
         case .PLAYER_MOVE;
-            log("Player moved");
             player_move: PlayerMove_Packet;
-            byte_buffer_read(*raw_packet.data, *player_move);
+            byte_buffer_read(buffer, *player_move);
 
             // #todo: avoid redundant packets. let the client be authoritative on it's position (for now at least).
             //assert(player_move.player_id != g_local_player.player_id);
@@ -605,13 +587,13 @@ client_packet_handler :: (raw_packet: *RawNetworkingPacket) {
     }
 }
 
-server_packet_handler :: (raw_packet: *RawNetworkingPacket) {
-    raw_packet.data.cursor = 0;
-    if raw_packet.type == {
+server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
+    if packet_type == {
         case .PLAYER_MOVE;
             // #todo: we can do something to validate the correctness of the movement, but for now just forward it to all clients:
-
-            networking_broadcast(raw_packet);
+            for * g_server.clients {
+                Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
+            }
         case;
     }
 }
