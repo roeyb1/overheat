@@ -4,7 +4,7 @@ g_local_player: *Player;
 
 movement_input: Vector2;
 
-MOVE_SPEED :: 500;
+MOVE_SPEED :: 16;
 
 // Update the local player controller, returns true if the player has made an input this frame
 update_player_controller :: () -> bool {

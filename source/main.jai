@@ -33,7 +33,7 @@ main :: () {
         {
             Simp.set_shader_for_text();
             text_width := Simp.prepare_text(g_large_font, "Connecting to server...");
-            Simp.draw_prepared_text(g_large_font, (window_width - text_width) / 2, window_height / 2);
+            Simp.draw_prepared_text(g_large_font, (g_window_width - text_width) / 2, g_window_height / 2);
         }
 
         rendering_end_frame();
@@ -85,12 +85,23 @@ simulate :: (delta_time: float64) {
 }
 
 draw_scene :: () {
+    PIXELS_PER_METER :: 32;
+    scale_to_screenspace :: (v: Vector2) -> Vector2 {
+        return v * PIXELS_PER_METER;
+    }
+    translate_to_screenspace :: (v: Vector2) -> Vector2 {
+        return v + make_vector2((cast(float) g_window_width) / 2., (cast(float) g_window_height) / 2.);
+    }
+    transform_to_screenspace :: (v: Vector2) -> Vector2 {
+        return translate_to_screenspace(scale_to_screenspace(v));
+    }
+
     Simp.set_shader_for_color(true);
     for :Player_It g_world {
-        quad_size: Vector2 = .{32., 32.};
+        quad_size: Vector2 = .{0.5, 0.5};
         center := it.position;
-        bottom_left := center - quad_size;
-        top_right := center + quad_size;
+        bottom_left := transform_to_screenspace(center - quad_size);
+        top_right := transform_to_screenspace(center + quad_size);
 
         color := ifx it.player_id == g_client.local_client_id {
             Vector4.{0.227, 0.204, 0.921, 1.};

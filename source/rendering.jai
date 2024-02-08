@@ -1,7 +1,7 @@
 #scope_export
 
 game_window: Window_Type;
-window_width, window_height: s32;
+g_window_width, g_window_height: s32;
 
 g_large_font: *Simp.Dynamic_Font;
 
@@ -9,7 +9,7 @@ rendering_init :: () -> bool {
     log("Initialized rendering systems...");
 
     game_window = create_window(800, 600, "Sapped");
-    window_width, window_height = Simp.get_render_dimensions(game_window);
+    g_window_width, g_window_height = Simp.get_render_dimensions(game_window);
 
     Simp.set_render_target(game_window);
 
@@ -30,8 +30,8 @@ rendering_begin_frame :: () {
     for get_window_resizes() {
         Simp.update_window(it.window);
         if it.window == game_window {
-            window_width = it.width;
-            window_height = it.height;
+            g_window_width = it.width;
+            g_window_height = it.height;
         }
     }
 
