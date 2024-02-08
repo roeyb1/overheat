@@ -3,6 +3,8 @@
 game_window: Window_Type;
 window_width, window_height: s32;
 
+g_large_font: *Simp.Dynamic_Font;
+
 rendering_init :: () -> bool {
     log("Initialized rendering systems...");
 
@@ -10,6 +12,8 @@ rendering_init :: () -> bool {
     window_width, window_height = Simp.get_render_dimensions(game_window);
 
     Simp.set_render_target(game_window);
+
+    g_large_font = Simp.load_font("assets", "monogram.ttf", 48);
 
     log("Rendering systems initialized successfully");
     return true;

@@ -30,8 +30,16 @@ main :: () {
 
         rendering_begin_frame();
 
+        {
+            Simp.set_shader_for_text();
+            text_width := Simp.prepare_text(g_large_font, "Connecting to server...");
+            Simp.draw_prepared_text(g_large_font, (window_width - text_width) / 2, window_height / 2);
+        }
+
         rendering_end_frame();
         reset_temporary_storage();
+
+        g_frame_number += 1;
     }
 
     while !g_should_exit {
