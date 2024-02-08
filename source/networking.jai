@@ -541,6 +541,7 @@ view_of_c_string :: (c_string : *s8) -> string {
     return ret;
 }
 
+// #todo: refactor this handler into some functions that can exist independently and are dispatched via generated code
 client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     if packet_type == {
         case .CONNECTION_ESTABLISHED;
@@ -575,8 +576,8 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_move: PlayerMove_Packet;
             byte_buffer_read(buffer, *player_move);
 
-            // #todo: avoid redundant packets. let the client be authoritative on it's position (for now at least).
-            //assert(player_move.player_id != g_local_player.player_id);
+            assert(player_move.player_id != g_local_player.player_id, 
+                "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
 
             for :Player_It g_world {
                 if it.player_id == player_move.player_id {
@@ -590,9 +591,14 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     if packet_type == {
         case .PLAYER_MOVE;
+            player_move: PlayerMove_Packet;
+            byte_buffer_read(buffer, *player_move);
             // #todo: we can do something to validate the correctness of the movement, but for now just forward it to all clients:
             for * g_server.clients {
-                Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
+                // let the client be authoritative about its movement, don't send movement packets back to the client they came from
+                if it.player_id != player_move.player_id {
+                    Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
+                }
             }
         case;
     }
