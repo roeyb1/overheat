@@ -96,6 +96,20 @@ draw_scene :: () {
         return translate_to_screenspace(scale_to_screenspace(v));
     }
 
+    Simp.set_shader_for_images(*g_grid_texture);
+
+    // Draw a temporary background
+    for x : -40..40 {
+        for y : -40..40 {
+            quad_size: Vector2 = .{0.5, 0.5};
+            center := Vector2.{ xx x, xx y};
+            bottom_left := transform_to_screenspace(center - quad_size);
+            top_right := transform_to_screenspace(center + quad_size);
+
+            Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, Vector4.{1., 1., 1., 1.});
+        }
+    }
+
     Simp.set_shader_for_color(true);
     for :Player_It g_world {
         quad_size: Vector2 = .{0.5, 0.5};
@@ -111,6 +125,11 @@ draw_scene :: () {
 
         Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, color);
     }
+
+    // Draw some basic hud
+    Simp.set_shader_for_text();
+    text_width := Simp.prepare_text(g_large_font, tprint("Connected as player % (%)", g_local_player.player_id, ifx is_server() then "server" else "client"));
+    Simp.draw_prepared_text(g_large_font, 6, 6, color = Vector4.{0.227, 0.204, 0.921, 1.});
 }
 
 

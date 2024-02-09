@@ -22,7 +22,7 @@ Server :: struct {
     clients: [..] ClientConnection;
 
     // #todo: is this good enough to just increment every time?
-    next_valid_player_id: u64 = 101;
+    next_valid_player_id: u64 = 0;
 
     should_shutdown: bool = false;
 }
@@ -510,6 +510,7 @@ handle_client_net_connection_status_changed :: (client: *Client, info: *Connecti
 
             Sockets.CloseConnection(client.connection, /* reason */ 0, /* debug message */ null, /* linger */ false);
             client.connection = .Invalid;
+            client.should_disconnect = true;
         }
         case .Connecting;
         case .Connected;
