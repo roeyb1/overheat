@@ -404,9 +404,13 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                     info.m_info.m_eEndReason, 
                     end_debug_view);
 
+                player_id := server.clients[client_index].player_id;
+
                 array_unordered_remove_by_index(*server.clients, client_index);
 
-                // #todo: notify all clients of disconnected player
+                
+                player_left := PlayerLeft_Packet.{player_id};
+                networking_broadcast(*player_left);
             } else {
                 assert(info.m_eOldState == .Connecting);
             }
@@ -585,6 +589,20 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
                     it.position = player_move.new_position;
                 }
             }
+        case .PLAYER_LEFT;
+            player_left: PlayerLeft_Packet;
+            byte_buffer_read(buffer, *player_left);
+
+            player_to_kill: *Player = null;
+            for :Player_It g_world {
+                if it.player_id == player_left.player_id {
+                    player_to_kill = it;
+                    break;
+                }
+            }
+
+            assert(player_to_kill != null);
+            destroy_entity(*g_world, player_to_kill);
         case;
     }
 }
