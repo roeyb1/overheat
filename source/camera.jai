@@ -6,6 +6,7 @@ Camera :: struct {
     width: float;
     height: float;
 
+    // (Usually the player)
     entity_to_track: *Entity;
 }
 

@@ -125,6 +125,12 @@ draw_scene :: (camera: *Camera) {
     Simp.set_shader_for_text();
     text_width := Simp.prepare_text(g_large_font, tprint("Connected as player % (%)", g_local_player.player_id, ifx is_server() then "server" else "client"));
     Simp.draw_prepared_text(g_large_font, 6, 6, color = Vector4.{0.227, 0.204, 0.921, 1.});
+
+    // draw fps
+    Simp.set_shader_for_text();
+    fps_width := Simp.prepare_text(g_large_font, tprint("FPS: %",  cast(u64) (1. / delta_time)));
+    Simp.draw_prepared_text(g_large_font, g_window_width - (20 + fps_width + Simp.get_baseline_height(g_large_font)), g_window_height - (20 + Simp.get_baseline_height(g_large_font)), color = Vector4.{0.227, 0.204, 0.921, 1.});
+
 }
 
 
