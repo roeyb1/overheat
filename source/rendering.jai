@@ -11,7 +11,7 @@ main_view_camera: Camera;
 rendering_init :: () -> bool {
     log("Initialized rendering systems...");
 
-    game_window = create_window(800, 600, "Sapped");
+    game_window = create_window(800, 600, "Overheat");
     g_window_width, g_window_height = Simp.get_render_dimensions(game_window);
 
     Simp.set_render_target(game_window);

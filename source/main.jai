@@ -11,7 +11,9 @@ ExitGame :: (key_state: Key_Current_State) {
 main :: () {
     log_initialize();
 
-    execute_unit_tests();
+    if !execute_unit_tests() {
+        log_error("Unit tests failed! See log for more information.");
+    }
 
     // set the working direction to be the root of the project (should always one directory up from the executable)
     working_dir := (tprint("%/..", path_strip_filename(get_path_of_running_executable())));
