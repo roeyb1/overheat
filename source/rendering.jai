@@ -6,6 +6,8 @@ g_window_width, g_window_height: s32;
 g_large_font: *Simp.Dynamic_Font;
 g_grid_texture: Simp.Texture;
 
+main_view_camera: Camera;
+
 rendering_init :: () -> bool {
     log("Initialized rendering systems...");
 
@@ -13,6 +15,9 @@ rendering_init :: () -> bool {
     g_window_width, g_window_height = Simp.get_render_dimensions(game_window);
 
     Simp.set_render_target(game_window);
+
+    main_view_camera.width = xx g_window_width;
+    main_view_camera.height = xx g_window_height;
 
     g_large_font = Simp.load_font("assets", "monogram.ttf", 38);
 
@@ -35,6 +40,9 @@ rendering_begin_frame :: () {
         if it.window == game_window {
             g_window_width = it.width;
             g_window_height = it.height;
+
+            main_view_camera.width = xx g_window_width;
+            main_view_camera.height = xx g_window_height;
         }
     }
 

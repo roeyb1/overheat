@@ -42,6 +42,8 @@ main :: () {
         g_frame_number += 1;
     }
 
+    main_view_camera.entity_to_track = g_local_player;
+
     while !g_should_exit {
         networking_update();
 
@@ -55,7 +57,9 @@ main :: () {
 
         simulate(delta_time);
 
-        draw_scene();
+        update_camera_position(*main_view_camera, delta_time);
+
+        draw_scene(*main_view_camera);
 
         rendering_end_frame();
 
@@ -84,18 +88,7 @@ simulate :: (delta_time: float64) {
     }
 }
 
-draw_scene :: () {
-    PIXELS_PER_METER :: 32;
-    scale_to_screenspace :: (v: Vector2) -> Vector2 {
-        return v * PIXELS_PER_METER;
-    }
-    translate_to_screenspace :: (v: Vector2) -> Vector2 {
-        return v + make_vector2((cast(float) g_window_width) / 2., (cast(float) g_window_height) / 2.);
-    }
-    transform_to_screenspace :: (v: Vector2) -> Vector2 {
-        return translate_to_screenspace(scale_to_screenspace(v));
-    }
-
+draw_scene :: (camera: *Camera) {
     Simp.set_shader_for_images(*g_grid_texture);
 
     // Draw a temporary background
@@ -103,8 +96,8 @@ draw_scene :: () {
         for y : -40..40 {
             quad_size: Vector2 = .{0.5, 0.5};
             center := Vector2.{ xx x, xx y};
-            bottom_left := transform_to_screenspace(center - quad_size);
-            top_right := transform_to_screenspace(center + quad_size);
+            bottom_left := worldspace_to_viewspace(camera, center - quad_size);
+            top_right := worldspace_to_viewspace(camera, center + quad_size);
 
             Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, Vector4.{1., 1., 1., 1.});
         }
@@ -114,8 +107,8 @@ draw_scene :: () {
     for :Player_It g_world {
         quad_size: Vector2 = .{0.5, 0.5};
         center := it.position;
-        bottom_left := transform_to_screenspace(center - quad_size);
-        top_right := transform_to_screenspace(center + quad_size);
+        bottom_left := worldspace_to_viewspace(camera, center - quad_size);
+        top_right := worldspace_to_viewspace(camera, center + quad_size);
 
         color := ifx it.player_id == g_client.local_client_id {
             Vector4.{0.227, 0.204, 0.921, 1.};
@@ -144,3 +137,4 @@ draw_scene :: () {
 #load "unit_test.jai";
 #load "world.jai";
 #load "entities.jai";
+#load "camera.jai";
