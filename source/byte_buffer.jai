@@ -72,35 +72,29 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info) {
             array_count: s64;
             byte_buffer_read(buffer, *array_count, type_info(s64));
             
-            // if the type is non-resizable, we can add validation to ensure the serialized count matches
-            if array_info.array_type != .RESIZABLE {
+            // otherwise, use the data pointer already stored there
+			array_data := data_out;
+
+            // if the typeinfo count is -1, this is a fixed sized array and should already have memory allocated for it
+			if array_info.array_count == -1 {
+                // if the array is a dynamic array, we need to realloc a memory block for it:
+                result := cast(*[..] u8) data_out;
+                // Reallocing here could lead to a memory leak if we try to read into an array that already has some data allocated.
+                assert(result.allocated == 0);
+                result.data = realloc(null, array_count * array_info.element_type.runtime_size, 0);
+                result.count = array_count;
+                result.allocated = array_count;
+				
+                array_data = result.data;
+            } else {
+                // if the type is non-resizable, we can add validation to ensure the serialized count matches
                 assert(array_info.array_count == array_count);
             }
-
-            result := cast(*[..] u8) data_out;
-
-            // if the array is a dynamic array, we need to realloc a memory block for it.
-            // otherwise, use the data pointer already stored there
-            array_data: *void = ifx array_info.array_type == .RESIZABLE {
-                realloc(result.data, array_count * array_info.element_type.runtime_size, 0);
-            }
-            else {
-                (cast(*[1] u8)data_out).data;
-            }
-            result.data = array_data;
 
             for 0..array_count-1 {
                 byte_buffer_read(buffer, array_data, array_info.element_type);
                 array_data += array_info.element_type.runtime_size;
             }
-
-            // build the final struct at the resulting memory location, using a skeleton array type to fill members:
-
-            if array_info.array_type == .RESIZABLE {
-            result.count = array_count;
-                result.allocated = array_count;
-            }
-
         case .STRUCT;
             struct_info := cast(*Type_Info_Struct) info;
             read_struct_members(buffer, data_out, struct_info.members);

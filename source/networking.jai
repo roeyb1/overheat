@@ -515,6 +515,8 @@ handle_client_net_connection_status_changed :: (client: *Client, info: *Connecti
             Sockets.CloseConnection(client.connection, /* reason */ 0, /* debug message */ null, /* linger */ false);
             client.connection = .Invalid;
             client.should_disconnect = true;
+            // #todo: handle disconnection properly, for now just exit if we drop connection
+            g_should_exit = true;
         }
         case .Connecting;
         case .Connected;
