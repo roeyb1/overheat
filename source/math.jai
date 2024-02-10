@@ -77,5 +77,3 @@ radians :: inline (angle: float) -> float {
 degrees :: inline (angle: float) -> float {
     return (180. / PI) * angle;
 }
-
-DEBUG_DRAW_COLLISION :: false;
