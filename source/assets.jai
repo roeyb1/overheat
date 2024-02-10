@@ -19,7 +19,7 @@ g_large_font: *Simp.Dynamic_Font;
 load_all_assets :: () {
     stbi_set_flip_vertically_on_load(1);
 
-    g_dungeon_tiles = load_spritesheet("assets/dungeon_tiles.png", 16, 0, 0);
+    g_dungeon_tiles = load_spritesheet("assets/dungeon_tiles.png", 32, 0, 0);
     g_default_grid = load_texture("assets/grid.png");
 
     // #todo: move this to a table

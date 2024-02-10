@@ -11,7 +11,7 @@ Camera :: struct {
 
 // #todo: we probably want this value to vary so that the window size can't just show you more of the world.
 // The number of tiles visible should mostly remain a constant value
-PIXELS_PER_METER :: 32;
+PIXELS_PER_METER :: 64;
 
 recompute_camera_projection :: (using self: *Camera) {
     scaled_window_half_width := (cast(float) g_window_width / 2.) / (PIXELS_PER_METER);

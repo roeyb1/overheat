@@ -99,16 +99,17 @@ draw_scene :: (camera: *Camera) {
     Simp.set_shader_for_images(g_default_grid);
 
     // Draw a temporary background
-    //for x : -40..40 {
-    //    for y : -40..40 {
-    //        quad_size: Vector2 = .{0.5, 0.5};
-    //        center := Vector2.{ xx x, xx y};
-    //        bottom_left := worldspace_to_viewspace(camera, center - quad_size);
-    //        top_right := worldspace_to_viewspace(camera, center + quad_size);
+    {
+        ground_sprite: Sprite;
+        ground_sprite.sheet = g_dungeon_tiles;
 
-    //        Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, Vector4.{1., 1., 1., 1.});
-    //    }
-    //}
+        for x : -20..20 {
+            for y : -20..20 {
+                ground_sprite.index = 256;
+                draw_sprite(camera, *ground_sprite, .{xx x,  xx y });
+            }
+        }
+    }
 
     Simp.set_shader_for_color(true);
     for :Player_It g_world {
@@ -136,16 +137,6 @@ draw_scene :: (camera: *Camera) {
     fps_width := Simp.prepare_text(g_large_font, tprint("FPS: %",  cast(u64) (1. / g_smooth_delta_time)));
     Simp.draw_prepared_text(g_large_font, g_window_width - (20 + fps_width + Simp.get_baseline_height(g_large_font)), g_window_height - (20 + Simp.get_baseline_height(g_large_font)), color = Vector4.{0.227, 0.204, 0.921, 1.});
 
-    
-    test_sprite: Sprite;
-    test_sprite.index = 0;
-    test_sprite.sheet = g_dungeon_tiles;
-    for x : 0..22 {
-        for y: 0..21 {
-            test_sprite.index = xx (y * 23 + x);
-            draw_sprite(camera, *test_sprite, .{xx x,  - cast(float)y });
-        }
-    }
 }
 
 
