@@ -162,7 +162,7 @@ parse_key_binding :: (handler: Text_File_Handler, key_binding: string) -> Modifi
         } else if mod_char == #char "A" {
             modifier_flags.alt_pressed = true;
         } else {
-            error(handler, "Unknown modifier key %");
+            error(handler, "Unknown modifier key %", key_string);
             return modifier_flags, 0, false;
         }
     }
