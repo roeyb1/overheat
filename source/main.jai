@@ -1,8 +1,9 @@
-delta_time: float64 = 0.013;
+g_delta_time: float = 0.013;
+g_smooth_delta_time: float = 0.013;
 
 g_should_exit: bool = false;
 
-g_frame_number: u8 = 0;
+g_frame_number: u64 = 0;
 
 ExitGame :: (key_state: Key_Current_State) {
     g_should_exit = true;
@@ -54,12 +55,14 @@ main :: () {
         rendering_begin_frame();
 
         now := seconds_since_init();
-        delta_time = (now - last_time);
+        g_delta_time = cast(float) (now - last_time);
+        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
+        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
         last_time = now;
 
-        simulate(delta_time);
+        simulate(g_delta_time);
 
-        update_camera_position(*main_view_camera, delta_time);
+        update_camera_position(*main_view_camera, g_delta_time);
 
         draw_scene(*main_view_camera);
 
@@ -128,7 +131,7 @@ draw_scene :: (camera: *Camera) {
 
     // draw fps
     Simp.set_shader_for_text();
-    fps_width := Simp.prepare_text(g_large_font, tprint("FPS: %",  cast(u64) (1. / delta_time)));
+    fps_width := Simp.prepare_text(g_large_font, tprint("FPS: %",  cast(u64) (1. / g_smooth_delta_time)));
     Simp.draw_prepared_text(g_large_font, g_window_width - (20 + fps_width + Simp.get_baseline_height(g_large_font)), g_window_height - (20 + Simp.get_baseline_height(g_large_font)), color = Vector4.{0.227, 0.204, 0.921, 1.});
 
 }
