@@ -17,16 +17,26 @@ PIXELS_PER_METER :: 32;
 update_camera_position :: (using self: *Camera, delta_time: float64) {
     assert(entity_to_track != null);
 
-    // #todo: some smoothing functions, lookahead, etc. Make this more interesting than a simple lock on camera.
-    position = entity_to_track.position;
+    target_location := entity_to_track.position;
+    // Lookahead
+    // target_location += unit_vector(entity_to_track.velocity) * LOOKAHEAD;
+
+    camera_dist_to_target := distance(target_location, position);
+
+    SMOOTH_SPEED :: 15.;
+
+    alpha := camera_dist_to_target;
+
+    // cubic easing function based on distance. further camera -> accelerate faster
+    speed_factor := 1. - pow(1 - alpha, 3.);
+
+    position = lerp(position, target_location, speed_factor * SMOOTH_SPEED * cast(float) delta_time);
 }
 
 worldspace_to_viewspace :: inline (camera: *Camera, v: Vector2) -> Vector2 {
-    return v * PIXELS_PER_METER + make_vector2((camera.width) / 2., (camera.height) / 2.);
+    return (v - camera.position) * PIXELS_PER_METER + make_vector2((camera.width) / 2., (camera.height) / 2.);
 }
 
 viewspace_to_worldspace :: (camera: *Camera, v: Vector2) -> Vector2 {
-    // #todo:
-    assert(false);
-    return .{0, 0};
+    return ((v - make_vector2(camera.width / 2. , camera.height / 2.)) / PIXELS_PER_METER) + camera.position;
 }
