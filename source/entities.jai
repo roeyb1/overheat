@@ -12,7 +12,7 @@ Entity :: struct {
     position: Vector2;
     velocity: Vector2;
 
-    rotation: float;
+    bounds: AABB;
 }
 
 Player :: struct {
@@ -26,3 +26,5 @@ EntityCast :: (entity: *Entity, $type: Type) -> *type {
 
     return cast(*type) entity.data;
 }
+
+#load "math.jai";

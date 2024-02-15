@@ -24,6 +24,8 @@ main :: () {
     input_manager_initialize();
     networking_init();
 
+    load_all_assets();
+
     last_time := seconds_since_init();
 
     // Only update networking while we attempt to connect to the server and don't yet have a player:
@@ -94,35 +96,23 @@ simulate :: (delta_time: float64) {
 }
 
 draw_scene :: (camera: *Camera) {
-    Simp.set_shader_for_images(*g_grid_texture);
+    Simp.set_shader_for_images(g_default_grid);
 
     // Draw a temporary background
-    for x : -40..40 {
-        for y : -40..40 {
-            quad_size: Vector2 = .{0.5, 0.5};
-            center := Vector2.{ xx x, xx y};
-            bottom_left := worldspace_to_viewspace(camera, center - quad_size);
-            top_right := worldspace_to_viewspace(camera, center + quad_size);
+    {
+        ground_sprite: Sprite;
+        ground_sprite.sheet = g_dungeon_tiles;
 
-            Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, Vector4.{1., 1., 1., 1.});
+        for x : -20..20 {
+            for y : -20..20 {
+                ground_sprite.index = 256;
+                draw_sprite(camera, *ground_sprite, .{xx x,  xx y });
+            }
         }
     }
 
-    Simp.set_shader_for_color(true);
-    for :Player_It g_world {
-        quad_size: Vector2 = .{0.5, 0.5};
-        center := it.position;
-        bottom_left := worldspace_to_viewspace(camera, center - quad_size);
-        top_right := worldspace_to_viewspace(camera, center + quad_size);
+    render_scene(camera);
 
-        color := ifx it.player_id == g_client.local_client_id {
-            Vector4.{0.227, 0.204, 0.921, 1.};
-        } else {
-            Vector4.{1., 0., 0., 1.};
-        }
-
-        Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, color);
-    }
 
     // Draw some basic hud
     Simp.set_shader_for_text();
@@ -149,3 +139,4 @@ draw_scene :: (camera: *Camera) {
 #load "world.jai";
 #load "entities.jai";
 #load "camera.jai";
+#load "assets.jai";
