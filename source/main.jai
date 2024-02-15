@@ -111,21 +111,8 @@ draw_scene :: (camera: *Camera) {
         }
     }
 
-    Simp.set_shader_for_color(true);
-    for :Player_It g_world {
-        quad_size: Vector2 = .{0.5, 0.5};
-        center := it.position;
-        bottom_left := worldspace_to_viewspace(camera, center - quad_size);
-        top_right := worldspace_to_viewspace(camera, center + quad_size);
+    render_scene(camera);
 
-        color := ifx it.player_id == g_client.local_client_id {
-            Vector4.{0.227, 0.204, 0.921, 1.};
-        } else {
-            Vector4.{1., 0., 0., 1.};
-        }
-
-        Simp.immediate_quad(bottom_left.x, bottom_left.y, top_right.x, top_right.y, color);
-    }
 
     // Draw some basic hud
     Simp.set_shader_for_text();

@@ -8,6 +8,17 @@ main_view_camera: Camera;
 Sprite :: struct {
     sheet: *SpriteSheet;
     index: u32;
+    z_order: s8;
+}
+
+// Copy over the sprite data required for rendering so we don't need to directly reference it
+Sprite_Draw_Cmd :: struct {
+    sheet: *SpriteSheet;
+
+    sprite_index: u32;
+    z_order: s8;
+
+    position: Vector2;
 }
 
 rendering_init :: () -> bool {
@@ -53,32 +64,92 @@ rendering_begin_frame :: () {
 
 rendering_end_frame :: () {
     Simp.swap_buffers(game_window);
+
+    sprite_draw_cmds.count = 0;
 }
 
 draw_sprite :: (camera: *Camera, sprite: *Sprite, position: Vector2) {
+    sprite_draw_cmd := array_add(*sprite_draw_cmds);
+
+    sprite_draw_cmd.sheet = sprite.sheet;
+    sprite_draw_cmd.sprite_index = sprite.index;
+    sprite_draw_cmd.z_order = sprite.z_order;
+
+    sprite_draw_cmd.position = position;
+}
+
+render_scene :: (camera: *Camera) {
+    if sprite_draw_cmds.count == 0 then return;
+
+    // we might do a bunch of allocations in here manipulating arrays, but none of them need to stick around
+    push_allocator(temp);
+
+    // sort the sprite draw commands into draw buckets so we can instance draw calls with sprites using the same sheet:
+    quick_sort(sprite_draw_cmds, x => cast(s64) x.sheet);
+
+    DrawBucket :: struct {
+        start: u64;
+        count: u64;
+        sprite_sheet: *SpriteSheet;
+    }
+
+    draw_buckets: [..] DrawBucket;
+    instance_data: [..] InstanceData;
+
+    // Build the buckets:
+    current_bucket: *DrawBucket = null;
+    active_spritesheet: *SpriteSheet = null;
+    for * draw_cmd : sprite_draw_cmds {
+        // Since the draw commands are already sorted by spritesheet
+        // we can assume that the moment we find a new spritesheet that doesn't match, we're starting a new bucket.
+        if draw_cmd.sheet != active_spritesheet {
+            active_spritesheet = draw_cmd.sheet;
+
+            // first time this runs, current will be null
+            if current_bucket != null {
+                current_bucket.count = cast(u64) it_index - current_bucket.count;
+            }
+
+            current_bucket = array_add(*draw_buckets);
+            current_bucket.start = cast(u64) it_index;
+            current_bucket.sprite_sheet = draw_cmd.sheet;
+        }
+
+        instance: *InstanceData = array_add(*instance_data);
+        instance.sprite_index = draw_cmd.sprite_index;
+        
+        instance.position = make_vector3(draw_cmd.position, cast(float) draw_cmd.z_order / 128.);
+    }
+    current_bucket.count = cast(u64) sprite_draw_cmds.count - current_bucket.start;
+
+    glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);    
+    glBufferData(GL_ARRAY_BUFFER, instance_data.count * size_of(InstanceData), instance_data.data, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
     glUseProgram(sprite_shader_prog);
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
     glEnable(GL_TEXTURE_2D);
+    glActiveTexture(GL_TEXTURE0);
 
     glBindVertexArray(quad_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
 
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, sprite.sheet.texture.gl_handle);
-
+    // set shader parameters that won't change between draw calls:
     set_shader_mat4(sprite_shader_prog, "projection", camera.projection);
     set_shader_vec2(sprite_shader_prog, "view_pos", camera.position);
-    set_shader_vec2(sprite_shader_prog, "pos", position);
     set_shader_vec2(sprite_shader_prog, "scale", .{1., 1.});
-    set_shader_uint(sprite_shader_prog, "sprite_index", sprite.index);
-    set_shader_uint(sprite_shader_prog, "sprite_extent", sprite.sheet.extent);
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
+    // #todo
+    for * draw : draw_buckets {
+        //set_shader_vec2(sprite_shader_prog, "pos", make_vector3(sprite.position, sprite.z_order));
+        glBindTexture(GL_TEXTURE_2D, draw.sprite_sheet.texture.gl_handle);
+        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, cast(*void) draw.start, cast(u32) draw.count);
+    }
 
+
+    // Restore opengl state
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
@@ -95,29 +166,42 @@ Vertex :: struct {
     uv: Vector2;
 }
 
+InstanceData :: struct {
+    position: Vector3;
+
+    sprite_index: u32;
+}
+
+
 quad_vbo: GLuint;
 quad_ebo: GLuint;
 quad_vao: GLuint;
+instance_vbo: GLuint;
 sprite_shader_prog: GLuint;
+
+sprite_draw_cmds: [..] Sprite_Draw_Cmd;
 
 VERTEX_SHADER_TEXT :: #string DONE
 #version 330 core
 
 layout (location = 0) in vec2 vertex_pos;
 layout (location = 1) in vec2 uv;
+layout (location = 2) in vec3 pos;
+layout (location = 3) in int spriteIndex;
 
 out vec2 texCoord;
+flat out int sprite_index;
 
 uniform mat4 projection;
 uniform vec2 view_pos;
 uniform vec2 scale;
-uniform vec2 pos;
 
 void main() {
     vec2 scaled_position = vertex_pos * scale;
-    gl_Position = projection * vec4(pos + scaled_position - view_pos, 0.0, 1.0);
+    gl_Position = projection * vec4(pos.xy + scaled_position - view_pos, pos.z, 1.0);
 
     texCoord = uv;
+    sprite_index = spriteIndex;
 }
 DONE
 
@@ -125,15 +209,15 @@ FRAGMENT_SHADER_TEXT :: #string DONE
 #version 330 core
 
 in vec2 texCoord;
-uniform sampler2D texture1;
+flat in int sprite_index;
 
-uniform uint sprite_index;
-uniform uint sprite_extent;
+uniform sampler2D texture1;
 
 out vec4 FragColor;
 
 void main()
 {
+    int sprite_extent = 32;
     ivec2 texture_size = textureSize(texture1, 0);
     ivec2 num_sprites = texture_size / int(sprite_extent);
 
@@ -147,17 +231,43 @@ void main()
     vec2 uvs = uv_start + texCoord * tile_size_uvs;
 
     FragColor = texture(texture1, uvs);
-    //FragColor = vec4(uvs, 0., 1.0);
 } 
 DONE
 
 init_rendering_resources :: () {
+    offset_of :: ($T: Type, $member: string) -> int {
+        for type_info(T).members {
+            if it.name == member return it.offset_in_bytes;
+        }
+
+        assert(false, "Type '%' does not have member '%'", T, member);
+        return -1;
+    }
+
     setup_vao_for_vertex_format :: (vao: GLuint) {
         glBindVertexArray(vao);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, size_of(Vertex), cast(*void) 0);
+
+        // Vertex position
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, size_of(Vertex), cast(*void) size_of(Vector2));
+        glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, size_of(Vertex), cast(*void) 0);
+
+        // Vertex uvs
         glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, quad_vbo);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, size_of(Vertex), cast(*void) size_of(Vector2));
+
+        // instance data
+        glEnableVertexAttribArray(2);
+        glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, size_of(InstanceData), cast(*void) #run offset_of(InstanceData, "position"));
+        glVertexAttribDivisor(2, 1);
+
+        glEnableVertexAttribArray(3);
+        glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, size_of(InstanceData), cast(*void) #run offset_of(InstanceData, "sprite_index"));
+        glVertexAttribDivisor(3, 1);
+
         glBindVertexArray(0);
     }
 
@@ -182,6 +292,7 @@ init_rendering_resources :: () {
 
         glGenBuffers(1, *quad_vbo);
         glGenBuffers(1, *quad_ebo);
+        glGenBuffers(1, *instance_vbo);
         glGenVertexArrays(1, *quad_vao);
 
         glBindVertexArray(quad_vao);
@@ -272,3 +383,4 @@ set_shader_uint :: (shader: GLuint, name: *u8, u: u32) {
 }
 
 #import "GL";
+#import "Sort";
