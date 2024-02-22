@@ -19,6 +19,8 @@ Player :: struct {
     #as using entity: *Entity;
 
     player_id: u64;
+
+    sprite: Sprite;
 }
 
 EntityCast :: (entity: *Entity, $type: Type) -> *type {

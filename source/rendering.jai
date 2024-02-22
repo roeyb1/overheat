@@ -7,7 +7,7 @@ main_view_camera: Camera;
 
 Sprite :: struct {
     sheet: *SpriteSheet;
-    index: u32;
+    index: s32;
     z_order: s8;
 }
 
@@ -15,7 +15,7 @@ Sprite :: struct {
 Sprite_Draw_Cmd :: struct {
     sheet: *SpriteSheet;
 
-    sprite_index: u32;
+    sprite_index: s32;
     z_order: s8;
 
     position: Vector2;
@@ -143,8 +143,8 @@ render_scene :: (camera: *Camera) {
 
     // #todo
     for * draw : draw_buckets {
-        //set_shader_vec2(sprite_shader_prog, "pos", make_vector3(sprite.position, sprite.z_order));
         glBindTexture(GL_TEXTURE_2D, draw.sprite_sheet.texture.gl_handle);
+        set_shader_sint(sprite_shader_prog, "sprite_extent", draw.sprite_sheet.extent);
         glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, cast(*void) draw.start, cast(u32) draw.count);
     }
 
@@ -169,7 +169,7 @@ Vertex :: struct {
 InstanceData :: struct {
     position: Vector3;
 
-    sprite_index: u32;
+    sprite_index: s32;
 }
 
 
@@ -187,9 +187,13 @@ VERTEX_SHADER_TEXT :: #string DONE
 layout (location = 0) in vec2 vertex_pos;
 layout (location = 1) in vec2 uv;
 layout (location = 2) in vec3 pos;
+
+// per-instance data
 layout (location = 3) in int spriteIndex;
 
 out vec2 texCoord;
+
+// per-instance data passthrough to fragment shader
 flat out int sprite_index;
 
 uniform mat4 projection;
@@ -211,13 +215,13 @@ FRAGMENT_SHADER_TEXT :: #string DONE
 in vec2 texCoord;
 flat in int sprite_index;
 
+uniform int sprite_extent;
 uniform sampler2D texture1;
 
 out vec4 FragColor;
 
 void main()
 {
-    int sprite_extent = 32;
     ivec2 texture_size = textureSize(texture1, 0);
     ivec2 num_sprites = texture_size / int(sprite_extent);
 
@@ -380,6 +384,12 @@ set_shader_uint :: (shader: GLuint, name: *u8, u: u32) {
     loc := glGetUniformLocation(shader, name);
     if loc < 0   log_error("Unknown parameter: '%'\n", to_string(name));
     if loc >= 0  glUniform1ui(loc, u);
+}
+
+set_shader_sint :: (shader: GLuint, name: *u8, u: s32) {
+    loc := glGetUniformLocation(shader, name);
+    if loc < 0   log_error("Unknown parameter: '%'\n", to_string(name));
+    if loc >= 0  glUniform1i(loc, u);
 }
 
 #import "GL";

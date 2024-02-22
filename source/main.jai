@@ -102,12 +102,20 @@ draw_scene :: (camera: *Camera) {
     {
         ground_sprite: Sprite;
         ground_sprite.sheet = g_dungeon_tiles;
+        ground_sprite.z_order = -1;
 
         for x : -20..20 {
             for y : -20..20 {
                 ground_sprite.index = 256;
                 draw_sprite(camera, *ground_sprite, .{xx x,  xx y });
             }
+        }
+    }
+
+    // Draw players
+    {
+        for :Player_It g_world {
+            draw_sprite(camera, *it.sprite, it.position);
         }
     }
 
@@ -123,7 +131,6 @@ draw_scene :: (camera: *Camera) {
     Simp.set_shader_for_text();
     fps_width := Simp.prepare_text(g_large_font, tprint("FPS: %",  cast(u64) (1. / g_smooth_delta_time)));
     Simp.draw_prepared_text(g_large_font, g_window_width - (20 + fps_width + Simp.get_baseline_height(g_large_font)), g_window_height - (20 + Simp.get_baseline_height(g_large_font)), color = Vector4.{0.227, 0.204, 0.921, 1.});
-
 }
 
 
