@@ -6,9 +6,10 @@ g_window_width, g_window_height: s32;
 main_view_camera: Camera;
 
 Sprite :: struct {
-    sheet: *SpriteSheet;
-    index: s32;
-    z_order: s8;
+    sheet: *SpriteSheet = null;
+    scale: Vector2 = .{1, 1};
+    index: s32 = 0;
+    z_order: s8 = 0;
 }
 
 // Copy over the sprite data required for rendering so we don't need to directly reference it
@@ -19,6 +20,7 @@ Sprite_Draw_Cmd :: struct {
     z_order: s8;
 
     position: Vector2;
+    scale: Vector2;
 }
 
 rendering_init :: () -> bool {
@@ -72,11 +74,20 @@ draw_sprite :: (camera: *Camera, sprite: *Sprite, position: Vector2) {
     sprite_draw_cmd := array_add(*sprite_draw_cmds);
 
     sprite_draw_cmd.sheet = sprite.sheet;
+    sprite_draw_cmd.scale = sprite.scale;
     sprite_draw_cmd.sprite_index = sprite.index;
     sprite_draw_cmd.z_order = sprite.z_order;
 
     sprite_draw_cmd.position = position;
 }
+
+#scope_file
+DrawBucket :: struct {
+    start: u64;
+    count: u64;
+    sprite_sheet: *SpriteSheet;
+}
+#scope_export
 
 render_scene :: (camera: *Camera) {
     if sprite_draw_cmds.count == 0 then return;
@@ -86,12 +97,6 @@ render_scene :: (camera: *Camera) {
 
     // sort the sprite draw commands into draw buckets so we can instance draw calls with sprites using the same sheet:
     quick_sort(sprite_draw_cmds, x => cast(s64) x.sheet);
-
-    DrawBucket :: struct {
-        start: u64;
-        count: u64;
-        sprite_sheet: *SpriteSheet;
-    }
 
     draw_buckets: [..] DrawBucket;
     instance_data: [..] InstanceData;
@@ -116,10 +121,11 @@ render_scene :: (camera: *Camera) {
         }
 
         instance: *InstanceData = array_add(*instance_data);
-        instance.sprite_index = draw_cmd.sprite_index;
-        
         instance.position = make_vector3(draw_cmd.position, cast(float) draw_cmd.z_order / 128.);
+        instance.scale = draw_cmd.scale;
+        instance.sprite_index = draw_cmd.sprite_index;
     }
+
     current_bucket.count = cast(u64) sprite_draw_cmds.count - current_bucket.start;
 
     glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);    
@@ -139,18 +145,16 @@ render_scene :: (camera: *Camera) {
     // set shader parameters that won't change between draw calls:
     set_shader_mat4(sprite_shader_prog, "projection", camera.projection);
     set_shader_vec2(sprite_shader_prog, "view_pos", camera.position);
-    set_shader_vec2(sprite_shader_prog, "scale", .{1., 1.});
 
     // #todo
     for * draw : draw_buckets {
         glBindTexture(GL_TEXTURE_2D, draw.sprite_sheet.texture.gl_handle);
         set_shader_sint(sprite_shader_prog, "sprite_extent", draw.sprite_sheet.extent);
-        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, cast(*void) draw.start, cast(u32) draw.count);
+        glDrawElementsInstancedBaseInstance(GL_TRIANGLES, 6, GL_UNSIGNED_INT, cast (*void) 0, cast (u32) draw.count, cast (u32) draw.start);
     }
 
 
     // Restore opengl state
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
     glUseProgram(0);
@@ -168,10 +172,10 @@ Vertex :: struct {
 
 InstanceData :: struct {
     position: Vector3;
+    scale: Vector2;
 
     sprite_index: s32;
-}
-
+} #no_padding;
 
 quad_vbo: GLuint;
 quad_ebo: GLuint;
@@ -186,10 +190,11 @@ VERTEX_SHADER_TEXT :: #string DONE
 
 layout (location = 0) in vec2 vertex_pos;
 layout (location = 1) in vec2 uv;
-layout (location = 2) in vec3 pos;
 
 // per-instance data
-layout (location = 3) in int spriteIndex;
+layout (location = 2) in vec3 pos;
+layout (location = 3) in vec2 scale;
+layout (location = 4) in int spriteIndex;
 
 out vec2 texCoord;
 
@@ -198,7 +203,6 @@ flat out int sprite_index;
 
 uniform mat4 projection;
 uniform vec2 view_pos;
-uniform vec2 scale;
 
 void main() {
     vec2 scaled_position = vertex_pos * scale;
@@ -223,12 +227,12 @@ out vec4 FragColor;
 void main()
 {
     ivec2 texture_size = textureSize(texture1, 0);
-    ivec2 num_sprites = texture_size / int(sprite_extent);
+    ivec2 num_sprites = texture_size / sprite_extent;
 
     vec2 tile_size_uvs = float(sprite_extent) / vec2(texture_size);
 
-    int x = int(sprite_index) % num_sprites.x;
-    int y = texture_size.y / int(sprite_extent) - 1 - int(int(sprite_index * sprite_extent) / texture_size.x);
+    int x = sprite_index % num_sprites.x;
+    int y = texture_size.y / sprite_extent - 1 - int((sprite_index * sprite_extent) / texture_size.x);
 
     vec2 uv_start = tile_size_uvs * vec2(x, y);
 
@@ -264,13 +268,18 @@ init_rendering_resources :: () {
         // instance data
         glEnableVertexAttribArray(2);
         glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, size_of(InstanceData), cast(*void) #run offset_of(InstanceData, "position"));
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, size_of(InstanceData), cast(*void) #run offset_of(InstanceData, "position"));
         glVertexAttribDivisor(2, 1);
 
         glEnableVertexAttribArray(3);
         glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, size_of(InstanceData), cast(*void) #run offset_of(InstanceData, "sprite_index"));
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, size_of(InstanceData), cast(*void) #run offset_of(InstanceData, "scale"));
         glVertexAttribDivisor(3, 1);
+
+        glEnableVertexAttribArray(4);
+        glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
+        glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, size_of(InstanceData), cast(*void) #run offset_of(InstanceData, "sprite_index"));
+        glVertexAttribDivisor(4, 1);
 
         glBindVertexArray(0);
     }
