@@ -103,13 +103,10 @@ render_scene :: (camera: *Camera) {
 
     // Build the buckets:
     current_bucket: *DrawBucket = null;
-    active_spritesheet: *SpriteSheet = null;
     for * draw_cmd : sprite_draw_cmds {
         // Since the draw commands are already sorted by spritesheet
         // we can assume that the moment we find a new spritesheet that doesn't match, we're starting a new bucket.
-        if draw_cmd.sheet != active_spritesheet {
-            active_spritesheet = draw_cmd.sheet;
-
+        if current_bucket == null || draw_cmd.sheet != current_bucket.sprite_sheet {
             // first time this runs, current will be null
             if current_bucket != null {
                 current_bucket.count = cast(u64) it_index - current_bucket.count;
@@ -126,10 +123,10 @@ render_scene :: (camera: *Camera) {
         instance.sprite_index = draw_cmd.sprite_index;
     }
 
-    current_bucket.count = cast(u64) sprite_draw_cmds.count - current_bucket.start;
+    current_bucket.count = cast(u64) instance_data.count - current_bucket.start;
 
     glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);    
-    glBufferData(GL_ARRAY_BUFFER, instance_data.count * size_of(InstanceData), instance_data.data, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, instance_data.count * size_of(InstanceData), instance_data.data, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
@@ -140,13 +137,12 @@ render_scene :: (camera: *Camera) {
     glEnable(GL_TEXTURE_2D);
     glActiveTexture(GL_TEXTURE0);
 
-    glBindVertexArray(quad_vao);
-
     // set shader parameters that won't change between draw calls:
     set_shader_mat4(sprite_shader_prog, "projection", camera.projection);
     set_shader_vec2(sprite_shader_prog, "view_pos", camera.position);
 
-    // #todo
+    glBindVertexArray(quad_vao);
+
     for * draw : draw_buckets {
         glBindTexture(GL_TEXTURE_2D, draw.sprite_sheet.texture.gl_handle);
         set_shader_sint(sprite_shader_prog, "sprite_extent", draw.sprite_sheet.extent);
@@ -278,7 +274,7 @@ init_rendering_resources :: () {
 
         glEnableVertexAttribArray(4);
         glBindBuffer(GL_ARRAY_BUFFER, instance_vbo);
-        glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, size_of(InstanceData), cast(*void) #run offset_of(InstanceData, "sprite_index"));
+        glVertexAttribIPointer(4, 1, GL_INT, size_of(InstanceData), cast(*void) #run offset_of(InstanceData, "sprite_index"));
         glVertexAttribDivisor(4, 1);
 
         glBindVertexArray(0);
