@@ -18,7 +18,7 @@
                 "trace": true
             },
             "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
-            "cwd": "${workspaceRoot}/bin",
+            "cwd": "${workspaceRoot}/bin/win",
             "preLaunchTask": "build"
         },
         {
@@ -35,7 +35,7 @@
                 "trace": true
             },
             "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
-            "cwd": "${workspaceRoot}/bin",
+            "cwd": "${workspaceRoot}/bin/win",
             "preLaunchTask": "build"
         }
     ]

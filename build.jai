@@ -11,6 +11,16 @@ build :: () {
     target_options.output_executable_name = "overheat";
     target_options.output_path = "bin/";
 
+    // bin folder should contain per-os subdirs:
+    if target_options.os_target == {
+        case .WINDOWS;
+            target_options.output_path = "bin/win";
+        case .LINUX;
+            target_options.output_path = "bin/linux";
+        case .MACOS;
+            target_options.output_path = "bin/macos";
+    }
+
     set_build_options(target_options, w);
 
     // compiler_begin_intercept causes us to get messages from this workspace.
@@ -27,6 +37,8 @@ build :: () {
     compiler_end_intercept(w);
 
     print("\nDone!\n\n");
+
+    copy_module_libraries_to_target(target_options);
 
     // This metaprogram should not generate any output executable:
     set_build_options_dc(.{do_output=false});
@@ -95,6 +107,40 @@ message_loop :: () {
 
 #scope_file
 
+/**
+ * Copy data from the platform folders of modules next to the executable so they can be picked up by dlopens.
+ * We could instead leverage parsing of libraries to detect the files as is done here: https://gist.github.com/uucidl/c5b9505a3b3a6cced5dc5a34080df6c3
+ */
+
+copy_module_libraries_to_target :: (target_options: Build_Options) {
+    dir_list :: (path: string, recursive := false) -> [] string #must {
+        dirs: [..] string;
+
+        visitor :: (info: *File_Visit_Info, user_data: *[..] string) {
+            array_add(user_data, copy_string(info.full_name));
+        }
+
+        visit_files(path, recursive, *dirs, visitor, visit_files=false, visit_directories=true);
+        return dirs;
+    }
+
+    push_allocator(temp);
+
+    // this is a kind of shitty way to do this, ideally we would just look into the /win/ directories directly
+    module_directories := dir_list("modules", recursive=false);
+    for module : module_directories {
+        os_names := string.["win", "linux", "mac"];
+        
+        for os_name : os_names {
+            module_lib_dir_name := tprint("%/%", module, os_name);
+            if is_directory(module_lib_dir_name) {
+                copy_directory(module_lib_dir_name, target_options.output_path);
+            }
+        }
+
+    }
+}
+
 has_note :: (header: *Code_Procedure_Header, note: string) -> bool {
     for header.notes  if it.text == note  return true;
     return false;
@@ -162,3 +208,4 @@ has_run_procedures := false;
 #import "Basic";
 #import "Compiler";
 #import "String";
+#import "File_Utilities";

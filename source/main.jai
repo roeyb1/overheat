@@ -16,8 +16,8 @@ main :: () {
         log_error("Unit tests failed! See log for more information.");
     }
 
-    // set the working direction to be the root of the project (should always one directory up from the executable)
-    working_dir := (tprint("%/..", path_strip_filename(get_path_of_running_executable())));
+    // set the working direction to be the root of the project (should always two directories up from the executable)
+    working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
     set_working_directory(working_dir);
 
     rendering_init();
