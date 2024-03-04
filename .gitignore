@@ -1,5 +1,4 @@
 # hide compilation artifacts
-*.exe
 *.pdb
 .build/
 bin/

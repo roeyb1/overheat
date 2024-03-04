@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "dtoplak.vscode-glsllint",
+        "ms-vscode.cpptools",
+        "vadimcn.vscode-lldb"
+    ]
+}
