@@ -151,3 +151,4 @@ draw_scene :: (camera: *Camera) {
 #load "entities.jai";
 #load "camera.jai";
 #load "assets.jai";
+#load "status_component.jai";
