@@ -21,6 +21,8 @@ build :: () {
             target_options.output_path = "bin/macos";
     }
 
+    make_directory_if_it_does_not_exist(target_options.output_path, recursive=true);
+
     set_build_options(target_options, w);
 
     // compiler_begin_intercept causes us to get messages from this workspace.
@@ -39,6 +41,12 @@ build :: () {
     print("\nDone!\n\n");
 
     copy_module_libraries_to_target(target_options);
+
+    shader_dir := "assets/shaders";
+    if !compile_shaders(shader_dir, debug_symbols=true) {
+        compiler_set_workspace_status(.FAILED);
+        return;
+    }
 
     // This metaprogram should not generate any output executable:
     set_build_options_dc(.{do_output=false});
@@ -209,3 +217,5 @@ has_run_procedures := false;
 #import "Compiler";
 #import "String";
 #import "File_Utilities";
+
+#load "source/shader_compilation.jai";
