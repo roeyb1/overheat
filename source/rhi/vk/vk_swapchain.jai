@@ -1,14 +1,9 @@
 #scope_export
 
-PresentMode :: enum {
-    V_SYNC;
-    IMMEDIATE;
-}
-
 MAX_SWAPCHAIN_IMAGES : u32 : 3;
 MAX_FRAMES_IN_FLIGHT : u32 : 3;
 
-PRESENT_MODE :: PresentMode.V_SYNC;
+PRESENT_MODE :: RHIPresentMode.V_SYNC;
 
 RHISwapchain :: struct {
     handle: VkSwapchainKHR;
@@ -16,8 +11,8 @@ RHISwapchain :: struct {
 
     present_queue: *RHIQueue;
 
-    format: Format;
-    present_mode: PresentMode;
+    format: RHIFormat;
+    present_mode: RHIPresentMode;
     extent: Extent2D;
 
     images: [MAX_SWAPCHAIN_IMAGES] RHIImage;
@@ -120,7 +115,7 @@ init_swapchain :: (width: u32, height: u32) {
         levels = 1,
         samples = ._1,
         type = ._2D,
-        format = cast(Format) format.format,
+        format = cast(RHIFormat) format.format,
         usage_flags = .TRANSFER_DST_BIT | .RW_TEXTURE_BIT | .COLOR_ATTACHMENT_BIT | .TEXTURE_BIT,
     };
 
@@ -128,7 +123,7 @@ init_swapchain :: (width: u32, height: u32) {
         swapchain.images[it] = rhi_create_image(vk_images[it], image_desc);
     }
 
-    swapchain.format = cast(Format) format.format;
+    swapchain.format = cast(RHIFormat) format.format;
     swapchain.extent = xx extent;
     swapchain.image_count = image_count;
     swapchain.present_mode = PRESENT_MODE;

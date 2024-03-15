@@ -131,5 +131,6 @@ destroy_surface :: () {
 #load "vk_resources.jai";
 #load "vk_swapchain.jai";
 #load "vk_descriptor_set.jai";
+#load "vk_cmd_list.jai";
 
 #import "Vulkan";

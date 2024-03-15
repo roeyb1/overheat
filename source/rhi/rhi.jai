@@ -1,9 +1,55 @@
 #scope_export
 
-// --------------------- General ----------------------
-// #todo: refactor into abstract layer
+RHIBackend :: enum {
+    VULKAN;
+    DX12;  // NYI
+}
 
-SampleCount :: enum u32 {
+RHIQueueType :: enum {
+    GRAPHICS;
+    COMPUTE;
+    TRANSFER;
+}
+
+RHIResourceState :: enum_flags {
+    UNDEFINED                   :: 0;
+    READ_RESOURCE               :: 1 << 0;
+    READ_DEPTH_STENCIL          :: 1 << 1;
+    READ_CONSTANT_BUFFER        :: 1 << 2;
+    READ_VERTEX_BUFFER          :: 1 << 3;
+    READ_INDEX_BUFFER           :: 1 << 4;
+    READ_INDIRECT_BUFFER        :: 1 << 5;
+    READ_TRANSFER               :: 1 << 6;
+    WRITE_DEPTH_STENCIL         :: 1 << 7;
+    WRITE_COLOR_ATTACHMENT      :: 1 << 8;
+    WRITE_TRANSFER              :: 1 << 9;
+    CLEAR_RESOURCE              :: 1 << 10;
+    RW_RESOURCE                 :: 1 << 11;
+    RW_RESOURCE_READ_ONLY       :: 1 << 12;
+    RW_RESOURCE_WRITE_ONLY      :: 1 << 13;
+    PRESENT                     :: 1 << 14;
+}    
+
+RHIPipelineStageFlags :: enum_flags {
+    TOP_OF_PIPE_BIT             :: 0x00000001;
+    DRAW_INDIRECT_BIT           :: 0x00000002;
+    VERTEX_INPUT_BIT            :: 0x00000004;
+    VERTEX_SHADER_BIT           :: 0x00000008;
+    HULL_SHADER_BIT             :: 0x00000010;
+    DOMAIN_SHADER_BIT           :: 0x00000020;
+    GEOMETRY_SHADER_BIT         :: 0x00000040;
+    PIXEL_SHADER_BIT            :: 0x00000080;
+    EARLY_FRAGMENT_TESTS_BIT    :: 0x00000100;
+    LATE_FRAGMENT_TESTS_BIT     :: 0x00000200;
+    COLOR_ATTACHMENT_OUTPUT_BIT :: 0x00000400;
+    COMPUTE_SHADER_BIT          :: 0x00000800;
+    TRANSFER_BIT                :: 0x00001000;
+    BOTTOM_OF_PIPE_BIT          :: 0x00002000;
+    HOST_BIT                    :: 0x00004000;
+    CLEAR_BIT                   :: 0x00050000;
+}
+
+RHISampleCount :: enum u32 {
     _1  :: 0x01;
     _2  :: 0x02;
     _4  :: 0x04;
@@ -11,13 +57,39 @@ SampleCount :: enum u32 {
     _16 :: 0x10;
 }
 
-ImageType :: enum u32 {
+RHIImageType :: enum u32 {
     _1D :: 0;
     _2D :: 1;
     _3D :: 2;
 }
 
-ImageUsageFlags :: enum_flags u32 {
+RHIClearColorValue :: union {
+    _float32: [4] float;
+    int32:    [4] s32;
+    uint32:   [4] u32;
+}
+
+RHIClearDepthStencilValue :: struct {
+    depth:   float;
+    stencil: u32;
+}
+
+RHIClearValue :: union {
+    color: RHIClearColorValue;
+    depth_stencil: RHIClearDepthStencilValue;
+}
+
+RHIPresentMode :: enum {
+    V_SYNC;
+    IMMEDIATE;
+}
+
+Extent2D :: struct {
+    width: u32;
+    height: u32;
+}
+
+RHIImageUsageFlags :: enum_flags u32 {
     TRANSFER_SRC_BIT                :: 1 << 0;
     TRANSFER_DST_BIT                :: 1 << 1;
     TEXTURE_BIT                     :: 1 << 2;
@@ -27,7 +99,7 @@ ImageUsageFlags :: enum_flags u32 {
     CLEAR_BIT                       :: 1 << 6;
 }
 
-Format :: enum u32 {
+RHIFormat :: enum u32 {
     UNDEFINED                                      :: 0;
     R4G4_UNORM_PACK8                               :: 1;
     R4G4B4A4_UNORM_PACK16                          :: 2;
@@ -177,65 +249,27 @@ Format :: enum u32 {
     BC7_SRGB_BLOCK                                 :: 146;
 }
 
-ClearColorValue :: union {
-    _float32: [4] float;
-    int32:    [4] s32;
-    uint32:   [4] u32;
+RHIBufferUsageFlags :: enum_flags {
+    TRANSFER_SRC_BIT            :: 1 << 0;
+    TRANSFER_DST_BIT            :: 1 << 1;
+    TYPED_BUFFER_BIT            :: 1 << 2;
+    RW_TYPED_BUFFER_BIT         :: 1 << 3;
+    CONSTANT_BUFFER_BIT         :: 1 << 4;
+    BYTE_BUFFER_BIT             :: 1 << 5;
+    RW_BYTE_BUFFER_BIT          :: 1 << 6;
+    STRUCTURED_BUFFER_BIT       :: 1 << 7;
+    RW_STRUCTURED_BUFFER_BIT    :: 1 << 8;
+    INDEX_BUFFER_BIT            :: 1 << 9;
+    VERTEX_BUFFER_BIT           :: 1 << 10;
+    INDIRECT_BUFFER_BIT         :: 1 << 11;
+    CLEAR_BIT                   :: 1 << 12;
+    SHADER_DEVICE_ADDRESS_BIT   :: 1 << 13;
 }
 
-ClearDepthStencilValue :: struct {
-    depth:   float;
-    stencil: u32;
-}
 
-ClearValue :: union {
-    color: ClearColorValue;
-    depth_stencil: ClearDepthStencilValue;
-}
-
-Extent2D :: struct {
-    width: u32;
-    height: u32;
-}
-
-ImageDescription :: struct {
-    extent: Extent2D = .{1, 1};
-    depth: u32 = 1;
-    layers: u32 = 1;
-    levels: u32 = 1;
-    samples: SampleCount = ._1;
-    type: ImageType = ._2D;
-    format: Format;
-    usage_flags: ImageUsageFlags = 0;
-    clear_value: ClearValue;
-}
-
-RHIImage :: struct {
-    handle: VkImage;
-    desc: ImageDescription;
-}
-
-rhi_create_image :: (vk: VkImage, desc: ImageDescription) -> RHIImage {
-    return .{handle = vk, desc = desc};
-}
-
-RHISemaphore :: VkSemaphore;
-
-create_semaphore :: (initial: u64) -> RHISemaphore {
-    type_create_info := VkSemaphoreTypeCreateInfo.{
-        initialValue = initial,
-        semaphoreType = .TIMELINE,
-    };
-
-    create_info := VkSemaphoreCreateInfo.{
-        pNext = *type_create_info,
-    };
-
-    result: VkSemaphore;
-    vk_check_result(vkCreateSemaphore(device, *create_info, null, *result));
-    return result;
-}
-
-destroy_semaphore :: (semaphore: RHISemaphore) {
-    vkDestroySemaphore(device, semaphore, null);
+RHI_BACKEND :: RHIBackend.VULKAN;
+#if RHI_BACKEND == .VULKAN {
+    #load "vk/vk_rhi.jai";
+} else {
+    assert(false); // unrecognized RHI
 }

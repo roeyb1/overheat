@@ -130,7 +130,7 @@ draw_scene :: (camera: *Camera) {
 #load "utils.jai";
 #load "logging.jai";
 #load "networking.jai";
-#load "rendering.jai";
+#load "rendering/rendering.jai";
 #load "player.jai";
 #load "input.jai";
 #load "unit_test.jai";
