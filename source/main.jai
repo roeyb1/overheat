@@ -1,3 +1,5 @@
+DEBUG :: true;
+
 g_delta_time: float = 0.013;
 g_smooth_delta_time: float = 0.013;
 
@@ -36,7 +38,7 @@ main :: () {
 
         // #todo: re-enable this when we can support drawing 0 sprites
         rendering_begin_frame();
-        draw_scene(*main_view_camera);
+        render_scene(*main_view_camera);
 
         {
             //Simp.set_shader_for_text();
@@ -69,7 +71,7 @@ main :: () {
 
         update_camera_position(*main_view_camera, g_delta_time);
 
-        draw_scene(*main_view_camera);
+        render_scene(*main_view_camera);
 
         rendering_end_frame();
 
@@ -98,30 +100,6 @@ simulate :: (delta_time: float64) {
     }
 }
 
-draw_scene :: (camera: *Camera) {
-    // Draw a temporary background
-    {
-        ground_sprite: Sprite;
-        ground_sprite.sheet = g_dungeon_tiles;
-        ground_sprite.z_order = -1;
-        ground_sprite.index = 256;
-
-        for x : -20..20 {
-            for y : -20..20 {
-                draw_sprite(camera, *ground_sprite, .{xx x,  xx y });
-            }
-        }
-    }
-
-    // Draw players
-    {
-        for :Player_It g_world {
-            draw_sprite(camera, *it.sprite, it.position);
-        }
-    }
-
-    render_scene(camera);
-}
 
 
 #import "Basic";

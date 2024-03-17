@@ -8,6 +8,26 @@ vk_check_result :: inline (result: VkResult) -> bool {
     return false;
 }
 
+rhi_debug_set_object_name :: (image: *RHIImage, name: string) {
+    info := VkDebugUtilsObjectNameInfoEXT.{
+        pObjectName = temp_c_string(name),
+        objectType = .IMAGE,
+        objectHandle = xx image.handle,
+    };
+
+    vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+}
+
+rhi_debug_set_object_name :: (buffer: *RHIBuffer, name: string) {
+    info := VkDebugUtilsObjectNameInfoEXT.{
+        pObjectName = temp_c_string(name),
+        objectType = .BUFFER,
+        objectHandle = xx buffer.handle,
+    };
+
+    vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+}
+
 #if DEBUG_VULKAN {
     validation_callback :: (flags: VkDebugReportFlagsEXT, objType: VkDebugReportObjectTypeEXT, obj: u64, location: u64, code: s32, layerPrefix: *u8, msg: *u8, userData: *void) -> VkBool32 #c_call {
         new_context: Context;

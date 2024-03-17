@@ -11,9 +11,28 @@ RHIQueue :: struct {
     queue_family_index: u32;
 }
 
-graphics_queue: RHIQueue;
-transfer_queue: RHIQueue;
-// #todo: compute queue
+RHI_QUEUE_COUNT :: 3; 
+RHIQueueIndex :: enum u32 {
+    GRAPHICS    :: 0;
+    COMPUTE     :: 1;
+    TRANSFER    :: 2;
+}
+rhi_queues: [RHI_QUEUE_COUNT] RHIQueue;
+
+RHISubmitInfo :: struct {
+    wait_semaphores: [] *RHISemaphore;
+    wait_values: [] u64;
+    wait_dst_stage_masks: [] RHIPipelineStageFlags;
+    command_lists: [] *RHICmdList;
+    signal_semaphores: [] *RHISemaphore;
+    signal_values: [] u64;
+}
+
+
+vkCmdInsertDebugUtilsLabelEXT: PFN_vkCmdInsertDebugUtilsLabelEXT;
+vkCmdBeginDebugUtilsLabelEXT: PFN_vkCmdBeginDebugUtilsLabelEXT;
+vkCmdEndDebugUtilsLabelEXT: PFN_vkCmdEndDebugUtilsLabelEXT;
+vkSetDebugUtilsObjectNameEXT: PFN_vkSetDebugUtilsObjectNameEXT;
 
 init_device :: () {
     push_allocator(temp);
@@ -150,13 +169,96 @@ init_device :: () {
     result := vkCreateDevice(physical_device, *device_create_info, null, *device);
     assert(result == .SUCCESS);
     
-    vkGetDeviceQueue(device, graphics_family_index, queueIndex=0, *graphics_queue.handle);
-    vkGetDeviceQueue(device, transfer_family_index, queueIndex=0, *transfer_queue.handle);
+    vkGetDeviceQueue(device, graphics_family_index, queueIndex=0, *rhi_queues[RHIQueueType.GRAPHICS].handle);
+    vkGetDeviceQueue(device, transfer_family_index, queueIndex=0, *rhi_queues[RHIQueueType.TRANSFER].handle);
+
+    // #todo: unique compute queue:
+    rhi_queues[RHIQueueType.COMPUTE] = rhi_queues[RHIQueueType.GRAPHICS];
 
     // store the physical device properties for convenience:
     vkGetPhysicalDeviceProperties(physical_device, *physical_device_properties);
+
+
+    // Load some optional debug function pointers from the device:
+    vkCmdInsertDebugUtilsLabelEXT = cast(PFN_vkCmdInsertDebugUtilsLabelEXT) vkGetDeviceProcAddr(device, "vkCmdInsertDebugUtilsLabelEXT");
+    vkCmdBeginDebugUtilsLabelEXT = cast(PFN_vkCmdBeginDebugUtilsLabelEXT) vkGetDeviceProcAddr(device, "vkCmdBeginDebugUtilsLabelEXT");
+    vkCmdEndDebugUtilsLabelEXT = cast(PFN_vkCmdEndDebugUtilsLabelEXT) vkGetDeviceProcAddr(device, "vkCmdEndDebugUtilsLabelEXT");
+    vkSetDebugUtilsObjectNameEXT = cast(PFN_vkSetDebugUtilsObjectNameEXT) vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
 }
 
 destroy_device :: () {
     vkDestroyDevice(device, null);
+}
+
+rhi_queue_index :: inline (queue: *RHIQueue) -> RHIQueueIndex {
+    if queue == *rhi_queues[0] {
+        return RHIQueueIndex.GRAPHICS ;
+    } else if queue == *rhi_queues[1] {
+        return RHIQueueIndex.COMPUTE;
+    } else {
+        assert(queue == *rhi_queues[2]);
+        return RHIQueueIndex.TRANSFER;
+    }
+}
+
+rhi_queue_submit :: (queue: *RHIQueue, submit_infos: [] *RHISubmitInfo) {
+    semaphore_count: s64 = 0;
+    command_buffer_count: s64 = 0;
+    wait_mask_count: s64 = 0;
+
+    for submit_info : submit_infos {
+        assert(submit_info.wait_dst_stage_masks.count == submit_info.wait_semaphores.count);
+
+        semaphore_count += submit_info.wait_semaphores.count + submit_info.signal_semaphores.count;
+        command_buffer_count += submit_info.command_lists.count;
+        wait_mask_count += submit_info.wait_dst_stage_masks.count;
+    }
+
+    push_allocator(temp);
+
+    submit_infos_vk: [..] VkSubmitInfo;
+    timeline_infos: [..] VkTimelineSemaphoreSubmitInfo;
+    semaphore_handles: [..] VkSemaphore;
+    wait_dst_stage_masks: [..] VkPipelineStageFlags;
+    command_buffers: [..] VkCommandBuffer;
+
+    for submit_info : submit_infos {
+        wait_semaphore_submit_info_offset := semaphore_handles.count - 1;
+        command_buffers_submit_info_offset := command_buffers.count - 1;
+        wait_mask_submit_info_offset := wait_dst_stage_masks.count - 1;
+
+        for j : 0..submit_info.wait_semaphores.count-1 {
+            array_add(*semaphore_handles, << submit_info.wait_semaphores[j]);
+            array_add(*wait_dst_stage_masks, rhi_translate_pipeline_stage_flags(submit_info.wait_dst_stage_masks[j]));
+        }
+
+        for cmd_buff : submit_info.command_lists {
+            array_add(*command_buffers, cmd_buff.handle);
+        }
+
+        signal_semaphore_submit_info_offset := semaphore_handles.count - 1;
+
+        for signal_semaphore : submit_info.signal_semaphores {
+            array_add(*semaphore_handles, << signal_semaphore);
+        }
+
+        assert(submit_info.wait_values.count == submit_info.wait_semaphores.count);
+        timeline_info := array_add(*timeline_infos);
+        timeline_info.waitSemaphoreValueCount = xx submit_info.wait_values.count;
+        timeline_info.pWaitSemaphoreValues = submit_info.wait_values.data;
+        timeline_info.signalSemaphoreValueCount = xx submit_info.signal_values.count;
+        timeline_info.pSignalSemaphoreValues = submit_info.signal_values.data;
+
+        submit_info_vk := array_add(*submit_infos_vk);
+        submit_info_vk.pNext = timeline_info;
+        submit_info_vk.waitSemaphoreCount = xx submit_info.wait_semaphores.count;
+        submit_info_vk.pWaitSemaphores = semaphore_handles.data + wait_semaphore_submit_info_offset;
+        submit_info_vk.pWaitDstStageMask = wait_dst_stage_masks.data + wait_mask_submit_info_offset;
+        submit_info_vk.commandBufferCount = xx submit_info.command_lists.count;
+        submit_info_vk.pCommandBuffers = command_buffers.data + command_buffers_submit_info_offset;
+        submit_info_vk.signalSemaphoreCount = xx submit_info.signal_semaphores.count;
+        submit_info_vk.pSignalSemaphores = semaphore_handles.data + signal_semaphore_submit_info_offset;
+    }
+
+    vk_check_result(vkQueueSubmit(queue.handle, xx submit_infos_vk.count, submit_infos_vk.data, VK_NULL_HANDLE));
 }

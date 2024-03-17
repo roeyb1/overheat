@@ -108,26 +108,26 @@ init_swapchain :: (width: u32, height: u32) {
     vk_images: [MAX_SWAPCHAIN_IMAGES] VkImage;
     vk_check_result(vkGetSwapchainImagesKHR(device, swapchain.handle, *image_count, vk_images.data));
 
-    image_desc := ImageDescription.{
+    image_desc := RHIImageCreateInfo.{
         extent = .{width = extent.width, height = extent.height},
         depth = 1,
         layers = 1,
         levels = 1,
         samples = ._1,
-        type = ._2D,
+        image_type = ._2D,
         format = cast(RHIFormat) format.format,
         usage_flags = .TRANSFER_DST_BIT | .RW_TEXTURE_BIT | .COLOR_ATTACHMENT_BIT | .TEXTURE_BIT,
     };
 
     for 0..image_count-1 {
-        swapchain.images[it] = rhi_create_image(vk_images[it], image_desc);
+        swapchain.images[it] = rhi_image_create(vk_images[it], image_desc);
     }
 
     swapchain.format = cast(RHIFormat) format.format;
     swapchain.extent = xx extent;
     swapchain.image_count = image_count;
     swapchain.present_mode = PRESENT_MODE;
-    swapchain.present_queue = *graphics_queue;
+    swapchain.present_queue = *rhi_queues[RHIQueueType.GRAPHICS];
     assert(swapchain.present_queue != null);
 
     semaphore_create_info := VkSemaphoreCreateInfo.{};

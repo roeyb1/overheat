@@ -55,12 +55,24 @@ RHISampleCount :: enum u32 {
     _4  :: 0x04;
     _8  :: 0x08;
     _16 :: 0x10;
+    _32 :: 0x20;
+    _64 :: 0x40;
 }
 
 RHIImageType :: enum u32 {
     _1D :: 0;
     _2D :: 1;
     _3D :: 2;
+}
+
+RHIImageViewType :: enum {
+    _1D :: 0;
+    _2D :: 1;
+    _3D :: 2;
+    CUBE :: 3;
+    _1D_ARRAY :: 4;
+    _2D_ARRAY :: 5;
+    CUBE_ARRAY :: 6;
 }
 
 RHIClearColorValue :: union {
@@ -97,6 +109,18 @@ RHIImageUsageFlags :: enum_flags u32 {
     COLOR_ATTACHMENT_BIT            :: 1 << 4;
     DEPTH_STENCIL_ATTACHMENT_BIT    :: 1 << 5;
     CLEAR_BIT                       :: 1 << 6;
+}
+
+RHIImageCreateFlags :: enum_flags u32 {
+    MUTABLE_FORMAT_BIT          :: 0x08;
+    CUBE_COMPATIBLE_BIT         :: 0x10;
+    _2D_ARRAY_COMPATIBLE_BIT    :: 0x20;
+}
+
+RHIImageFlags :: enum_flags {
+    MUTABLE_FORMAT_BIT :: 0x00000008;
+    CUBE_COMPATIBLE_BIT :: 0x00000010;
+    _2D_ARRAY_COMPATIBLE_BIT :: 0x00000020;
 }
 
 RHIFormat :: enum u32 {
@@ -266,6 +290,173 @@ RHIBufferUsageFlags :: enum_flags {
     SHADER_DEVICE_ADDRESS_BIT   :: 1 << 13;
 }
 
+RHIImageCreateInfo :: struct {
+    extent: Extent2D = .{1, 1};
+    depth: u32 = 1;
+    layers: u32 = 1;
+    levels: u32 = 1;
+    samples: RHISampleCount = ._1;
+    image_type: RHIImageType = ._2D;
+    format: RHIFormat;
+    usage_flags: RHIImageUsageFlags = 0;
+    create_flags: RHIImageCreateFlags = 0;
+    clear_value: RHIClearValue;
+}
+
+RHIImageSubresourceRange :: struct {
+    base_mip_level: u32 = 0;
+    level_count: u32 = 0;
+    base_array_layer: u32 = 0;
+    layer_count: u32 = 0;
+}
+
+RHIBarrierFlags :: enum_flags {
+    QUEUE_OWNERSHIP_RELEASE :: 1 << 0;
+    QUEUE_OWNERSHIP_AQUIRE :: 1 << 1;
+    FIRST_ACCESS_IN_SUBMISSION :: 1 << 2;
+    BARRIER_BEGIN :: 1 << 3;
+    BARRIER_END :: 1 << 4;
+}
+
+RHIBarrier :: struct {
+    image: *RHIImage;
+    buffer: *RHIBuffer;
+    stages_before: RHIPipelineStageFlags;
+    stages_after: RHIPipelineStageFlags;
+    state_before: RHIResourceState;
+    state_after: RHIResourceState;
+    src_queue: *RHIQueue;
+    dst_queue: *RHIQueue;
+    image_subresource_range: RHIImageSubresourceRange;
+    flags: RHIBarrierFlags;
+}
+
+RHIBufferCreateFlags :: enum_flags {
+
+}
+
+RHIBufferCreateInfo :: struct {
+    size: u64;
+    create_flags: RHIBufferCreateFlags = 0;
+    usage_flags: RHIBufferUsageFlags = 0;
+}
+
+RHIShaderStageFlags :: enum_flags {
+    VERTEX_BIT      :: 0x00000001;
+    HULL_BIT        :: 0x00000002;
+    DOMAIN_BIT      :: 0x00000004;
+    GEOMETRY_BIT    :: 0x00000008;
+    PIXEL_BIT       :: 0x00000010;
+    COMPUTE_BIT     :: 0x00000020;
+    ALL_STAGES      :: VERTEX_BIT | HULL_BIT | DOMAIN_BIT | GEOMETRY_BIT | PIXEL_BIT | COMPUTE_BIT;
+};
+
+RHIMemoryPropertyFlags :: enum_flags {
+    DEVICE_LOCAL_BIT    :: 0x01;
+    HOST_VISIBLE_BIT    :: 0x02;
+    HOST_COHERENT_BIT   :: 0x04;
+    HOST_CACHED_BIT     :: 0x08;
+}
+
+rhi_is_stencil_format :: inline (format: RHIFormat) -> bool {
+    if format == {
+        case .S8_UINT;           #through;
+        case .D16_UNORM_S8_UINT; #through;
+        case .D24_UNORM_S8_UINT; #through;
+        case .D32_SFLOAT_S8_UINT;
+            return true;
+        case;
+            return false;
+    }
+}
+
+rhi_is_depth_format :: inline (format: RHIFormat) -> bool {
+    if format == {
+        case .D16_UNORM;            #through;
+        case .D32_SFLOAT;           #through;
+        case .D16_UNORM_S8_UINT;    #through;
+        case .D24_UNORM_S8_UINT;    #through;
+        case .D32_SFLOAT_S8_UINT;    #through;
+        case .X8_D24_UNORM_PACK32;
+            return true;
+        case;
+            return false;
+    }
+}
+
+rhi_usage_flags :: (state: RHIResourceState, is_image: bool) -> u32 {
+    flags: u32 = 0;
+
+    if ((state & .READ_RESOURCE) != 0) {
+		flags |= ifx is_image then cast (u32) RHIImageUsageFlags.TEXTURE_BIT else cast (u32)(RHIBufferUsageFlags.TYPED_BUFFER_BIT | RHIBufferUsageFlags.BYTE_BUFFER_BIT | RHIBufferUsageFlags.STRUCTURED_BUFFER_BIT);
+	}
+
+	if ((state & .READ_DEPTH_STENCIL) != 0) {
+		assert(is_image);
+		flags |= cast (u32) RHIImageUsageFlags.DEPTH_STENCIL_ATTACHMENT_BIT;
+	}
+
+	if ((state & .READ_CONSTANT_BUFFER) != 0) {
+		assert(!is_image);
+		flags |= cast (u32) RHIBufferUsageFlags.CONSTANT_BUFFER_BIT;
+	}
+
+	if ((state & .READ_VERTEX_BUFFER) != 0) {
+		assert(!is_image);
+		flags |= cast (u32) RHIBufferUsageFlags.VERTEX_BUFFER_BIT;
+	}
+
+	if ((state & .READ_INDEX_BUFFER) != 0) {
+		assert(!is_image);
+		flags |= cast (u32) RHIBufferUsageFlags.INDEX_BUFFER_BIT;
+	}
+
+	if ((state & .READ_INDIRECT_BUFFER) != 0) {
+		assert(!is_image);
+		flags |= cast (u32) RHIBufferUsageFlags.INDIRECT_BUFFER_BIT;
+	}
+
+	if ((state & .READ_TRANSFER) != 0) {
+		flags |= ifx is_image then cast (u32) RHIImageUsageFlags.TRANSFER_SRC_BIT else cast (u32) RHIBufferUsageFlags.TRANSFER_SRC_BIT;
+	}
+
+	if ((state & .WRITE_DEPTH_STENCIL) != 0) {
+		assert(is_image);
+		flags |= cast (u32) RHIImageUsageFlags.DEPTH_STENCIL_ATTACHMENT_BIT;
+	}
+
+	if ((state & .WRITE_COLOR_ATTACHMENT) != 0) {
+		assert(is_image);
+		flags |= cast (u32) RHIImageUsageFlags.COLOR_ATTACHMENT_BIT;
+	}
+
+	if ((state & .WRITE_TRANSFER) != 0) {
+		flags |= ifx is_image then cast (u32) RHIImageUsageFlags.TRANSFER_DST_BIT else cast (u32) RHIBufferUsageFlags.TRANSFER_DST_BIT;
+	}
+
+	if ((state & .CLEAR_RESOURCE) != 0) {
+		flags |= ifx is_image then cast (u32) RHIImageUsageFlags.CLEAR_BIT else cast (u32) RHIBufferUsageFlags.CLEAR_BIT;
+	}
+
+	if ((state & .RW_RESOURCE) != 0) {
+		flags |= ifx is_image then cast (u32) RHIImageUsageFlags.RW_TEXTURE_BIT else cast (u32)(RHIBufferUsageFlags.RW_TYPED_BUFFER_BIT | RHIBufferUsageFlags.RW_BYTE_BUFFER_BIT | RHIBufferUsageFlags.RW_STRUCTURED_BUFFER_BIT);
+	}
+
+	if ((state & .RW_RESOURCE_READ_ONLY) != 0) {
+		flags |= ifx is_image then cast (u32) RHIImageUsageFlags.RW_TEXTURE_BIT else cast (u32)(RHIBufferUsageFlags.RW_TYPED_BUFFER_BIT | RHIBufferUsageFlags.RW_BYTE_BUFFER_BIT | RHIBufferUsageFlags.RW_STRUCTURED_BUFFER_BIT);
+	}
+
+	if ((state & .RW_RESOURCE_WRITE_ONLY) != 0) {
+		flags |= ifx is_image then cast (u32) RHIImageUsageFlags.RW_TEXTURE_BIT else cast (u32)(RHIBufferUsageFlags.RW_TYPED_BUFFER_BIT | RHIBufferUsageFlags.RW_BYTE_BUFFER_BIT | RHIBufferUsageFlags.RW_STRUCTURED_BUFFER_BIT);
+	}
+
+	if ((state & .PRESENT) != 0) {
+		assert(is_image);
+		flags |= 0;
+	}
+
+    return flags;
+}
 
 RHI_BACKEND :: RHIBackend.VULKAN;
 #if RHI_BACKEND == .VULKAN {

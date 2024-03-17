@@ -8,3 +8,11 @@ offset_of :: ($T: Type, $member: string) -> int {
     assert(false, "Type '%' does not have member '%'", T, member);
     return -1;
 }
+
+test_flag_bit :: inline (flags: $T, bit: T) -> bool {
+    return (flags & bit) == bit;
+}
+
+array_zero :: inline (arr: [] $T) {
+    memset(arr.data, 0, arr.count * size_of(T));
+}

@@ -37,14 +37,7 @@ rendering_init :: () -> bool {
     init_device();
     init_swapchain(g_window_width, g_window_height);
 
-    graphics_semaphore = create_semaphore(0);
-
     init_bindless_descriptor_set();
-
-    cmd_pool = create_cmd_pool(graphics_queue);
-    for 0..cmd_lists.count-1 {
-        cmd_lists[it] = allocate_cmd_list(cmd_pool);
-    }
 
     recompute_camera_projection(*main_view_camera);
 
@@ -53,12 +46,7 @@ rendering_init :: () -> bool {
 }
 
 rendering_shutdown :: () {
-    // free cmd lists?
-    reset_cmd_pool(cmd_pool);
-
     destroy_bindless_descriptor_set();
-
-    destroy_semaphore(graphics_semaphore);
 
     destroy_swapchain();
     destroy_device();
@@ -91,17 +79,6 @@ rendering_begin_frame :: () {
 rendering_end_frame :: () {
 }
 
-draw_sprite :: (camera: *Camera, sprite: *Sprite, position: Vector2) {
-    sprite_draw_cmd := array_add(*sprite_draw_cmds);
-
-    sprite_draw_cmd.sheet = sprite.sheet;
-    sprite_draw_cmd.scale = sprite.scale;
-    sprite_draw_cmd.sprite_index = sprite.index;
-    sprite_draw_cmd.z_order = sprite.z_order;
-
-    sprite_draw_cmd.position = position;
-}
-
 #scope_file
 DrawBucket :: struct {
     start: u64;
@@ -110,39 +87,27 @@ DrawBucket :: struct {
 }
 #scope_export
 
-graphics_semaphore: RHISemaphore;
-graphics_semaphore_value: u64 = 0;
-
 commandBuffers: [MAX_FRAMES_IN_FLIGHT] VkCommandBuffer;
 
 render_scene :: (camera: *Camera) {
-    swapchain_present(graphics_semaphore, graphics_semaphore_value, graphics_semaphore, graphics_semaphore_value + 1);
-    graphics_semaphore_value += 1;
+    rg := *g_render_graph;
+    rdg_next_frame(rg);
+
+    // ??
+
+    rdg_execute(rg);
+
+
+    swapchain_present(rg.semaphores[RHIQueueIndex.GRAPHICS], rg.semaphore_values[RHIQueueIndex.GRAPHICS], rg.semaphores[RHIQueueIndex.GRAPHICS], rg.semaphore_values[RHIQueueIndex.GRAPHICS] + 1);
+    rg.semaphore_values[RHIQueueIndex.GRAPHICS] += 1;
 }
 
 #import "Window_Creation";
 
 #scope_file
 
-Vertex :: struct {
-    pos: Vector2;
-    uv: Vector2;
-}
-
-InstanceData :: struct {
-    position: Vector3;
-    scale: Vector2;
-
-    sprite_index: s32;
-} #no_padding;
-
-sprite_draw_cmds: [..] Sprite_Draw_Cmd;
-
-#scope_file
-
 #load "render_graph.jai";
 #load "../rhi/rhi.jai";
-#load "rendering_resources.jai";
 
 #import "Sort";
 #import "File";
