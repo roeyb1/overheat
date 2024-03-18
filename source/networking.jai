@@ -562,13 +562,13 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             g_local_player = make_entity(*g_world, Player, tprint("Player_%", conn_established.player_id));
             g_local_player.player_id = conn_established.player_id;
-            initialize_player(g_local_player);
+            init_player(g_local_player);
 
             for player_data : conn_established.existing_players {
                 player := make_entity(*g_world, Player, tprint("Player_%", player_data.player_id));
                 player.position = player_data.position;
                 player.player_id = player_data.player_id;
-                initialize_player(player);
+                init_player(player);
                 log("Existing player initialized %", player.player_id);
             }
         case .PLAYER_JOINED;

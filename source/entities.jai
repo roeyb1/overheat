@@ -22,7 +22,7 @@ Player :: struct {
 
     sprite: Sprite;
 
-    status_component: Status_Component;
+    stats_component: Player_Stats_Component;
 }
 
 EntityCast :: (entity: *Entity, $type: Type) -> *type {
@@ -32,13 +32,13 @@ EntityCast :: (entity: *Entity, $type: Type) -> *type {
 }
 
 //requires better system for assigning sprites
-initialize_player :: (player: *Player){
+init_player :: (player: *Player){
     sprite: *SpriteSheet;
-    if player.id == 1 sprite = g_local_player_sprite;
+    if player == g_local_player sprite = g_local_player_sprite;
     else sprite = g_player_sprite;
 
     player.sprite = Sprite.{sprite, .{1.5, 1.5}, 0, 1};
-    initialize_status_component(*player.status_component,Player_Status_Component);
+    init_player_stats(*player.stats_component,DEFAULT_OVERHEAT_STATS);
 }
 
 #load "math.jai";
