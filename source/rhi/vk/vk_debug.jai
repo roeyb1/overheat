@@ -28,6 +28,26 @@ rhi_debug_set_object_name :: (buffer: *RHIBuffer, name: string) {
     vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
 }
 
+rhi_debug_set_object_name :: (image_view: *RHIImageView, name: string) {
+    info := VkDebugUtilsObjectNameInfoEXT.{
+        pObjectName = temp_c_string(name),
+        objectType = .IMAGE_VIEW,
+        objectHandle = xx image_view.handle,
+    };
+
+    vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+}
+
+rhi_debug_set_object_name :: (buffer_view: *RHIBufferView, name: string) {
+    info := VkDebugUtilsObjectNameInfoEXT.{
+        pObjectName = temp_c_string(name),
+        objectType = .BUFFER_VIEW,
+        objectHandle = xx buffer_view.handle,
+    };
+
+    vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+}
+
 #if DEBUG_VULKAN {
     validation_callback :: (flags: VkDebugReportFlagsEXT, objType: VkDebugReportObjectTypeEXT, obj: u64, location: u64, code: s32, layerPrefix: *u8, msg: *u8, userData: *void) -> VkBool32 #c_call {
         new_context: Context;

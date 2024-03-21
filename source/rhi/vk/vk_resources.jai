@@ -8,7 +8,32 @@ RHIImage :: struct {
 
 RHIImageView :: struct {
     handle: VkImageView;
+    desc: RHIImageViewCreateInfo;
 }
+
+RHIBuffer :: struct {
+    handle: VkBuffer;
+    memory: VkDeviceMemory;
+    desc: RHIBufferCreateInfo;
+}
+
+RHIBufferView :: struct {
+    handle: VkBufferView;
+    desc: RHIBufferViewCreateInfo;
+}
+
+RHISampler:: struct {
+    handle: VkSampler;
+}
+
+RHIResourceStateInfo :: struct {
+    stage_mask: VkPipelineStageFlags = .TOP_OF_PIPE_BIT;
+    access_mask: VkAccessFlags = 0;
+    layout: VkImageLayout = .UNDEFINED;
+    has_read_access: bool = false;
+    has_write_access: bool = false;
+}
+
 
 rhi_image_create :: (vk: VkImage, desc: RHIImageCreateInfo) -> RHIImage {
     return .{ handle = vk, desc = desc };
@@ -87,8 +112,36 @@ rhi_buffer_create :: (buffer_create_info: RHIBufferCreateInfo, required_flags: R
 
     handle, device_memory := rhi_allocate_buffer(alloc_info, vk_buffer_create_info);
 
+    // #todo: allocate from a pool
     result: *RHIBuffer = alloc(size_of(RHIBuffer));
     << result = .{ handle = handle, memory = device_memory };
+    return result;
+}
+
+rhi_image_view_create :: (create_info: RHIImageViewCreateInfo) -> *RHIImageView {
+    vk_create_info := VkImageViewCreateInfo.{
+        image = create_info.image.handle,
+        viewType = rhi_translate(create_info.view_type),
+        format = rhi_translate(ifx create_info.format == .UNDEFINED then create_info.image.desc.format else create_info.format),
+        components.r = rhi_translate(create_info.components.r),
+        components.g = rhi_translate(create_info.components.g),
+        components.b = rhi_translate(create_info.components.b),
+        components.a = rhi_translate(create_info.components.a),
+        subresourceRange = VkImageSubresourceRange.{
+            aspectMask = rhi_image_aspect_mask(rhi_translate(create_info.image.desc.format)),
+            baseMipLevel = create_info.base_mip_level,
+            baseArrayLayer = create_info.base_array_layer,
+            levelCount = create_info.level_count,
+            layerCount = create_info.layer_count,
+        },
+    };
+
+    image_view: VkImageView = VK_NULL_HANDLE;
+    vk_check_result(vkCreateImageView(device, *vk_create_info, null, *image_view));
+
+    // #todo: allocate from a pool
+    result: *RHIImageView = alloc(size_of(RHIImageView));
+    << result = .{handle = image_view, desc = create_info};
     return result;
 }
 
@@ -96,29 +149,31 @@ rhi_image_view_destroy :: (image_view: RHIImageView) {
     assert(false); // nyi
 }
 
-RHIBuffer :: struct {
-    handle: VkBuffer;
-    memory: VkDeviceMemory;
-}
-
-RHIBufferView :: struct {
-    handle: VkBufferView;
-}
-
 rhi_buffer_destroy :: (buffer: RHIBuffer) {
     assert(false); // nyi
 }
 
-rhi_buffer_view_destroy :: (buffer_view: RHIBufferView) {
-    assert(false); // nyi
+rhi_buffer_view_create :: (create_info: RHIBufferViewCreateInfo) -> *RHIBufferView {
+    assert(create_info.buffer != null);
+
+    vk_create_info := VkBufferViewCreateInfo.{
+        buffer = create_info.buffer.handle,
+        format = rhi_translate(create_info.format),
+        offset = create_info.offset,
+        range = create_info.range,
+    };
+
+    view: VkBufferView;
+    vk_check_result(vkCreateBufferView(device, *vk_create_info, null, *view));
+
+    // #todo: allocate from a pool
+    result: *RHIBufferView = alloc(size_of(RHIBufferView));
+    (<< result) = .{handle = view, desc = create_info};
+    return result;
 }
 
-RHIResourceStateInfo :: struct {
-    stage_mask: VkPipelineStageFlags = .TOP_OF_PIPE_BIT;
-    access_mask: VkAccessFlags = 0;
-    layout: VkImageLayout = .UNDEFINED;
-    has_read_access: bool = false;
-    has_write_access: bool = false;
+rhi_buffer_view_destroy :: (buffer_view: RHIBufferView) {
+    assert(false); // nyi
 }
 
 rhi_get_resource_state_info :: (state: RHIResourceState, stage_flags: VkPipelineStageFlags, is_image: bool, image_format: RHIFormat) -> RHIResourceStateInfo {

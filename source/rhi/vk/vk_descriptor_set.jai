@@ -1,151 +1,312 @@
 #scope_export
 
-MAX_STORAGE_BUFFERS: u32 : 1024;
-MAX_SAMPLED_IMAGES: u32 : 1024;
-MAX_SAMPLERS: u32 : 1024;
-MAX_UNIFORM_BUFFERS: u32 : 1024;
-
-// These correspond exactly to the binding locations in the shaders
-BindingLocations :: enum u32 {
-    STORAGE_BUFFERS :: 0;
-    TEXTURES :: 1;
-    SAMPLERS :: 2;
-    UNIFORMS :: 3;
+RHIDescriptorSetLayout :: struct {
+    handle: VkDescriptorSetLayout;
+    type_counts: [VkDescriptorType.INPUT_ATTACHMENT - VkDescriptorType.SAMPLER + 1] u32;
 }
 
-BindlessSet :: struct {
-    pool: VkDescriptorPool;
-    layout: VkDescriptorSetLayout;
-    set: VkDescriptorSet;
+RHIDescriptorSet :: struct {
+    handle: VkDescriptorSet;
+    dynamic_buffer_count: u32;
 }
 
-bindless: BindlessSet;
+RHIDescriptorPool :: struct {
+    handle: VkDescriptorPool;
+    descriptor_set_layout: *RHIDescriptorSetLayout;
+    pool_size: u32;
+    allocated_count: u32;
+}
 
-init_bindless_descriptor_set :: () {
-    descriptor_indexing_properties: VkPhysicalDeviceDescriptorIndexingProperties;
-    physical_device_properties2 := VkPhysicalDeviceProperties2.{
-        pNext = *descriptor_indexing_properties,
-    };
-    vkGetPhysicalDeviceProperties2(physical_device, *physical_device_properties2);
+rhi_translate :: (descriptor_type: RHIDescriptorType) -> VkDescriptorType {
+    if descriptor_type == {
+        case .SAMPLER;
+            return .SAMPLER;
+        case .TEXTURE;
+            return .SAMPLED_IMAGE;
+        case .RW_TEXTURE;
+            return .STORAGE_IMAGE;
+        case .TYPED_BUFFER;
+            return .UNIFORM_TEXEL_BUFFER;
+        case .RW_TYPED_BUFFER;
+            return .STORAGE_TEXEL_BUFFER;
+        case .CONSTANT_BUFFER;
+            return .UNIFORM_BUFFER;
 
-    device_max_storage_buffers := descriptor_indexing_properties.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
-    device_max_sampled_images := descriptor_indexing_properties.maxPerStageDescriptorUpdateAfterBindSampledImages;
-    device_max_storage_images := descriptor_indexing_properties.maxPerStageDescriptorUpdateAfterBindStorageImages;
-    device_max_samplers := descriptor_indexing_properties.maxPerStageDescriptorUpdateAfterBindSamplers;
-    device_max_uniform_buffers := descriptor_indexing_properties.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
+        case .BYTE_BUFFER; #through;
+        case .RW_BYTE_BUFFER; #through;
+        case .STRUCTURED_BUFFER; #through;
+        case .RW_STRUCTURED_BUFFER;
+            return .STORAGE_BUFFER;
 
+        case .OFFSET_CONSTANT_BUFFER;
+            return .UNIFORM_BUFFER_DYNAMIC;
+        case;
+            assert(false);
+            return 0;
+    }
+}
 
-    num_storage_buffers := MAX_STORAGE_BUFFERS;
-    if device_max_storage_buffers < MAX_STORAGE_BUFFERS {
-        log_warning("Device only supports a maximum of % storage buffers. % requested", device_max_storage_buffers, MAX_STORAGE_BUFFERS);
-        num_storage_buffers = device_max_storage_buffers;
+rhi_translate :: (binding_flags: RHIDescriptorBindingFlags) -> VkDescriptorBindingFlags {
+    result: VkDescriptorBindingFlags = 0;
+
+    if test_flag_bit(binding_flags, .UPDATE_AFTER_BIND_BIT) {
+        result |= .UPDATE_AFTER_BIND_BIT;
     }
-    num_sampled_images := MAX_SAMPLED_IMAGES;
-    if device_max_sampled_images < MAX_SAMPLED_IMAGES {
-        log_warning("Device only supports a maximum of % sampled images. % requested", device_max_sampled_images, MAX_SAMPLED_IMAGES);
-        num_sampled_images = device_max_sampled_images;
+    if test_flag_bit(binding_flags, .UPDATE_UNUSED_WHILE_PENDING_BIT) {
+        result |= .UPDATE_UNUSED_WHILE_PENDING_BIT;
     }
-    num_samplers := MAX_SAMPLERS;
-    if device_max_samplers < MAX_SAMPLERS {
-        log_warning("Device only supports a maximum of % samplers. % requested", device_max_samplers, MAX_SAMPLERS);
-        num_samplers = device_max_samplers;
+    if test_flag_bit(binding_flags, .PARTIALLY_BOUND_BIT) {
+        result |= .PARTIALLY_BOUND_BIT;
     }
-    num_uniform_buffers := MAX_UNIFORM_BUFFERS;
-    if device_max_uniform_buffers < MAX_UNIFORM_BUFFERS {
-        log_warning("Device only supports a maximum of % uniform buffers. % requested", device_max_uniform_buffers, MAX_UNIFORM_BUFFERS);
-        num_uniform_buffers = device_max_uniform_buffers;
-    }
+
+    return result;
+}
+
+rhi_descriptor_set_layout_create :: (bindings: [] RHIDescriptorSetLayoutBinding) -> RHIDescriptorSetLayout {
+    push_allocator(temp);
+    vk_bindings: [..] VkDescriptorSetLayoutBinding;
+    vk_binding_flags: [..] VkDescriptorBindingFlags;
+
+    array_resize(*vk_bindings, bindings.count);
+    array_resize(*vk_binding_flags, bindings.count);
+
     
-    pool_sizes := VkDescriptorPoolSize.[
-        .{
-            type = .STORAGE_BUFFER,
-            descriptorCount = num_storage_buffers,
-        },
-        .{
-            type = .SAMPLED_IMAGE,
-            descriptorCount = num_sampled_images,
-        },
-        .{
-            type = .SAMPLER,
-            descriptorCount = num_samplers,
-        },
-        .{
-            type = .UNIFORM_BUFFER,
-            descriptorCount = num_uniform_buffers,
-        }
-    ];
+    for *binding : bindings {
+        descriptor_type := rhi_translate(binding.descriptor_type);
 
-    pool_create_info := VkDescriptorPoolCreateInfo.{
-        flags = .FREE_DESCRIPTOR_SET_BIT | .UPDATE_AFTER_BIND_BIT,
-        maxSets = 1,
-        poolSizeCount = pool_sizes.count,
+        vk_bindings[it_index] = VkDescriptorSetLayoutBinding.{
+            binding = binding.binding,
+            descriptorType = descriptor_type,
+            descriptorCount = xx binding.descriptor_count,
+            stageFlags = rhi_translate(binding.stage_flags),
+            pImmutableSamplers = null,
+        };
+        vk_binding_flags[it_index] = rhi_translate(binding.binding_flags);
+    }
+
+    result: RHIDescriptorSetLayout;
+
+    for 0..bindings.count-1 {
+        assert(bindings[it].descriptor_type < result.type_counts.count);
+        result.type_counts[bindings[it].descriptor_type] += bindings[it].descriptor_count;
+    }
+
+
+    flags_create_info := VkDescriptorSetLayoutBindingFlagsCreateInfo.{
+        bindingCount = xx vk_bindings.count,
+        pBindingFlags = vk_binding_flags.data,
+    };
+
+    create_info := VkDescriptorSetLayoutCreateInfo.{
+        flags = .UPDATE_AFTER_BIND_POOL_BIT,
+        bindingCount = xx vk_bindings.count,
+        pBindings = vk_bindings.data,
+    };
+
+    vk_check_result(vkCreateDescriptorSetLayout(device, *create_info, null, *result.handle));
+    return result;
+}
+
+rhi_descriptor_set_layout_destroy :: (layout: RHIDescriptorSetLayout) {
+    vkDestroyDescriptorSetLayout(device, layout.handle, null);
+}
+
+rhi_descriptor_pool_create :: (max_sets: u32, layout: *RHIDescriptorSetLayout) -> RHIDescriptorPool {
+    pool_sizes: [(VkDescriptorType.INPUT_ATTACHMENT - VkDescriptorType.SAMPLER) + 1] VkDescriptorPoolSize;
+    pool_size_count: u32;
+
+    for 0..pool_sizes.count-1{
+        pool_sizes[pool_size_count].type = cast(VkDescriptorType) it;
+        pool_sizes[pool_size_count].descriptorCount = layout.type_counts[it] * max_sets;
+        pool_size_count += 1;
+    }
+
+    assert(pool_size_count > 0);
+
+    create_info := VkDescriptorPoolCreateInfo.{
+        flags = .UPDATE_AFTER_BIND_BIT,
+        maxSets = max_sets,
+        poolSizeCount = pool_size_count,
         pPoolSizes = pool_sizes.data,
     };
 
-    result := vkCreateDescriptorPool(device, *pool_create_info, null, *bindless.pool);
-    assert(result == .SUCCESS);
-
-    layout_bindings := VkDescriptorSetLayoutBinding.[
-        .{
-            binding = xx BindingLocations.STORAGE_BUFFERS,
-            descriptorType = .STORAGE_BUFFER,
-            descriptorCount = num_storage_buffers,
-            stageFlags = .ALL,
-        },
-        .{
-            binding = xx BindingLocations.TEXTURES,
-            descriptorType = .SAMPLED_IMAGE,
-            descriptorCount = num_sampled_images,
-            stageFlags = .ALL,
-        },
-        .{
-            binding = xx BindingLocations.SAMPLERS,
-            descriptorType = .SAMPLER,
-            descriptorCount = num_samplers,
-            stageFlags = .ALL,
-        },
-        .{
-            binding = xx BindingLocations.UNIFORMS,
-            descriptorType = .UNIFORM_BUFFER,
-            descriptorCount = num_uniform_buffers,
-            stageFlags = .ALL,
-        }
-    ];
-
-    flags := VkDescriptorBindingFlags.[
-        .PARTIALLY_BOUND_BIT,
-        .PARTIALLY_BOUND_BIT,
-        .PARTIALLY_BOUND_BIT,
-        .PARTIALLY_BOUND_BIT,
-        .PARTIALLY_BOUND_BIT,
-    ];
-
-    binding_flags := VkDescriptorSetLayoutBindingFlagsCreateInfo.{
-        bindingCount = layout_bindings.count,
-        pBindingFlags = flags.data,
+    result := RHIDescriptorPool.{
+        descriptor_set_layout = layout,
+        pool_size = max_sets,
+        allocated_count = 0,
     };
 
-    layout_create_info := VkDescriptorSetLayoutCreateInfo.{
-        bindingCount = layout_bindings.count,
-        pBindings = layout_bindings.data,
-        pNext = *binding_flags,
-        flags = .UPDATE_AFTER_BIND_POOL_BIT,
-    };
-
-    result = vkCreateDescriptorSetLayout(device, *layout_create_info, null, *bindless.layout);
-    assert(result == .SUCCESS);
-
-    set_alloc_info := VkDescriptorSetAllocateInfo.{
-        descriptorPool = bindless.pool,
-        descriptorSetCount = 1,
-        pSetLayouts = *bindless.layout,
-    };
-
-    result = vkAllocateDescriptorSets(device, *set_alloc_info, *bindless.set);
-    assert(result == .SUCCESS);
+    vk_check_result(vkCreateDescriptorPool(device, *create_info, null, *result.handle));
+    return result;
 }
 
-destroy_bindless_descriptor_set :: () {
-    vkDestroyDescriptorSetLayout(device, bindless.layout, null);
-    vkDestroyDescriptorPool(device, bindless.pool, null);
+rhi_descriptor_pool_destroy :: (pool: RHIDescriptorPool) {
+    vkDestroyDescriptorPool(device, pool.handle, null);
+}
+
+rhi_descriptor_pool_reset :: (pool: *RHIDescriptorPool) {
+    vk_check_result(vkResetDescriptorPool(device, pool.handle, 0));
+    pool.allocated_count = 0;
+}
+
+rhi_descriptor_set_allocate :: (pool: *RHIDescriptorPool, count: u32, out_descriptor_sets: [] RHIDescriptorSet) {
+    assert(pool.allocated_count + count <= pool.pool_size);
+    assert(out_descriptor_sets.count == count);
+
+    layout := pool.descriptor_set_layout;
+
+    dynamic_buffer_count := layout.type_counts[VkDescriptorType.UNIFORM_BUFFER_DYNAMIC];
+
+    batch_size :: 8;
+    iterations := (count + (batch_size - 1)) / batch_size;
+
+    for 0..iterations-1 {
+        handle_count := min(batch_size, count - it * batch_size);
+        layout_handles: [batch_size] VkDescriptorSetLayout;
+        for j : 0..handle_count-1 {
+            layout_handles[j] = layout.handle;
+        }
+
+        alloc_info := VkDescriptorSetAllocateInfo.{
+            descriptorPool = pool.handle,
+            descriptorSetCount = xx handle_count,
+            pSetLayouts = layout_handles.data,
+        };
+
+        set_handles: [batch_size] VkDescriptorSet;
+
+        vk_check_result(vkAllocateDescriptorSets(device, *alloc_info, set_handles.data));
+
+        for j : 0..handle_count-1 {
+            out_descriptor_sets[it * batch_size + j] = RHIDescriptorSet.{
+                handle = set_handles[j],
+                dynamic_buffer_count = dynamic_buffer_count,
+            };
+
+            pool.allocated_count += 1;
+        }
+    }
+}
+
+rhi_descriptor_set_update :: (set: RHIDescriptorSet, updates: [] RHIDescriptorSetUpdate) {
+    push_allocator(temp);
+
+    batch_size :: 16;
+    iterations := (updates.count + (batch_size -1)) / batch_size;
+
+    for 0..iterations-1 {
+        count := min(batch_size, updates.count - it * batch_size);
+
+        image_infos: [..] VkDescriptorImageInfo;
+        buffer_infos: [..] VkDescriptorBufferInfo;
+        texel_buffer_views: [..] VkBufferView;
+
+        image_infos_to_reserve := 0;
+        buffer_infos_to_reserve := 0;
+        texel_buffer_views_to_reserve := 0;
+
+        for j : 0..count-1 {
+            update := *updates[it * batch_size + j];
+            if update.descriptor_type == {
+                case .SAMPLER; #through;
+                case .TEXTURE; #through;
+                case .RW_TEXTURE;
+                    image_infos_to_reserve += update.descriptor_count;
+                case .TYPED_BUFFER; #through;
+                case .RW_TYPED_BUFFER;
+                    texel_buffer_views_to_reserve += update.descriptor_count;
+                case .CONSTANT_BUFFER; #through;
+                case .BYTE_BUFFER; #through;
+                case .RW_BYTE_BUFFER; #through;
+                case .STRUCTURED_BUFFER; #through;
+                case .RW_STRUCTURED_BUFFER;
+                    buffer_infos_to_reserve += update.descriptor_count;
+                case .OFFSET_CONSTANT_BUFFER;
+                    buffer_infos_to_reserve += 1;
+                case;
+                    assert(false);
+            }
+        }
+
+        array_reserve(*image_infos, image_infos_to_reserve);
+        array_reserve(*buffer_infos, buffer_infos_to_reserve);
+        array_reserve(*texel_buffer_views, texel_buffer_views_to_reserve);
+
+        writes: [batch_size] VkWriteDescriptorSet;
+        for j : 0..count-1 {
+            update := *updates[it * batch_size + j];
+            
+            write := *writes[j];
+            write.dstSet = set.handle;
+            write.dstBinding = update.dst_binding;
+            write.dstArrayElement = update.dst_array_element;
+            write.descriptorCount = update.descriptor_count;
+
+            if update.descriptor_type == {
+                case .SAMPLER;
+                    for k : 0..update.descriptor_count-1 {
+                        sampler := ifx update.samplers.count > 0 then update.samplers[k] else update.sampler;
+                        array_add(*image_infos, VkDescriptorImageInfo.{sampler.handle, VK_NULL_HANDLE, .UNDEFINED});
+                    }
+                    write.descriptorType = .SAMPLER;
+                    write.pImageInfo = image_infos.data + (image_infos.count - update.descriptor_count);
+                case .TEXTURE;
+                    for k : 0..update.descriptor_count-1 {
+                        image_view := ifx update.image_views.count > 0 then update.image_views[k] else update.image_view;
+                        format := image_view.desc.format;
+                        layout: VkImageLayout = ifx rhi_is_depth_format(format) || rhi_is_stencil_format(format) then .DEPTH_STENCIL_READ_ONLY_OPTIMAL else .SHADER_READ_ONLY_OPTIMAL;
+                        array_add(*image_infos, VkDescriptorImageInfo.{VK_NULL_HANDLE, image_view.handle, layout});
+                    }
+                    write.descriptorType = .SAMPLED_IMAGE;
+                    write.pImageInfo = image_infos.data + (image_infos.count - update.descriptor_count);
+                case .RW_TEXTURE;
+                    for k : 0..update.descriptor_count-1 {
+                        image_view := ifx update.image_views.count > 0 then update.image_views[k] else update.image_view;
+                        array_add(*image_infos, VkDescriptorImageInfo.{VK_NULL_HANDLE, image_view.handle, .GENERAL});
+                    }
+                    write.descriptorType = .STORAGE_IMAGE;
+                    write.pImageInfo = image_infos.data + (image_infos.count - update.descriptor_count);
+                case .TYPED_BUFFER;
+                    for k : 0..update.descriptor_count-1 {
+                        buffer_view := ifx update.buffer_views.count > 0 then update.buffer_views[k] else update.buffer_view;
+                        array_add(*texel_buffer_views, buffer_view.handle);
+                    }
+                    write.descriptorType = .UNIFORM_TEXEL_BUFFER;
+                    write.pTexelBufferView = texel_buffer_views.data + (texel_buffer_views.count - update.descriptor_count);
+                case .RW_TYPED_BUFFER;
+                    for k : 0..update.descriptor_count-1 {
+                        buffer_view := ifx update.buffer_views.count > 0 then update.buffer_views[k] else update.buffer_view;
+                        array_add(*texel_buffer_views, buffer_view.handle);
+                    }
+                    write.descriptorType = .STORAGE_TEXEL_BUFFER;
+                    write.pTexelBufferView = texel_buffer_views.data + (texel_buffer_views.count - update.descriptor_count);
+                case .CONSTANT_BUFFER;
+                    for k : 0..update.descriptor_count-1 {
+                        buffer_info := ifx update.buffer_infos.count > 0 then update.buffer_infos[k] else *update.buffer_info;
+                        array_add(*buffer_infos, VkDescriptorBufferInfo.{buffer_info.buffer.handle, buffer_info.offset, buffer_info.range});
+                    }
+                    write.descriptorType = .UNIFORM_BUFFER;
+                    write.pBufferInfo = buffer_infos.data + (buffer_infos.count - update.descriptor_count);
+                case .BYTE_BUFFER; #through;
+                case .RW_BYTE_BUFFER; #through;
+                case .STRUCTURED_BUFFER; #through;
+                case .RW_STRUCTURED_BUFFER;
+                    for k : 0..update.descriptor_count-1 {
+                        buffer_info := ifx update.buffer_infos.count > 0 then update.buffer_infos[k] else *update.buffer_info;
+                        array_add(*buffer_infos, VkDescriptorBufferInfo.{buffer_info.buffer.handle, buffer_info.offset, buffer_info.range});
+                    }
+                    write.descriptorType = .STORAGE_BUFFER;
+                    write.pBufferInfo = buffer_infos.data + (buffer_infos.count - update.descriptor_count);
+                case .OFFSET_CONSTANT_BUFFER;
+                    buffer_info := ifx update.buffer_infos.count > 0 then update.buffer_infos[0] else *update.buffer_info;
+                    array_add(*buffer_infos, VkDescriptorBufferInfo.{buffer_info.buffer.handle, buffer_info.offset, buffer_info.range});
+                    write.descriptorType = .UNIFORM_BUFFER_DYNAMIC;
+                    write.pBufferInfo = buffer_infos.data + (buffer_infos.count - 1);
+                case;
+                    assert(false);
+            }
+        }
+
+        vkUpdateDescriptorSets(device, xx count, writes.data, 0, null);
+    }
 }

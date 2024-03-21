@@ -16,3 +16,5 @@ test_flag_bit :: inline (flags: $T, bit: T) -> bool {
 array_zero :: inline (arr: [] $T) {
     memset(arr.data, 0, arr.count * size_of(T));
 }
+
+#load "handle_manager.jai";

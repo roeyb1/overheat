@@ -33,16 +33,6 @@ BufferViewDescription :: struct {
     format: RHIFormat;
 }
 
-RDGTextureViewHandle :: u32;
-RDGRWTextureViewHandle :: u32;
-RDGTypedBufferViewHandle :: u32;
-RDGRWTypedBufferViewHandle :: u32;
-RDGByteBufferViewHandle :: u32;
-RDGRWByteBufferViewHandle :: u32;
-RDGStructuredBufferViewHandle :: u32;
-RDGRWStructuredBufferViewHandle :: u32;
-
-
 RDGResourceDescription :: struct {
     debug_name: string = "";
 
@@ -79,7 +69,7 @@ RDGResourceViewDescription :: struct {
     subresource_range: RHIImageSubresourceRange;
     offset: u64;
     range: u64;
-    byte_stride: u32;
+    structure_byte_stride: u32;
     is_image: bool;
 }
 
@@ -92,14 +82,14 @@ RDGResource :: struct {
 RDGResourceView :: struct {
     image_view: *RHIImageView;
     buffer_view: *RHIBufferView;
-    texture_view_handle: RDGTextureViewHandle;
-    rw_texture_view_handle: RDGRWTextureViewHandle;
-    typed_buffer_view_handle: RDGTypedBufferViewHandle;
-    rw_typedBuffer_view_handle: RDGRWTypedBufferViewHandle;
-    byte_buffer_view_handle: RDGByteBufferViewHandle;
-    rw_byte_buffer_view_handle: RDGRWByteBufferViewHandle;
-    structured_buffer_view_handle: RDGStructuredBufferViewHandle;
-    rw_structured_buffer_view_handle: RDGRWStructuredBufferViewHandle;
+    texture_handle: RDGTextureViewHandle;
+    rw_texture_handle: RDGRWTextureViewHandle;
+    typed_buffer_handle: RDGTypedBufferViewHandle;
+    rw_typed_buffer_handle: RDGRWTypedBufferViewHandle;
+    byte_buffer_handle: RDGByteBufferViewHandle;
+    rw_byte_buffer_handle: RDGRWByteBufferViewHandle;
+    structured_buffer_handle: RDGStructuredBufferViewHandle;
+    rw_structured_buffer_handle: RDGRWStructuredBufferViewHandle;
 }
 
 RDGResourceStateAndStage :: struct {
@@ -174,6 +164,8 @@ RenderGraph :: struct {
     external_release_barriers: [RHI_QUEUE_COUNT][..] RHIBarrier;
 
     per_frame_resources: [RHI_QUEUE_COUNT] RDGPerFrameGPUResources;
+
+    view_registry: RDGViewRegistry;
 }
 
 g_render_graph: RenderGraph;
@@ -287,6 +279,9 @@ rdg_add_pass :: (rg: *RenderGraph, name: string, queue_type: RHIQueueType, usage
 rdg_execute :: (rg: *RenderGraph) {
     rdg_create_resources(rg);
     rdg_create_synchronization(rg);
+
+    rdg_flush_resource_view_registry(rg);
+
     rdg_record_and_submit(rg);
 }
 
@@ -359,12 +354,89 @@ rdg_create_resources :: (using rg: *RenderGraph) {
 
 
     // create views
-    asdasd
+    for *view_desc : view_descs {
+        if culled_resources[view_desc.resource_handle - 1] {
+            continue;
+        }
+
+        view_data := *frame_resources.views[it_index];
+        << view_data = .{};
+
+        if view_desc.is_image {
+            view_create_info := RHIImageViewCreateInfo.{
+                image = frame_resources.resources[view_desc.resource_handle - 1].image,
+                view_type = view_desc.view_type,
+                format = view_desc.format,
+                base_mip_level = view_desc.subresource_range.base_mip_level,
+                level_count = view_desc.subresource_range.level_count,
+                base_array_layer = view_desc.subresource_range.base_array_layer,
+                layer_count = view_desc.subresource_range.layer_count,
+            };
+
+            view_data.image_view = rhi_image_view_create(view_create_info);
+            rhi_debug_set_object_name(view_data.image_view, view_desc.debug_name);
+
+            usage_flags := view_create_info.image.desc.usage_flags;
+
+            if (usage_flags & RHIImageUsageFlags.TEXTURE_BIT) != 0 {
+                view_data.texture_handle = rdg_create_texture_view_handle(*rg.view_registry, view_data.image_view, true);
+            }
+            if (usage_flags & RHIImageUsageFlags.RW_TEXTURE_BIT) != 0 {
+                view_data.rw_texture_handle = rdg_create_rw_texture_view_handle(*rg.view_registry, view_data.image_view, true);
+            }
+        } else if view_desc.format != RHIFormat.UNDEFINED {
+            view_create_info := RHIBufferViewCreateInfo.{
+                buffer = frame_resources.resources[view_desc.resource_handle - 1].buffer,
+                format = view_desc.format,
+                offset = view_desc.offset,
+                range = view_desc.range,
+            };
+
+            view_data.buffer_view = rhi_buffer_view_create(view_create_info);
+            rhi_debug_set_object_name(view_data.buffer_view, view_desc.debug_name);
+        }
+
+        if !view_desc.is_image {
+            buffer: *RHIBuffer = frame_resources.resources[view_desc.resource_handle - 1].buffer;
+            usage_flags := buffer.desc.usage_flags;
+            resource_desc := *resource_descs[view_desc.resource_handle - 1];
+
+            buffer_info := RHIDescriptorBufferInfo.{
+                buffer = buffer,
+                offset = resource_desc.offset + view_desc.offset,
+                range = view_desc.range,
+                structure_byte_stride = view_desc.structure_byte_stride,
+            };
+
+            if (usage_flags & RHIBufferUsageFlags.TYPED_BUFFER_BIT) != 0 && view_data.buffer_view {
+                view_data.typed_buffer_handle = rdg_create_typed_buffer_view_handle(*rg.view_registry, view_data.buffer_view, true);
+            }
+            if (usage_flags & RHIBufferUsageFlags.RW_TYPED_BUFFER_BIT) != 0 && view_data.buffer_view {
+                view_data.rw_typed_buffer_handle = rdg_create_rw_typed_buffer_view_handle(*rg.view_registry, view_data.buffer_view, true);
+            }
+            if (usage_flags & RHIBufferUsageFlags.BYTE_BUFFER_BIT) != 0 {
+                view_data.byte_buffer_handle = rdg_create_byte_buffer_view_handle(*rg.view_registry, buffer_info, true);
+            }
+            if (usage_flags & RHIBufferUsageFlags.RW_BYTE_BUFFER_BIT) != 0 {
+                view_data.rw_byte_buffer_handle = rdg_create_rw_byte_buffer_view_handle(*rg.view_registry, buffer_info, true);
+            }
+            if view_desc.structure_byte_stride != 0 && ((usage_flags & RHIBufferUsageFlags.STRUCTURED_BUFFER_BIT) != 0) {
+                view_data.structured_buffer_handle = rdg_create_structured_buffer_view_handle(*rg.view_registry, buffer_info, true);
+            }
+            if view_desc.structure_byte_stride != 0 && ((usage_flags & RHIBufferUsageFlags.RW_STRUCTURED_BUFFER_BIT) != 0) {
+                view_data.rw_structured_buffer_handle = rdg_create_rw_structured_buffer_view_handle(*rg.view_registry, buffer_info, true);
+            }
+        }
+    }
 }
 
 rdg_create_synchronization :: (rg: *RenderGraph) {
     frame_index := rg.frame_number % RDG_NUM_FRAMES;
     frame_resources := *rg.per_frame_resources[frame_index];
+
+}
+
+rdg_flush_resource_view_registry :: (rg: *RenderGraph) {
 
 }
 
@@ -516,3 +588,5 @@ rdg_frame_cmd_pool_reset :: (frame_pools: *RDGFrameCmdPools) {
 }
 
 #import "Bit_Array";
+
+#load "rdg_view_registry.jai";

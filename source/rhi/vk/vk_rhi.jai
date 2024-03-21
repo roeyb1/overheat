@@ -127,7 +127,7 @@ destroy_surface :: () {
     vkDestroySurfaceKHR(instance, surface, null);
 }
 
-rhi_translate_shader_stage_flags :: (flags: RHIShaderStageFlags) -> VkShaderStageFlags {
+rhi_translate :: (flags: RHIShaderStageFlags) -> VkShaderStageFlags {
     result: VkShaderStageFlags = 0;
 
     if test_flag_bit(flags, RHIShaderStageFlags.VERTEX_BIT) {
@@ -152,7 +152,7 @@ rhi_translate_shader_stage_flags :: (flags: RHIShaderStageFlags) -> VkShaderStag
     return result;
 }
 
-rhi_translate_pipeline_stage_flags :: (flags: RHIPipelineStageFlags) -> VkPipelineStageFlags {
+rhi_translate :: (flags: RHIPipelineStageFlags) -> VkPipelineStageFlags {
     result: VkPipelineStageFlags = 0;
 
     if test_flag_bit(flags, RHIPipelineStageFlags.TOP_OF_PIPE_BIT) {
@@ -683,6 +683,50 @@ rhi_translate :: (flags: RHIBufferUsageFlags) -> VkBufferUsageFlags {
     }
 
     return result;
+}
+
+rhi_translate :: (view_type: RHIImageViewType) -> VkImageViewType {
+    if view_type == {
+        case ._1D;
+            return ._1D;
+        case ._2D;
+            return ._2D;
+        case ._3D;
+            return ._3D;
+        case .CUBE;
+            return .CUBE;
+        case ._1D_ARRAY;
+            return ._1D_ARRAY;
+        case ._2D_ARRAY;
+            return ._2D_ARRAY;
+        case .CUBE_ARRAY;
+            return .CUBE_ARRAY;
+    }
+
+    assert(false);
+    return 0;
+}
+
+rhi_translate :: (swizzle: RHIComponentSwizzle) -> VkComponentSwizzle {
+    if swizzle == {
+        case .IDENTITY;
+            return .IDENTITY;
+        case .ZERO;
+            return .ZERO;
+        case .ONE;
+            return .ONE;
+        case .R;
+            return .R;
+        case .G;
+            return .G;
+        case .B;
+            return .B;
+        case .A;
+            return .A;
+    }
+
+    assert(false);
+    return 0;
 }
 
 #load "vk_device.jai";

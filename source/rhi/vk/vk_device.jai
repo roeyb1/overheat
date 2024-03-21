@@ -229,7 +229,7 @@ rhi_queue_submit :: (queue: *RHIQueue, submit_infos: [] *RHISubmitInfo) {
 
         for j : 0..submit_info.wait_semaphores.count-1 {
             array_add(*semaphore_handles, << submit_info.wait_semaphores[j]);
-            array_add(*wait_dst_stage_masks, rhi_translate_pipeline_stage_flags(submit_info.wait_dst_stage_masks[j]));
+            array_add(*wait_dst_stage_masks, rhi_translate(submit_info.wait_dst_stage_masks[j]));
         }
 
         for cmd_buff : submit_info.command_lists {

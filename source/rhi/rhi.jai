@@ -290,6 +290,23 @@ RHIBufferUsageFlags :: enum_flags {
     SHADER_DEVICE_ADDRESS_BIT   :: 1 << 13;
 }
 
+RHIComponentSwizzle :: enum {
+    IDENTITY :: 0;
+    ZERO :: 1;
+    ONE :: 2;
+    R :: 3;
+    G :: 4;
+    B :: 5;
+    A :: 6;
+}
+
+RHIComponentMapping :: struct {
+    r: RHIComponentSwizzle;
+    g: RHIComponentSwizzle;
+    b: RHIComponentSwizzle;
+    a: RHIComponentSwizzle;
+}
+
 RHIImageCreateInfo :: struct {
     extent: Extent2D = .{1, 1};
     depth: u32 = 1;
@@ -301,6 +318,17 @@ RHIImageCreateInfo :: struct {
     usage_flags: RHIImageUsageFlags = 0;
     create_flags: RHIImageCreateFlags = 0;
     clear_value: RHIClearValue;
+}
+
+RHIImageViewCreateInfo :: struct {
+    image: *RHIImage;
+    view_type: RHIImageViewType = ._2D;
+    format: RHIFormat = .UNDEFINED;
+    components: RHIComponentMapping;
+    base_mip_level: u32 = 0;
+    level_count: u32 = 0;
+    base_array_layer: u32 = 0;
+    layer_count: u32 = 0;
 }
 
 RHIImageSubresourceRange :: struct {
@@ -339,6 +367,64 @@ RHIBufferCreateInfo :: struct {
     size: u64;
     create_flags: RHIBufferCreateFlags = 0;
     usage_flags: RHIBufferUsageFlags = 0;
+}
+
+RHIBufferViewCreateInfo :: struct {
+    buffer: *RHIBuffer;
+    format: RHIFormat;
+    offset: u64;
+    range: u64;
+}
+
+RHIDescriptorType :: enum {
+    SAMPLER;
+    TEXTURE;
+    RW_TEXTURE;
+    TYPED_BUFFER;
+    RW_TYPED_BUFFER;
+    CONSTANT_BUFFER;
+    BYTE_BUFFER;
+    RW_BYTE_BUFFER;
+    STRUCTURED_BUFFER;
+    RW_STRUCTURED_BUFFER;
+    OFFSET_CONSTANT_BUFFER;
+}
+
+RHIDescriptorBindingFlags :: enum_flags {
+    UPDATE_AFTER_BIND_BIT :: 1 << 0;
+    UPDATE_UNUSED_WHILE_PENDING_BIT :: 1 << 1;
+    PARTIALLY_BOUND_BIT :: 1 << 2;
+}
+
+RHIDescriptorSetUpdate :: struct {
+    dst_binding: u32;
+    dst_array_element: u32;
+    descriptor_count: u32;
+    descriptor_type: RHIDescriptorType;
+    samplers: [] *RHISampler;
+    image_views: [] *RHIImageView;
+    buffer_views: [] *RHIBufferView;
+    buffer_infos: [] *RHIDescriptorBufferInfo;
+    sampler: *RHISampler;
+    image_view: *RHIImageView;
+    buffer_view: *RHIBufferView;
+    buffer_info: RHIDescriptorBufferInfo;
+}
+
+RHIDescriptorSetLayoutBinding :: struct {
+    descriptor_type: RHIDescriptorType;
+    binding: u32;
+    space: u32;
+    descriptor_count: u32;
+    stage_flags: RHIShaderStageFlags;
+    binding_flags: RHIDescriptorBindingFlags;
+}
+
+RHIDescriptorBufferInfo :: struct {
+    buffer: *RHIBuffer;
+    offset: u64;
+    range: u64;
+    structure_byte_stride: u64;
 }
 
 RHIShaderStageFlags :: enum_flags {

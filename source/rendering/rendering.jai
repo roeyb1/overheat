@@ -37,8 +37,6 @@ rendering_init :: () -> bool {
     init_device();
     init_swapchain(g_window_width, g_window_height);
 
-    init_bindless_descriptor_set();
-
     recompute_camera_projection(*main_view_camera);
 
     log("Rendering systems initialized successfully");
@@ -46,8 +44,6 @@ rendering_init :: () -> bool {
 }
 
 rendering_shutdown :: () {
-    destroy_bindless_descriptor_set();
-
     destroy_swapchain();
     destroy_device();
     destroy_surface();
