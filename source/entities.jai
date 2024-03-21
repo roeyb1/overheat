@@ -22,6 +22,10 @@ Player :: struct {
 
     sprite: Sprite;
 
+    anim_statemachine: Player_Anim_State_Machine;
+
+    is_attacking: bool;
+
     stats_component: Player_Stats_Component;
 }
 

@@ -70,6 +70,13 @@ rendering_end_frame :: () {
     sprite_draw_cmds.count = 0;
 }
 
+test_loop :: (sprite: *Sprite) {
+    if sprite.index < sprite.sheet.remove_me_please {
+        sprite.index = sprite.index+1;
+    }
+    else sprite.index = 0;
+}
+
 draw_sprite :: (camera: *Camera, sprite: *Sprite, position: Vector2) {
     sprite_draw_cmd := array_add(*sprite_draw_cmds);
 

@@ -115,6 +115,7 @@ draw_scene :: (camera: *Camera) {
     // Draw players
     {
         for :Player_It g_world {
+            test_loop(*it.sprite);
             draw_sprite(camera, *it.sprite, it.position);
         }
     }
@@ -153,3 +154,6 @@ draw_scene :: (camera: *Camera) {
 #load "assets.jai";
 #load "stats_component.jai";
 #load "../data/entity_stats.jai";
+#load "animation_statemachine.jai";
+#load "../data/entity_statemachines.jai";
+#load "../data/player_anim_states.jai";

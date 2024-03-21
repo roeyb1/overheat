@@ -9,6 +9,7 @@ SpriteSheet :: struct {
     /** distance between entries in the sprite sheet, if it is not packed. */
     x_offset: u32;
     y_offset: u32;
+    remove_me_please :: 8;
 }
 
 // just for now, store some common stuff globally until we have a proper map loading system with asset references
