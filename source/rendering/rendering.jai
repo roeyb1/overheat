@@ -35,7 +35,7 @@ rendering_init :: () -> bool {
     init_rhi();
     init_surface();
     init_device();
-    init_swapchain(g_window_width, g_window_height);
+    rhi_swapchain_init(g_window_width, g_window_height);
 
     rdg_initialize(*g_render_graph);
     rdg_init_view_registry(*g_render_graph.view_registry);
@@ -47,9 +47,11 @@ rendering_init :: () -> bool {
 }
 
 rendering_shutdown :: () {
+    vkDeviceWaitIdle(device);
+
     rdg_shutdown(*g_render_graph);
 
-    destroy_swapchain();
+    rhi_swapchain_destroy();
     destroy_device();
     destroy_surface();
     destroy_rhi();
@@ -62,7 +64,7 @@ application_window_update :: () {
 
     for get_window_resizes() {
         if it.window == game_window {
-            resize_swapchain(g_window_width, g_window_height);
+            rhi_swapchain_resize(g_window_width, g_window_height, acquire_image = true);
 
             recompute_camera_projection(*main_view_camera);
         }
@@ -74,7 +76,7 @@ application_window_update :: () {
 }
 
 rendering_begin_frame :: () {
-    get_swapchain_image_index();
+    rhi_swapchain_image_index();
 }   
 
 rendering_end_frame :: () {
@@ -113,7 +115,7 @@ render_scene :: (camera: *Camera) {
     rdg_execute(rg);
 
 
-    swapchain_present(rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS], rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS] + 1);
+    rhi_swapchain_present(rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS], rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS] + 1);
     rg.semaphore_values[RHIQueueIndex.GRAPHICS] += 1;
 }
 

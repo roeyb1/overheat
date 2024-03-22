@@ -27,7 +27,7 @@ RHISwapchain :: struct {
 
 swapchain: RHISwapchain;
 
-init_swapchain :: (width: u32, height: u32) {
+rhi_swapchain_init :: (width: u32, height: u32) {
     select_surface_format :: (formats: [] VkSurfaceFormatKHR) -> VkSurfaceFormatKHR {
         for formats {
             if it.format == .B8G8R8A8_UNORM && it.colorSpace == .COLOR_SPACE_SRGB_NONLINEAR_KHR {
@@ -137,12 +137,14 @@ init_swapchain :: (width: u32, height: u32) {
     }
 }
 
-destroy_swapchain :: () {
+rhi_swapchain_destroy :: () {
     vkDestroySwapchainKHR(device, swapchain.handle, null);
 
     for 0..MAX_FRAMES_IN_FLIGHT-1 {
         vkDestroySemaphore(device, swapchain.acquire_semaphores[it], null);
         vkDestroySemaphore(device, swapchain.present_semaphores[it], null);
+        swapchain.acquire_semaphores[it] = VK_NULL_HANDLE;
+        swapchain.present_semaphores[it] = VK_NULL_HANDLE;
     }
 
     // Nothing to do for images
@@ -150,28 +152,32 @@ destroy_swapchain :: () {
     //}
 }
 
-resize_swapchain :: (width: u32, height: u32) {
+rhi_swapchain_resize :: (width: u32, height: u32, $acquire_image: bool = false) {
     vkDeviceWaitIdle(device);
-    destroy_swapchain();
-    init_swapchain(width, height);
+    rhi_swapchain_destroy();
+    rhi_swapchain_init(width, height);
+
+    #if acquire_image {
+        swapchain.current_image_index = rhi_swapchain_acquire_image_index(null);
+    }
 }
 
-acquire_image_index :: (semaphore: VkSemaphore) -> u32 {
+rhi_swapchain_acquire_image_index :: (semaphore: *VkSemaphore) -> u32 {
     fence: VkFence = VK_NULL_HANDLE;
 
-    if semaphore == VK_NULL_HANDLE {
+    if semaphore == null {
         fence_create_info := VkFenceCreateInfo.{};
         vk_check_result(vkCreateFence(device, *fence_create_info, null, *fence));
     }
 
     image_index: u32;
-    result := vkAcquireNextImageKHR(device, swapchain.handle, U64_MAX, semaphore, fence, *image_index);
+    result := vkAcquireNextImageKHR(device, swapchain.handle, U64_MAX, ifx semaphore then (<< semaphore) else VK_NULL_HANDLE, fence, *image_index);
 
     resized := false;
     if result == .ERROR_OUT_OF_DATE_KHR {
-        resize_swapchain(swapchain.extent.width, swapchain.extent.height);
+        rhi_swapchain_resize(swapchain.extent.width, swapchain.extent.height);
         // try again after resize:
-        result = vkAcquireNextImageKHR(device, swapchain.handle, U64_MAX, semaphore, VK_NULL_HANDLE, *image_index);
+        result = vkAcquireNextImageKHR(device, swapchain.handle, U64_MAX, ifx semaphore then (<< semaphore) else VK_NULL_HANDLE, VK_NULL_HANDLE, *image_index);
     }
 
     if fence != VK_NULL_HANDLE {
@@ -182,16 +188,16 @@ acquire_image_index :: (semaphore: VkSemaphore) -> u32 {
     return image_index;
 }
 
-get_swapchain_image_index :: () -> u32 {
+rhi_swapchain_image_index :: () -> u32 {
     // If we haven't yet presented, grab our image index:
     if swapchain.frame_index == 0 && swapchain.current_image_index == U32_MAX {
-        swapchain.current_image_index = acquire_image_index(VK_NULL_HANDLE);
+        swapchain.current_image_index = rhi_swapchain_acquire_image_index(null);
     }
 
     return cast(u32) swapchain.current_image_index;
 }
 
-swapchain_present :: (wait_semaphore: VkSemaphore, wait_value: u64, signal_semaphore: VkSemaphore, signal_value: u64) {
+rhi_swapchain_present :: (wait_semaphore: VkSemaphore, wait_value: u64, signal_semaphore: VkSemaphore, signal_value: u64) {
     frame_index := swapchain.frame_index % MAX_FRAMES_IN_FLIGHT;
 
     {
@@ -229,7 +235,7 @@ swapchain_present :: (wait_semaphore: VkSemaphore, wait_value: u64, signal_semap
 
     vk_check_result(vkQueuePresentKHR(swapchain.present_queue.handle, *present_info));
 
-    swapchain.current_image_index = acquire_image_index(swapchain.acquire_semaphores[frame_index]);
+    swapchain.current_image_index = rhi_swapchain_acquire_image_index(*swapchain.acquire_semaphores[frame_index]);
 
 
     {
