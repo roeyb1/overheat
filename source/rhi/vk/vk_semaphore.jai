@@ -1,6 +1,8 @@
 #scope_export
 
-RHISemaphore :: VkSemaphore;
+RHISemaphore :: struct {
+    handle: VkSemaphore;
+}
 
 rhi_semaphore_create :: (initial: u64, debug_name: string) -> RHISemaphore {
     type_create_info := VkSemaphoreTypeCreateInfo.{
@@ -14,18 +16,19 @@ rhi_semaphore_create :: (initial: u64, debug_name: string) -> RHISemaphore {
 
     result: VkSemaphore;
     vk_check_result(vkCreateSemaphore(device, *create_info, null, *result));
-    return result;
+
+    return .{handle = result};
 }
 
 rhi_semaphore_destroy :: (semaphore: RHISemaphore) {
-    vkDestroySemaphore(device, semaphore, null);
+    vkDestroySemaphore(device, semaphore.handle, null);
 }
 
 rhi_semaphore_wait :: (semaphore: RHISemaphore, wait_value: u64) {
     wait_info := VkSemaphoreWaitInfo.{
         flags = .ANY_BIT,
         semaphoreCount = 1,
-        pSemaphores = *semaphore,
+        pSemaphores = *semaphore.handle,
         pValues = *wait_value,
     };
 
@@ -34,7 +37,7 @@ rhi_semaphore_wait :: (semaphore: RHISemaphore, wait_value: u64) {
 
 rhi_semaphore_signal :: (semaphore: RHISemaphore, signal_value: u64) {
     signal_info := VkSemaphoreSignalInfo.{
-        semaphore = semaphore,
+        semaphore = semaphore.handle,
         value = signal_value,
     };
 

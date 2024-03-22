@@ -146,7 +146,7 @@ rhi_image_view_create :: (create_info: RHIImageViewCreateInfo) -> *RHIImageView 
 }
 
 rhi_image_view_destroy :: (image_view: RHIImageView) {
-    assert(false); // nyi
+    vkDestroyImageView(device, image_view.handle, null);
 }
 
 rhi_buffer_destroy :: (buffer: RHIBuffer) {
@@ -173,7 +173,7 @@ rhi_buffer_view_create :: (create_info: RHIBufferViewCreateInfo) -> *RHIBufferVi
 }
 
 rhi_buffer_view_destroy :: (buffer_view: RHIBufferView) {
-    assert(false); // nyi
+    vkDestroyBufferView(device, buffer_view.handle, null);
 }
 
 rhi_get_resource_state_info :: (state: RHIResourceState, stage_flags: VkPipelineStageFlags, is_image: bool, image_format: RHIFormat) -> RHIResourceStateInfo {

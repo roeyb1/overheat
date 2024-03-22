@@ -227,13 +227,13 @@ rhi_queue_submit :: (queue: *RHIQueue, submit_infos: [] *RHISubmitInfo) {
     array_reserve(*command_buffers, command_buffer_count);
 
     for submit_info : submit_infos {
-        wait_semaphore_submit_info_offset := semaphore_handles.count - 1;
-        command_buffers_submit_info_offset := command_buffers.count - 1;
-        wait_mask_submit_info_offset := wait_dst_stage_masks.count - 1;
+        wait_semaphore_submit_info_offset := semaphore_handles.count;
+        command_buffers_submit_info_offset := command_buffers.count;
+        wait_mask_submit_info_offset := wait_dst_stage_masks.count;
 
         if submit_info.wait_semaphore_count > 0 {
             for j : 0..submit_info.wait_semaphore_count-1 {
-                array_add(*semaphore_handles, << submit_info.wait_semaphores[j]);
+                array_add(*semaphore_handles, submit_info.wait_semaphores[j].handle);
                 array_add(*wait_dst_stage_masks, rhi_translate(submit_info.wait_dst_stage_masks[j]));
             }
         }
@@ -242,14 +242,14 @@ rhi_queue_submit :: (queue: *RHIQueue, submit_infos: [] *RHISubmitInfo) {
             array_add(*command_buffers, cmd_buff.handle);
         }
 
-        signal_semaphore_submit_info_offset := semaphore_handles.count - 1;
+        signal_semaphore_submit_info_offset := semaphore_handles.count;
 
         for signal_semaphore : submit_info.signal_semaphores {
-            array_add(*semaphore_handles, << signal_semaphore);
+            array_add(*semaphore_handles, signal_semaphore.handle);
         }
 
         timeline_info := array_add(*timeline_infos);
-        timeline_info.waitSemaphoreValueCount = xx submit_info.wait_values.count;
+        timeline_info.waitSemaphoreValueCount = xx submit_info.wait_semaphore_count;
         timeline_info.pWaitSemaphoreValues = submit_info.wait_values.data;
         timeline_info.signalSemaphoreValueCount = xx submit_info.signal_values.count;
         timeline_info.pSignalSemaphoreValues = submit_info.signal_values.data;

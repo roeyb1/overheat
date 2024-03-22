@@ -117,9 +117,11 @@ rhi_descriptor_pool_create :: (max_sets: u32, layout: *RHIDescriptorSetLayout) -
     pool_size_count: u32;
 
     for 0..pool_sizes.count-1{
-        pool_sizes[pool_size_count].type = cast(VkDescriptorType) it;
-        pool_sizes[pool_size_count].descriptorCount = layout.type_counts[it] * max_sets;
-        pool_size_count += 1;
+        if layout.type_counts[it] != 0 {
+            pool_sizes[pool_size_count].type = cast(VkDescriptorType) it;
+            pool_sizes[pool_size_count].descriptorCount = layout.type_counts[it] * max_sets;
+            pool_size_count += 1;
+        }
     }
 
     assert(pool_size_count > 0);

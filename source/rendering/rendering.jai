@@ -38,6 +38,7 @@ rendering_init :: () -> bool {
     init_swapchain(g_window_width, g_window_height);
 
     rdg_initialize(*g_render_graph);
+    rdg_init_view_registry(*g_render_graph.view_registry);
 
     recompute_camera_projection(*main_view_camera);
 
@@ -108,11 +109,11 @@ render_scene :: (camera: *Camera) {
         });
     }
 
-    rdg_flush_resource_view_registry(rg);
+    rdg_flush_resource_view_updates(*rg.view_registry);
     rdg_execute(rg);
 
 
-    swapchain_present(rg.semaphores[RHIQueueIndex.GRAPHICS], rg.semaphore_values[RHIQueueIndex.GRAPHICS], rg.semaphores[RHIQueueIndex.GRAPHICS], rg.semaphore_values[RHIQueueIndex.GRAPHICS] + 1);
+    swapchain_present(rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS], rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS] + 1);
     rg.semaphore_values[RHIQueueIndex.GRAPHICS] += 1;
 }
 

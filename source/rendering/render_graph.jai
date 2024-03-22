@@ -123,7 +123,7 @@ RDGPassData :: struct {
 
     pass_func: RDGPassFunction;
     queue: *RHIQueue;
-    signal_value: u32;
+    signal_value: u64;
     before_barriers: [..] RHIBarrier;
     after_barriers: [..] RHIBarrier;
 }
@@ -287,7 +287,7 @@ rdg_execute :: (rg: *RenderGraph) {
     rdg_create_resources(rg);
     rdg_create_synchronization(rg);
 
-    rdg_flush_resource_view_registry(rg);
+    rdg_flush_resource_view_updates(*rg.view_registry);
 
     rdg_record_and_submit(rg);
 }
@@ -640,10 +640,6 @@ rdg_create_synchronization :: (rg: *RenderGraph) {
         prev_queue = curr_queue;
         batch.pass_index_count += 1;
     }
-}
-
-rdg_flush_resource_view_registry :: (rg: *RenderGraph) {
-
 }
 
 rdg_record_and_submit :: (rg: *RenderGraph) {
