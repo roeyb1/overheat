@@ -189,14 +189,14 @@ rdg_shutdown :: (rg: *RenderGraph) {
 
 rdg_next_frame :: (rg: *RenderGraph) {
     rg.frame_number += 1;
-    frame_index := rg.frame_number % RDG_NUM_FRAMES;
 
     // wait on semaphore and clean up old frame resources once it completes: 
     {
+        frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
+
         for 0..rg.semaphores.count-1 {
             rhi_semaphore_wait(rg.semaphores[it], rg.semaphore_values[it]);
         }
-        frame_resources := *rg.per_frame_resources[frame_index];
         
         for *res : frame_resources.resources {
             if res.is_external {
@@ -231,6 +231,7 @@ rdg_next_frame :: (rg: *RenderGraph) {
     }
     array_reset_keeping_memory(*rg.subresource_usages);
     array_reset_keeping_memory(*rg.passes);
+    array_reset_keeping_memory(*rg.batches);
     for rg.external_release_barriers {
         array_reset_keeping_memory(*rg.external_release_barriers[it_index]);
     }
