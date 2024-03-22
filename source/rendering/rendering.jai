@@ -37,6 +37,8 @@ rendering_init :: () -> bool {
     init_device();
     init_swapchain(g_window_width, g_window_height);
 
+    rdg_initialize(*g_render_graph);
+
     recompute_camera_projection(*main_view_camera);
 
     log("Rendering systems initialized successfully");
@@ -44,6 +46,8 @@ rendering_init :: () -> bool {
 }
 
 rendering_shutdown :: () {
+    rdg_shutdown(*g_render_graph);
+
     destroy_swapchain();
     destroy_device();
     destroy_surface();
@@ -83,14 +87,28 @@ DrawBucket :: struct {
 }
 #scope_export
 
-commandBuffers: [MAX_FRAMES_IN_FLIGHT] VkCommandBuffer;
-
 render_scene :: (camera: *Camera) {
     rg := *g_render_graph;
     rdg_next_frame(rg);
 
-    // ??
+    // present to swapchain:
+    {
+        swapchain_index := swapchain.current_image_index;
+        swapchain_image_handle := rdg_import_image(rg, *swapchain.images[swapchain_index], "Swapchain Image");
+        swapchain_view_handle := rdg_create_image_view(rg, swapchain_image_handle, "Swapchain Image View");
 
+        present_transition_usages := RDGResourceUsageDesc.{
+            swapchain_view_handle,
+            .{ resource_state = RHIResourceState.PRESENT },
+            .{},
+        };
+
+        rdg_add_pass(rg, "Present Transition", .GRAPHICS, .[present_transition_usages], (cmd_list: *RHICmdList) -> () {
+            rhi_cmd_debug_label_insert(cmd_list, "Present");
+        });
+    }
+
+    rdg_flush_resource_view_registry(rg);
     rdg_execute(rg);
 
 

@@ -63,6 +63,10 @@ RHIImageType :: enum u32 {
     _1D :: 0;
     _2D :: 1;
     _3D :: 2;
+    CUBE :: 3;
+    _1D_ARRAY :: 4;
+    _2D_ARRAY :: 5;
+    CUBE_ARRAY :: 6;
 }
 
 RHIImageViewType :: enum {
@@ -340,7 +344,7 @@ RHIImageSubresourceRange :: struct {
 
 RHIBarrierFlags :: enum_flags {
     QUEUE_OWNERSHIP_RELEASE :: 1 << 0;
-    QUEUE_OWNERSHIP_AQUIRE :: 1 << 1;
+    QUEUE_OWNERSHIP_ACQUIRE :: 1 << 1;
     FIRST_ACCESS_IN_SUBMISSION :: 1 << 2;
     BARRIER_BEGIN :: 1 << 3;
     BARRIER_END :: 1 << 4;

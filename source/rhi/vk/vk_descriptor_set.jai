@@ -64,6 +64,7 @@ rhi_translate :: (binding_flags: RHIDescriptorBindingFlags) -> VkDescriptorBindi
 
 rhi_descriptor_set_layout_create :: (bindings: [] RHIDescriptorSetLayoutBinding) -> RHIDescriptorSetLayout {
     push_allocator(temp);
+
     vk_bindings: [..] VkDescriptorSetLayoutBinding;
     vk_binding_flags: [..] VkDescriptorBindingFlags;
 

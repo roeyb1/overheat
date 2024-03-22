@@ -92,8 +92,6 @@ init_rhi :: () {
     assert(result == .SUCCESS);
 
     log("Initialized Vulkan instance");
-
-    rhi_allocator_init();
 }
 
 destroy_rhi :: () {

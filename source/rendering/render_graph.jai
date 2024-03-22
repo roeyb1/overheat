@@ -5,16 +5,17 @@ RDGPassFunction :: #type (cmd_list: *RHICmdList) -> ();
 RDGResourceHandle      :: u32;
 RDGResourceViewHandle  :: u32;
 
-ImageViewDescription :: struct {
+RDGImageViewDescription :: struct {
     debug_name: string;
 
     image_handle: RDGResourceHandle;
     subresource_range: RHIImageSubresourceRange;
     view_type: RHIImageViewType;
     format: RHIFormat;
+    components: RHIComponentMapping;
 }
 
-BufferDescription :: struct {
+RDGBufferDescription :: struct {
     debug_name: string;
 
     size: u64;
@@ -22,7 +23,7 @@ BufferDescription :: struct {
     host_visible: bool = false;
 }
 
-BufferViewDescription :: struct {
+RDGBufferViewDescription :: struct {
     debug_name: string;
 
     buffer_handle: RDGResourceHandle;
@@ -55,6 +56,8 @@ RDGResourceDescription :: struct {
     subresource_count: u32 = 1;
     subresource_usage_offset: u32 = 0;
 
+    external_state_data: *RDGResourceStateData;
+
     is_image := false;
     is_external := false;
     is_concurrent := false;
@@ -66,6 +69,7 @@ RDGResourceViewDescription :: struct {
     resource_handle: RDGResourceHandle;
     view_type: RHIImageViewType;
     format: RHIFormat;
+    components: RHIComponentMapping;
     subresource_range: RHIImageSubresourceRange;
     offset: u64;
     range: u64;
@@ -94,7 +98,7 @@ RDGResourceView :: struct {
 
 RDGResourceStateAndStage :: struct {
     resource_state := RHIResourceState.UNDEFINED;
-    pipeline_stage_flags := RHIPipelineStageFlags.TOP_OF_PIPE_BIT;
+    stage_mask := RHIPipelineStageFlags.TOP_OF_PIPE_BIT;
 }
 
 RDGResourceStateData :: struct {
@@ -177,9 +181,10 @@ rdg_initialize :: (rg: *RenderGraph) {
     for 0..rg.semaphore_values.count-1 {
         rg.semaphore_values[it] = 0;
     }
-    for 0..rg.per_frame_resources.count-1 {
-        // #todo:
-    }
+}
+
+rdg_shutdown :: (rg: *RenderGraph) {
+    // #todo
 }
 
 rdg_next_frame :: (rg: *RenderGraph) {
@@ -263,6 +268,8 @@ rdg_add_pass :: (rg: *RenderGraph, name: string, queue_type: RHIQueueType, usage
             layer_count := view_desc.subresource_range.layer_count;
             base_level := view_desc.subresource_range.base_mip_level;
             level_count := view_desc.subresource_range.level_count;
+
+            assert(layer_count > 0 && level_count > 0);
 
             for layer : 0..layer_count-1 {
                 for level : 0..level_count-1 {
@@ -431,9 +438,208 @@ rdg_create_resources :: (using rg: *RenderGraph) {
 }
 
 rdg_create_synchronization :: (rg: *RenderGraph) {
-    frame_index := rg.frame_number % RDG_NUM_FRAMES;
-    frame_resources := *rg.per_frame_resources[frame_index];
 
+    SemaphoreDependencyInfo :: struct {
+        wait_dst_stage_masks: [RHI_QUEUE_COUNT] RHIPipelineStageFlags;
+        wait_values: [RHI_QUEUE_COUNT] u64;
+    }
+
+    UsageInfo :: struct {
+        pass_handle: u16;
+        queue: *RHIQueue;
+        state_and_stage: RDGResourceStateAndStage;
+    }
+
+    frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
+
+    semaphore_deps: [..] SemaphoreDependencyInfo;
+    array_resize(*semaphore_deps, rg.passes.count);
+
+    for res_idx : 0..rg.resource_descs.count-1 {
+        if rg.culled_resources[res_idx] {
+            continue;
+        }
+
+        res_desc := *rg.resource_descs[res_idx];
+
+        for subresource_idx : 0..res_desc.subresource_count-1 {
+            subresource_usage_idx := subresource_idx + res_desc.subresource_usage_offset;
+            
+            if rg.subresource_usages[subresource_usage_idx].count == 0 {
+                continue;
+            }
+
+            prev_usage_info: UsageInfo;
+            prev_usage_info.queue = rg.passes[rg.subresource_usages[subresource_usage_idx][0].pass_handle].queue;
+
+            if res_desc.is_external {
+                ext_info := res_desc.external_state_data;
+                if ext_info {
+                    prev_usage_info.queue = ext_info[subresource_idx].queue;
+                    prev_usage_info.state_and_stage = ext_info[subresource_idx].state_and_stage;
+                } else {
+                    prev_usage_info.queue = prev_usage_info.queue;
+                    prev_usage_info.state_and_stage = prev_usage_info.state_and_stage;
+                }
+                prev_usage_info.pass_handle = cast(u16) ifx prev_usage_info.queue == *rhi_queues[0] then 0 else ifx prev_usage_info.queue == *rhi_queues[1] then 1 else 2;
+                
+                if ext_info {
+                    last_usage := *rg.subresource_usages[subresource_usage_idx][rg.subresource_usages[subresource_usage_idx].count -1];
+                    ext_info[subresource_idx].queue = rg.passes[last_usage.pass_handle].queue;
+                    ext_info[subresource_idx].state_and_stage = last_usage.final_state;
+                }
+            }
+
+            usage_count := rg.subresource_usages[subresource_usage_idx].count;
+            for usage_idx : 0..usage_count-1 {
+                subres_usage := *rg.subresource_usages[subresource_usage_idx][usage_idx];
+                pass_data := *rg.passes[subres_usage.pass_handle];
+
+                curr_usage_info := UsageInfo.{
+                    subres_usage.pass_handle,
+                    pass_data.queue,
+                    subres_usage.initial_state,
+                };
+
+                next_usage_idx := usage_idx + 1;
+
+                combinable_image_read_states: RHIResourceState = .READ_RESOURCE | .READ_DEPTH_STENCIL;
+                combinable_buffer_read_states: RHIResourceState = .READ_RESOURCE | .READ_CONSTANT_BUFFER | .READ_VERTEX_BUFFER | .READ_INDEX_BUFFER | .READ_INDIRECT_BUFFER | .READ_TRANSFER;
+
+                has_no_custom_final_state := curr_usage_info.state_and_stage.resource_state == subres_usage.final_state.resource_state && curr_usage_info.state_and_stage.stage_mask == subres_usage.final_state.stage_mask;
+
+                if has_no_custom_final_state && 
+                    (res_desc.is_image && (curr_usage_info.state_and_stage.resource_state & combinable_image_read_states) != 0 ||
+                    !res_desc.is_image && (curr_usage_info.state_and_stage.resource_state & combinable_buffer_read_states) != 0)
+                {
+                    while next_usage_idx < usage_count {
+                        next_subres_usage := *rg.subresource_usages[subresource_usage_idx][next_usage_idx];
+                        next_pass_data := *rg.passes[next_subres_usage.pass_handle];
+
+                        next_usage_info := UsageInfo.{
+                            next_subres_usage.pass_handle,
+                            next_pass_data.queue,
+                            next_subres_usage.initial_state,
+                        };
+
+                        is_same_queue := next_pass_data.queue == pass_data.queue;
+
+                        no_custom_final_state := next_usage_info.state_and_stage.resource_state == next_subres_usage.final_state.resource_state && next_usage_info.state_and_stage.stage_mask == next_subres_usage.final_state.stage_mask;
+                        
+                        is_combinable := (res_desc.is_image && (next_usage_info.state_and_stage.resource_state & combinable_image_read_states) != 0) || (!res_desc.is_image && (next_usage_info.state_and_stage.resource_state & combinable_buffer_read_states) != 0);
+
+                        if !is_same_queue || !is_combinable || !no_custom_final_state {
+                            break;
+                        }
+
+                        curr_usage_info.state_and_stage.stage_mask |= next_usage_info.state_and_stage.stage_mask;
+                        curr_usage_info.state_and_stage.resource_state |= next_usage_info.state_and_stage.resource_state;
+                        next_usage_idx += 1;
+                    }
+                }
+
+                barrier := RHIBarrier.{
+                    image = ifx res_desc.is_image then frame_resources.resources[res_idx].image else null,
+                    buffer = ifx !res_desc.is_image then frame_resources.resources[res_idx].buffer else null,
+                    stages_before = prev_usage_info.state_and_stage.stage_mask,
+                    state_before = prev_usage_info.state_and_stage.resource_state,
+                    stages_after = curr_usage_info.state_and_stage.stage_mask,
+                    state_after = curr_usage_info.state_and_stage.resource_state,
+                    src_queue = prev_usage_info.queue,
+                    dst_queue = curr_usage_info.queue,
+                    image_subresource_range = .{ cast(u32) subresource_idx % res_desc.levels, 1, cast(u32) subresource_idx / res_desc.levels, 1},
+                };
+
+                if barrier.src_queue != barrier.dst_queue && !res_desc.is_concurrent {
+                    barrier.flags |= .QUEUE_OWNERSHIP_ACQUIRE;
+                }
+                if usage_idx == 0 {
+                    barrier.flags |= .FIRST_ACCESS_IN_SUBMISSION;
+                }
+
+                if usage_idx > 0 && prev_usage_info.queue == curr_usage_info.queue {
+                    actual_prev_pass_handle := rg.subresource_usages[subresource_usage_idx][usage_idx - 1].pass_handle;
+                    if (actual_prev_pass_handle + 1) < curr_usage_info.pass_handle {
+                        flags := barrier.flags;
+                        barrier.flags |= .BARRIER_BEGIN;
+                        array_add(*rg.passes[actual_prev_pass_handle + 1].before_barriers, barrier);
+
+                        barrier.flags = flags;
+                        barrier.flags |= .BARRIER_END;
+                    }
+                }
+
+                array_add(*pass_data.before_barriers, barrier);
+
+                prev_queue_idx := ifx prev_usage_info.queue == *rhi_queues[0] then 0 else ifx prev_usage_info.queue == *rhi_queues[1] then 1 else 2;
+
+                if (barrier.flags & .QUEUE_OWNERSHIP_ACQUIRE) != 0 {
+                    barrier.flags ^= .QUEUE_OWNERSHIP_ACQUIRE;
+                    barrier.flags |= .QUEUE_OWNERSHIP_RELEASE;
+
+                    semaphore_deps[curr_usage_info.pass_handle].wait_dst_stage_masks[prev_queue_idx] |= curr_usage_info.state_and_stage.stage_mask;
+
+                    wait_value := *semaphore_deps[curr_usage_info.pass_handle].wait_values[prev_queue_idx];
+
+                    //external dep
+                    if usage_idx == 0 {
+                        array_add(*rg.external_release_barriers[prev_usage_info.pass_handle], barrier);
+                        (<< wait_value) = max(rg.semaphore_values[prev_queue_idx] + 1, << wait_value);
+                    } else {
+                        prev_pass_record_info := *rg.passes[prev_usage_info.pass_handle];
+                        array_add(*prev_pass_record_info.after_barriers, barrier);
+                        (<< wait_value) = max(rg.semaphore_values[prev_queue_idx] + 1 + prev_pass_record_info.signal_value, << wait_value);
+                    }
+                }
+
+                prev_usage_info = curr_usage_info;
+                if !has_no_custom_final_state {
+                    prev_usage_info.state_and_stage = subres_usage.final_state;
+                }
+
+                usage_idx = next_usage_idx;
+            }
+        }
+    }
+
+    prev_queue: *RHIQueue = null;
+    start_new_batch := false;
+
+    for 0..rg.passes.count-1 {
+        pass_handle := it;
+        semaphore_dep := *semaphore_deps[pass_handle];
+        curr_queue := rg.passes[pass_handle].queue;
+
+        start_new_batch = start_new_batch
+            || prev_queue != curr_queue
+            || semaphore_dep.wait_dst_stage_masks[0] != 0
+            || semaphore_dep.wait_dst_stage_masks[1] != 0
+            || semaphore_dep.wait_dst_stage_masks[2] != 0;
+
+        if start_new_batch {
+            start_new_batch = false;
+
+            batch := array_add(*rg.batches);
+            batch.queue = curr_queue;
+            batch.pass_index_offset = cast(u16)pass_handle;
+
+            for j : 0..RHI_QUEUE_COUNT-1 {
+                batch.wait_dst_stage_masks[j] = semaphore_dep.wait_dst_stage_masks[j];
+                batch.wait_values[j] = semaphore_dep.wait_values[j];
+            }
+        }
+
+        if !(rg.passes[pass_handle].after_barriers.count == 0) || (it == rg.passes.count - 1) {
+            start_new_batch := true;
+        }
+
+        batch := *rg.batches[rg.batches.count - 1];
+        queue_idx := ifx curr_queue == *rhi_queues[0] then 0 else ifx curr_queue == *rhi_queues[1] then 1 else 2;
+        batch.signal_value = max(rg.semaphore_values[queue_idx] + 1 + rg.passes[pass_handle].signal_value, batch.signal_value);
+
+        prev_queue = curr_queue;
+        batch.pass_index_count += 1;
+    }
 }
 
 rdg_flush_resource_view_registry :: (rg: *RenderGraph) {
@@ -531,6 +737,7 @@ rdg_record_and_submit :: (rg: *RenderGraph) {
             queue_index := rhi_queue_index(batch.queue);
 
             submit_info := RHISubmitInfo.{
+                wait_semaphore_count = wait_count,
                 wait_semaphores = wait_semaphores,
                 wait_values = wait_values,
                 wait_dst_stage_masks = wait_dst_stage_masks,
@@ -551,15 +758,9 @@ rdg_record_and_submit :: (rg: *RenderGraph) {
 }
 
 rdg_frame_cmd_pool_acquire :: (frame_pools: *RDGFrameCmdPools, queue: *RHIQueue) -> *RHICmdList {
-    CHUNK_SIZE :: 32;
+    CHUNK_SIZE :: 1;
 
-    pool_index := ifx queue == *rhi_queues[RHIQueueType.GRAPHICS] {
-        0;
-    } else ifx queue == *rhi_queues[RHIQueueType.COMPUTE] {
-        1;
-    } else ifx queue == *rhi_queues[RHIQueueType.TRANSFER] {
-        2;
-    }
+    pool_index := rhi_queue_index(queue);
 
     if frame_pools.cmd_pools[pool_index].handle == VK_NULL_HANDLE {
         frame_pools.cmd_pools[pool_index] = rhi_cmd_pool_create(queue);
@@ -582,7 +783,9 @@ rdg_frame_cmd_pool_acquire :: (frame_pools: *RDGFrameCmdPools, queue: *RHIQueue)
 
 rdg_frame_cmd_pool_reset :: (frame_pools: *RDGFrameCmdPools) {
     for 0..frame_pools.cmd_pools.count-1 {
-        rhi_cmd_pool_reset(frame_pools.cmd_pools[it]);
+        if frame_pools.cmd_pools[it].handle != VK_NULL_HANDLE {
+            rhi_cmd_pool_reset(frame_pools.cmd_pools[it]);
+        }
         frame_pools.next_free_index[it] = 0;
     }
 }
@@ -590,3 +793,4 @@ rdg_frame_cmd_pool_reset :: (frame_pools: *RDGFrameCmdPools) {
 #import "Bit_Array";
 
 #load "rdg_view_registry.jai";
+#load "rdg_resources.jai";

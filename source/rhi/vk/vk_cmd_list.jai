@@ -105,7 +105,7 @@ rhi_cmd_barrier :: (cmd_list: *RHICmdList, barriers: [] RHIBarrier) {
         before_state_info := rhi_get_resource_state_info(barrier.state_before, rhi_translate(barrier.stages_before), barrier.image != null, image_format);
         after_state_info  := rhi_get_resource_state_info(barrier.state_after, rhi_translate(barrier.stages_after), barrier.image != null, image_format);
 
-        should_acquire_queue := (barrier.flags & RHIBarrierFlags.QUEUE_OWNERSHIP_AQUIRE) != 0;
+        should_acquire_queue := (barrier.flags & RHIBarrierFlags.QUEUE_OWNERSHIP_ACQUIRE) != 0;
         should_release_queue := (barrier.flags & RHIBarrierFlags.QUEUE_OWNERSHIP_RELEASE) != 0;
 
         requires_image_barrier := barrier.image && (before_state_info.layout != after_state_info.layout || should_acquire_queue || should_release_queue);
