@@ -34,7 +34,12 @@ main :: () {
     while g_local_player == null {
         networking_update();
         input_manager_update();
+
         application_window_update();
+
+        if g_should_exit {
+            break;
+        }
 
         // #todo: re-enable this when we can support drawing 0 sprites
         rendering_begin_frame();
@@ -54,10 +59,14 @@ main :: () {
 
     main_view_camera.entity_to_track = g_local_player;
 
-    while !g_should_exit {
+    while true {
         networking_update();
         input_manager_update();
         application_window_update();
+
+        if g_should_exit {
+            break;
+        }
 
         rendering_begin_frame();
 

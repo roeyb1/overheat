@@ -504,7 +504,7 @@ rdg_create_synchronization :: (rg: *RenderGraph) {
                     prev_usage_info.queue = prev_usage_info.queue;
                     prev_usage_info.state_and_stage = prev_usage_info.state_and_stage;
                 }
-                prev_usage_info.pass_handle = cast(u16) ifx prev_usage_info.queue == *rhi_queues[0] then 0 else ifx prev_usage_info.queue == *rhi_queues[1] then 1 else 2;
+                prev_usage_info.pass_handle = cast(u16) rhi_queue_index(prev_usage_info.queue);
                 
                 if ext_info {
                     last_usage := *rg.subresource_usages[subresource_usage_idx][rg.subresource_usages[subresource_usage_idx].count -1];
@@ -595,7 +595,7 @@ rdg_create_synchronization :: (rg: *RenderGraph) {
 
                 array_add(*pass_data.before_barriers, barrier);
 
-                prev_queue_idx := ifx prev_usage_info.queue == *rhi_queues[0] then 0 else ifx prev_usage_info.queue == *rhi_queues[1] then 1 else 2;
+                prev_queue_idx := rhi_queue_index(prev_usage_info.queue);
 
                 if (barrier.flags & .QUEUE_OWNERSHIP_ACQUIRE) != 0 {
                     barrier.flags ^= .QUEUE_OWNERSHIP_ACQUIRE;
@@ -658,7 +658,7 @@ rdg_create_synchronization :: (rg: *RenderGraph) {
         }
 
         batch := *rg.batches[rg.batches.count - 1];
-        queue_idx := ifx curr_queue == *rhi_queues[0] then 0 else ifx curr_queue == *rhi_queues[1] then 1 else 2;
+        queue_idx := rhi_queue_index(curr_queue);
         batch.signal_value = max(rg.semaphore_values[queue_idx] + 1 + rg.passes[pass_handle].signal_value, batch.signal_value);
 
         prev_queue = curr_queue;
