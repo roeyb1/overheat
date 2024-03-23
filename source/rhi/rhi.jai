@@ -803,6 +803,34 @@ RHIPipelineLayoutCreateInfo :: struct {
     static_sampler_descs: [] RHIStaticSamplerDesc;
 }
 
+RHIAttachmentLoadOp :: enum {
+    LOAD;
+    CLEAR;
+    DONT_CARE;
+}
+
+RHIAttachmentStoreOp :: enum {
+    STORE;
+    DONT_CARE;
+}
+
+RHIColorAttachmentDesc :: struct {
+    image_view: *RHIImageView;
+    load_op: RHIAttachmentLoadOp;
+    store_op: RHIAttachmentStoreOp;
+    clear_value: RHIClearColorValue;
+}
+
+RHIDepthStencilAttachmentDesc :: struct {
+    image_view: *RHIImageView;
+    load_op: RHIAttachmentLoadOp;
+    store_op: RHIAttachmentStoreOp;
+    stencil_load_op: RHIAttachmentLoadOp;
+    stencil_store_op: RHIAttachmentStoreOp;
+    clear_value: RHIClearDepthStencilValue;
+    read_only: bool;
+}
+
 rhi_is_stencil_format :: inline (format: RHIFormat) -> bool {
     if format == {
         case .S8_UINT;           #through;

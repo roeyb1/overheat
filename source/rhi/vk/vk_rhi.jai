@@ -788,6 +788,23 @@ rhi_translate :: (border_color: RHIBorderColor) -> VkBorderColor {
     }
 }
 
+rhi_translate :: (load_op: RHIAttachmentLoadOp) -> VkAttachmentLoadOp {
+    if load_op == {
+        case .LOAD; return .LOAD;
+        case .CLEAR; return .CLEAR;
+        case .DONT_CARE; return .DONT_CARE;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (store_op: RHIAttachmentStoreOp) -> VkAttachmentStoreOp {
+    if store_op == {
+        case .STORE; return .STORE;
+        case .DONT_CARE; return .DONT_CARE;
+        case; assert(false); return 0;
+    }
+}
+
 #load "vk_device.jai";
 #load "vk_debug.jai";
 #load "vk_allocator.jai";

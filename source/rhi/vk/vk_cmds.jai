@@ -146,3 +146,65 @@ rhi_cmd_clear_image :: (cmd_list: *RHICmdList, image: *RHIImage, color: RHIClear
 
     vkCmdClearColorImage(cmd_list.handle, handle, .TRANSFER_DST_OPTIMAL, cast(*VkClearColorValue) (*color), xx vk_ranges.count, vk_ranges.data);
 }
+
+rhi_cmd_begin_renderpass :: (cmd_list: *RHICmdList, color_attachments: [] RHIColorAttachmentDesc, depth_stencil_attachment: *RHIDepthStencilAttachmentDesc, render_area: RHIRect, rw_texture_buffer_access: bool) {
+    assert(color_attachments.count <= 8);
+
+    if rhi_is_dynamic_rendering_ext_supported() {
+        vk_color_attachments: [..] VkRenderingAttachmentInfoKHR;
+        vk_color_attachments.allocator = temp;
+        array_reserve(*vk_color_attachments, 8);
+
+        for attach : color_attachments {
+            vk_attachment := VkRenderingAttachmentInfoKHR.{
+                imageView = attach.image_view.handle,
+                imageLayout = .COLOR_ATTACHMENT_OPTIMAL,
+                resolveMode = .NONE,
+                //resolveImageView ignored due to resolve mode NONE
+                //resolveImageLayout ignroed due to resolve mode NONE
+                loadOp = rhi_translate(attach.load_op),
+                storeOp = rhi_translate(attach.store_op),
+                clearValue.color = cast, force(VkClearColorValue) attach.clear_value,
+            };
+
+            array_add(*vk_color_attachments, vk_attachment);
+        }
+
+        vk_depth_attach: VkRenderingAttachmentInfo;
+        vk_stencil_attach: VkRenderingAttachmentInfo;
+        if depth_stencil_attachment {
+            vk_depth_attach.imageView = depth_stencil_attachment.image_view.handle;
+            vk_depth_attach.imageLayout = ifx depth_stencil_attachment.read_only then .DEPTH_STENCIL_READ_ONLY_OPTIMAL else .DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            vk_depth_attach.resolveMode = .NONE;
+            vk_depth_attach.loadOp = rhi_translate(depth_stencil_attachment.load_op);
+            vk_depth_attach.storeOp = rhi_translate(depth_stencil_attachment.store_op);
+            vk_depth_attach.clearValue.depthStencil = cast, force(VkClearDepthStencilValue) depth_stencil_attachment.clear_value;
+
+            vk_stencil_attach = vk_depth_attach;
+            vk_stencil_attach.loadOp = rhi_translate(depth_stencil_attachment.stencil_load_op);
+            vk_stencil_attach.storeOp = rhi_translate(depth_stencil_attachment.stencil_store_op);
+        }
+
+        vk_rendering_info := VkRenderingInfoKHR.{
+            renderArea = cast, force(VkRect2D) render_area,
+            layerCount = 1,
+            viewMask = 0,
+            colorAttachmentCount = xx vk_color_attachments.count,
+            pColorAttachments = vk_color_attachments.data,
+            pDepthAttachment = ifx depth_stencil_attachment != null then *vk_depth_attach else null,
+            pStencilAttachment = ifx depth_stencil_attachment != null then *vk_stencil_attach else null,
+        };
+
+        vkCmdBeginRendering(cmd_list.handle, *vk_rendering_info);
+    } else {
+        assert(false); //nyi
+    }
+}
+
+rhi_cmd_end_renderpass :: (cmd_list: *RHICmdList) {
+    if rhi_is_dynamic_rendering_ext_supported() {
+        vkCmdEndRendering(cmd_list.handle);
+    } else {
+        vkCmdEndRenderPass(cmd_list.handle);
+    }
+}
