@@ -1,9 +1,25 @@
 #scope_export
 
-RDGPassFunction :: #type (cmd_list: *RHICmdList) -> ();
+RDGPassFunction :: #type (cmd_list: *RHICmdList, views: [] RDGResourceViewHandle) -> ();
 
 RDGResourceHandle      :: u32;
 RDGResourceViewHandle  :: u32;
+
+RDGImageDescription :: struct {
+    debug_name: string = "";
+
+    width: u32 = 1;
+    height: u32 = 1;
+    depth: u32 = 1;
+    layers: u32 = 1;
+    levels: u32 = 1;
+
+    samples := RHISampleCount._1;
+    image_type := RHIImageType._2D;
+    format := RHIFormat.UNDEFINED;
+    usage_flags: RHIImageUsageFlags;
+    clear_value: RHIClearValue;
+}
 
 RDGImageViewDescription :: struct {
     debug_name: string;
@@ -108,8 +124,8 @@ RDGResourceStateData :: struct {
 
 RDGResourceUsageDesc :: struct {
     view_handle: RDGResourceViewHandle;
-    state_and_stage: RDGResourceStateAndStage;
-    final_state_and_stage: RDGResourceStateAndStage; // defaulted if pass does no internal state transitions
+    state_and_stage: RDGResourceStateAndStage = .{};
+    final_state_and_stage: RDGResourceStateAndStage = .{}; // defaulted if pass does no internal state transitions
 }
 
 RDGSubresourceUsage :: struct {
@@ -122,6 +138,8 @@ RDGPassData :: struct {
     debug_name: string;
 
     pass_func: RDGPassFunction;
+    views: [..] RDGResourceViewHandle;
+
     queue: *RHIQueue;
     signal_value: u64;
     before_barriers: [..] RHIBarrier;
@@ -244,6 +262,10 @@ rdg_add_pass :: (rg: *RenderGraph, name: string, queue_type: RHIQueueType, usage
     pass_data.debug_name = name;
     pass_data.queue = *rhi_queues[queue_type];
 
+    for *usage : usage_descs {
+        array_add(*pass_data.views, usage.view_handle);
+    }
+
     pass_index := cast (u16) rg.passes.count;
     array_add(*rg.passes, pass_data);
     
@@ -274,7 +296,7 @@ rdg_add_pass :: (rg: *RenderGraph, name: string, queue_type: RHIQueueType, usage
 
             for layer : 0..layer_count-1 {
                 for level : 0..level_count-1 {
-                    index := (layer + base_layer) * resource_desc.levels + (level + base_level) * resource_desc.subresource_usage_offset;
+                    index := (layer + base_layer) * resource_desc.levels + (level + base_level) + resource_desc.subresource_usage_offset;
                     array_add(*rg.subresource_usages[index], resource_usage);
                 }
             }
@@ -492,7 +514,8 @@ rdg_create_synchronization :: (rg: *RenderGraph) {
             }
 
             usage_count := rg.subresource_usages[subresource_usage_idx].count;
-            for usage_idx : 0..usage_count-1 {
+            usage_idx := 0;
+            while usage_idx < usage_count {
                 subres_usage := *rg.subresource_usages[subresource_usage_idx][usage_idx];
                 pass_data := *rg.passes[subres_usage.pass_handle];
 
@@ -706,7 +729,7 @@ rdg_record_and_submit :: (rg: *RenderGraph) {
                 rhi_cmd_barrier(cmd_list, pass_data.before_barriers);
             }
 
-            pass_data.pass_func(cmd_list);
+            pass_data.pass_func(cmd_list, pass_data.views);
 
             if pass_data.after_barriers.count > 0 {
                 rhi_cmd_barrier(cmd_list, pass_data.after_barriers);

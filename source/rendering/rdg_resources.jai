@@ -41,6 +41,35 @@ rdg_import_image :: (rg: *RenderGraph, image: *RHIImage, name: string, resource_
     return cast (RDGResourceHandle) rg.resource_descs.count;
 }
 
+rdg_create_image :: (rg: *RenderGraph, desc: RDGImageDescription) -> RDGResourceHandle {
+    resource_desc := RDGResourceDescription.{
+        debug_name = desc.debug_name,
+        usage_flags = cast(u32) desc.usage_flags,
+        width = desc.width,
+        height = desc.height,
+        depth = desc.depth,
+        layers = desc.layers,
+        levels = desc.levels,
+        samples = desc.samples,
+        image_type = desc.image_type,
+        format = desc.format,
+        clear_value = desc.clear_value,
+        subresource_count = desc.layers * desc.levels,
+        subresource_usage_offset = xx rg.subresource_usages.count,
+        is_concurrent = false,
+        is_image = true,
+    };
+
+    assert(resource_desc.width != 0 && resource_desc.height != 0 && resource_desc.layers != 0 && resource_desc.levels != 0);
+
+    array_add(*rg.resource_descs, resource_desc);
+    for 0..resource_desc.subresource_count-1 {
+        unused := array_add(*rg.subresource_usages);
+    }
+
+    return cast(RDGResourceHandle) rg.resource_descs.count;
+}
+
 rdg_create_image_view :: (rg: *RenderGraph, image_handle: RDGResourceHandle, name: string) -> RDGResourceViewHandle {
     resource_desc := *rg.resource_descs[image_handle - 1];
     assert(resource_desc.is_image);
@@ -77,4 +106,11 @@ rdg_create_image_view :: (rg: *RenderGraph, image_handle: RDGResourceHandle, nam
     }
 
     return cast (RDGResourceViewHandle) rg.view_descs.count;
+}
+
+rdg_get_image :: (view_handle: RDGResourceHandle) -> *RHIImage {
+    rg := g_render_graph;
+    frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
+
+    return frame_resources.resources[rg.view_descs[view_handle - 1].resource_handle - 1].image;
 }

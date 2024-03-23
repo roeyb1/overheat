@@ -539,6 +539,14 @@ rhi_translate :: inline (extent: Extent2D) -> VkExtent2D {
     return .{width = extent.width, height = extent.height};
 }
 
+rhi_translate :: inline (extent: Extent3D) -> VkExtent3D {
+    return .{width = extent.width, height = extent.height, depth = extent.depth};
+}
+
+rhi_translate :: inline (offset: Offset3D) -> VkOffset3D {
+    return .{x = offset.x, y = offset.y, z = offset.z};
+}
+
 rhi_translate :: inline (samples: RHISampleCount) -> VkSampleCountFlags {
     result: VkSampleCountFlags = 0;
     

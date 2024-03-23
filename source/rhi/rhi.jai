@@ -105,6 +105,19 @@ Extent2D :: struct {
     height: u32;
 }
 
+Extent3D :: struct {
+    // using Extent2D?
+    width: u32;
+    height: u32;
+    depth: u32;
+}
+
+Offset3D :: struct {
+    x: s32;
+    y: s32;
+    z: s32;
+}
+
 RHIImageUsageFlags :: enum_flags u32 {
     TRANSFER_SRC_BIT                :: 1 << 0;
     TRANSFER_DST_BIT                :: 1 << 1;
@@ -340,6 +353,20 @@ RHIImageSubresourceRange :: struct {
     level_count: u32 = 0;
     base_array_layer: u32 = 0;
     layer_count: u32 = 0;
+}
+
+RHIImageCopy :: struct {
+    src_mip_level: u32;
+    src_base_layer: u32;
+    src_layer_count: u32;
+    src_offset: Offset3D;
+
+    dst_mip_level: u32;
+    dst_base_layer: u32;
+    dst_layer_count: u32;
+    dst_offset: Offset3D;
+
+    extent: Extent3D;
 }
 
 RHIBarrierFlags :: enum_flags {
