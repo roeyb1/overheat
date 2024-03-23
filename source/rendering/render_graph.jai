@@ -210,8 +210,8 @@ rdg_shutdown :: (rg: *RenderGraph) {
         for *cmd_pool : rg.per_frame_resources[it].frame_cmd_pools.cmd_pools {
             rhi_cmd_pool_destroy(cmd_pool);
         }
-        free(rg.per_frame_resources[it].resources.data);
-        free(rg.per_frame_resources[it].views.data);
+        array_free(rg.per_frame_resources[it].resources);
+        array_free(rg.per_frame_resources[it].views);
     }
 
     for 0..RHI_QUEUE_COUNT-1 {

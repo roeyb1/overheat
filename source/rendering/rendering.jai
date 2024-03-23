@@ -40,7 +40,7 @@ rendering_init :: () -> bool {
     rdg_initialize(*g_render_graph);
     rdg_init_view_registry(*g_render_graph.view_registry);
 
-    //init_sprite_pipeline(*g_render_graph.view_registry.descriptor_set_layout);
+    init_sprite_pipeline(*g_render_graph.view_registry.descriptor_set_layout);
 
     recompute_camera_projection(*main_view_camera);
 
@@ -51,7 +51,7 @@ rendering_init :: () -> bool {
 rendering_shutdown :: () {
     rhi_device_wait_idle();
 
-    //destroy_sprite_pipeline();
+    destroy_sprite_pipeline();
 
     rdg_shutdown(*g_render_graph);
 

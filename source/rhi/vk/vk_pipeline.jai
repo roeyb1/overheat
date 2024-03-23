@@ -22,35 +22,35 @@ rhi_graphics_pipeline_build :: (create_info: RHIGraphicsPipelineCreateInfo) -> R
     {
         if create_info.vertex_shader.path.count > 0 {
             shader_module, shader_stage := create_shader_stage(create_info.vertex_shader, .VERTEX_BIT);
-            shader_module[stage_count] = shader_module;
+            shader_modules[stage_count] = shader_module;
             shader_stages[stage_count] = shader_stage;
             stage_count += 1;
         }
 
         if create_info.hull_shader.path.count > 0 {
             shader_module, shader_stage := create_shader_stage(create_info.hull_shader, .TESSELLATION_CONTROL_BIT);
-            shader_module[stage_count] = shader_module;
+            shader_modules[stage_count] = shader_module;
             shader_stages[stage_count] = shader_stage;
             stage_count += 1;
         }
 
         if create_info.domain_shader.path.count > 0 {
             shader_module, shader_stage := create_shader_stage(create_info.domain_shader, .TESSELLATION_EVALUATION_BIT);
-            shader_module[stage_count] = shader_module;
+            shader_modules[stage_count] = shader_module;
             shader_stages[stage_count] = shader_stage;
             stage_count += 1;
         }
 
         if create_info.geometry_shader.path.count > 0 {
             shader_module, shader_stage := create_shader_stage(create_info.geometry_shader, .GEOMETRY_BIT);
-            shader_module[stage_count] = shader_module;
+            shader_modules[stage_count] = shader_module;
             shader_stages[stage_count] = shader_stage;
             stage_count += 1;
         }
 
         if create_info.pixel_shader.path.count > 0 {
             shader_module, shader_stage := create_shader_stage(create_info.pixel_shader, .FRAGMENT_BIT);
-            shader_module[stage_count] = shader_module;
+            shader_modules[stage_count] = shader_module;
             shader_stages[stage_count] = shader_stage;
             stage_count += 1;
         }
@@ -81,10 +81,19 @@ rhi_graphics_pipeline_build :: (create_info: RHIGraphicsPipelineCreateInfo) -> R
         create_pipeline_layout(create_info.layout_create_info, *result.pipeline_layout, *result.static_sampler_descriptor_set_layout, *result.static_sampler_descriptor_pool, *result.static_sampler_descriptor_set, *result.static_samplers);
     }
 
+    for 0..stage_count-1 {
+        vkDestroyShaderModule(device, shader_modules[it], null);
+    }
+
     return result;
 }
 
 rhi_graphics_pipeline_destroy :: (pipeline: RHIGraphicsPipeline) {
+    for sampler : pipeline.static_samplers {
+        vkDestroySampler(device, sampler, null);
+    }
+    array_free(pipeline.static_samplers);
+
     vkDestroyPipeline(device, pipeline.pipeline, null);
     vkDestroyPipelineLayout(device, pipeline.pipeline_layout, null);
     vkDestroyDescriptorPool(device, pipeline.static_sampler_descriptor_pool, null);
@@ -95,7 +104,7 @@ rhi_graphics_pipeline_destroy :: (pipeline: RHIGraphicsPipeline) {
 
 create_shader_stage :: (shader: RHIShaderStageCreateInfo, stage: VkShaderStageFlagBits) -> VkShaderModule, VkPipelineShaderStageCreateInfo {
     
-    path := tprint("%.spv", shader.path);
+    path := tprint("assets/shaders/compiled/%.spv", shader.path);
     shader_code := read_entire_file(path);
     defer free(shader_code);
 
