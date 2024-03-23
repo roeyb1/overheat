@@ -25,13 +25,6 @@ RDGViewRegistry :: struct {
     frame_index: u32;
 }
 
-RHI_TEXTURE_BINDING :: 0;
-RHI_RW_TEXTURE_BINDING :: 1;
-RHI_TYPED_BUFFER_BINDING :: 2;
-RHI_RW_TYPED_BUFFER_BINDING :: 3;
-RHI_BYTE_BUFFER_BINDING :: 4;
-RHI_RW_BYTE_BUFFER_BINDING :: 5;
-
 rdg_init_view_registry :: (using view_registry: *RDGViewRegistry) {
     texture_handles.max_handle = 65536;
     rw_texture_handles.max_handle = 65536;

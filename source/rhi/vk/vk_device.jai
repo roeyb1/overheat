@@ -37,7 +37,9 @@ vkSetDebugUtilsObjectNameEXT: PFN_vkSetDebugUtilsObjectNameEXT;
 
 init_device :: () {
     device_handles: [..] VkPhysicalDevice;
+    device_handles.allocator = temp;
     queue_family_properties: [..] VkQueueFamilyProperties;
+    queue_family_properties.allocator = temp;
 
     physical_device_count: u32 = 0;
     vkEnumeratePhysicalDevices(instance, *physical_device_count, null);
@@ -91,16 +93,35 @@ init_device :: () {
             transfer_family_index = graphics_family_index;
         }
 
-        // We found all the queues we need, this device is good enough
-        if graphics_family_index != U32_MAX {
+        // test if device supports our required extensions:
+        supports_dynamic_rendering := false;
+        {
+            ext_count: u32 = 0;
+            available_extensions: [..] VkExtensionProperties;
+            available_extensions.allocator = temp;
+            vkEnumerateDeviceExtensionProperties(device_to_check, null, *ext_count, null);
+            array_resize(*available_extensions, ext_count);
+            vkEnumerateDeviceExtensionProperties(device_to_check, null, *ext_count, available_extensions.data);
+
+            for ext : available_extensions {
+                if to_string(ext.extensionName.data) == VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME {
+                    supports_dynamic_rendering = true;
+                }
+            }
+        }
+
+        // We found all the queues we need and we support dynamic rendering, device is good enough
+        if supports_dynamic_rendering && graphics_family_index != U32_MAX {
             physical_device = device_to_check;
             log("Selected physical device: % (Vendor %)", cast(string) device_properties.deviceName, device_properties.vendorID);
             break;
         }
+
     }
 
     if physical_device == VK_NULL_HANDLE {
-        log_error("Failed to select a physical device that supports graphics and present operations in the same queue. (dedicated %)", has_dedicated_gpu);
+        log_error("Failed to select a suitable physical device!");
+        // #todo: report why we couldn't select it
         return;
     }
 
@@ -121,14 +142,21 @@ init_device :: () {
     }
 
     device_extensions: [..] *u8;
+    device_extensions.allocator = temp;
     array_add(*device_extensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME.data);
+    array_add(*device_extensions, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME.data);
 
     device_features := VkPhysicalDeviceFeatures.{
         samplerAnisotropy = VK_TRUE,
         multiDrawIndirect = VK_TRUE,
     };
 
+    dynamic_rendering_features := VkPhysicalDeviceDynamicRenderingFeatures.{
+        dynamicRendering = VK_TRUE,
+    };
+
     vk12_features := VkPhysicalDeviceVulkan12Features.{
+        pNext = *dynamic_rendering_features,
         timelineSemaphore = VK_TRUE,
         descriptorIndexing = VK_TRUE,
         shaderInputAttachmentArrayDynamicIndexing = VK_TRUE,
@@ -189,6 +217,11 @@ init_device :: () {
 
 destroy_device :: () {
     vkDestroyDevice(device, null);
+}
+
+rhi_is_dynamic_rendering_ext_supported :: () -> bool {
+    // #todo: support non-dynamic rendering ext path.
+    return true;
 }
 
 rhi_queue_index :: inline (queue: *RHIQueue) -> RHIQueueIndex {

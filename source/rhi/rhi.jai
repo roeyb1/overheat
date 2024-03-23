@@ -112,6 +112,11 @@ Extent3D :: struct {
     depth: u32;
 }
 
+Offset2D :: struct {
+    x: s32;
+    y: s32;
+}
+
 Offset3D :: struct {
     x: s32;
     y: s32;
@@ -475,6 +480,329 @@ RHIMemoryPropertyFlags :: enum_flags {
     HOST_CACHED_BIT     :: 0x08;
 }
 
+RHIShaderStageCreateInfo :: struct {
+    path: string;
+}
+
+RHIVertexInputRate :: enum {
+    VERTEX;
+    INSTANCE;
+}
+
+RHIVertexInputBindingDesc :: struct {
+    binding: u32;
+    stride: u32;
+    input_rate: RHIVertexInputRate;
+}
+
+RHIVertexInputAttributeDesc :: struct {
+    name: string;
+    location: u32;
+    binding: u32;
+    format: RHIFormat;
+    offset: u32;
+}
+
+RHIVertexInputState :: struct {
+    MAX_VERTEX_BINDING_DESCRIPTIONS     :: 8;
+    MAX_VERTEX_ATTRIBUTE_DESCRIPTIONS   :: 8;
+
+    vertex_binding_count: u32 = 0;
+    vertex_binding_descs: [MAX_VERTEX_BINDING_DESCRIPTIONS] RHIVertexInputBindingDesc;
+    vertex_attribute_count: u32 = 0;
+    vertex_attribute_descs: [MAX_VERTEX_ATTRIBUTE_DESCRIPTIONS] RHIVertexInputAttributeDesc;
+}
+
+RHIPrimitiveTopology :: enum {
+    POINT_LIST                      :: 0;
+    LINE_LIST                       :: 1;
+    LINE_STRIP                      :: 2;
+    TRIANGLE_LIST                   :: 3;
+    TRIANGLE_STRIP                  :: 4;
+    TRIANGLE_FAN                    :: 5;
+    LINE_LIST_WITH_ADJACENCY        :: 6;
+    LINE_STRIP_WITH_ADJACENCY       :: 7;
+    TRIANGLE_LIST_WITH_ADJACENCY    :: 8;
+    TRIANGLE_STRIP_WITH_ADJACENCY   :: 9;
+    PATCH_LIST                      :: 10;
+}
+
+RHIInputAssemblyState :: struct {
+    primitive_topology: RHIPrimitiveTopology = .TRIANGLE_LIST;
+    primitive_restart_enabled: u32 = RHI_FALSE;
+}
+
+RHITessellationState :: struct {
+    patch_control_points: u32 = 0;
+}
+
+RHIViewport :: struct {
+    x: float32;
+    y: float32;
+    width: float32;
+    height: float32;
+    min_depth: float32;
+    max_depth: float32;
+}
+
+RHIRect :: struct {
+    offset: Offset2D;
+    extent: Extent2D;
+}
+
+RHIViewportState :: struct {
+    MAX_VIEWPORTS :: 1;
+
+    viewport_count: u32 = 1;
+    viewports: [MAX_VIEWPORTS] RHIViewport = .[ .{0., 0., 1. , 1., 0., 1.}];
+    scissors: [MAX_VIEWPORTS] RHIRect = .[ .{ .{0, 0}, .{0, 0}} ];
+}
+
+RHIPolygonMode :: enum {
+    FILL  :: 0;
+    LINE  :: 1;
+    POINT :: 2;
+}
+
+RHICullModeFlags :: enum_flags {
+    NONE            :: 0;
+    FRONT_BIT       :: 1;
+    BACK_BIT        :: 2;
+    FRONT_AND_BACK  :: FRONT_BIT | BACK_BIT;
+}
+
+RHIFrontFace :: enum {
+    COUNTER_CLOCKWISE :: 0;
+    CLOCKWISE :: 1;
+}
+
+RHI_FALSE :: 0;
+RHI_TRUE :: 1;
+
+RHIRasterizationState :: struct {
+    depth_clamp_enable: u32 = RHI_FALSE;
+    rasterizer_discard_enable: u32 = RHI_FALSE;
+    polygon_mode: RHIPolygonMode = .FILL;
+    cull_mode: RHICullModeFlags = .NONE;
+    front_face: RHIFrontFace = .COUNTER_CLOCKWISE;
+    depth_bias_enable: u32 = RHI_FALSE;
+    depth_bias_constant_factor: float32 = 1.;
+    depth_bias_clamp: float32 = 0.;
+    depth_bias_slope_factor: float32 = 1.;
+    line_width: float32 = 1.;
+}
+
+RHIMultisampleState :: struct {
+    rasterization_samples: RHISampleCount = ._1;
+    sample_shading_enable: u32 = RHI_FALSE;
+    min_sample_shading: float32 = 0.;
+    sample_mask: u32 = 0xFFFFFFFF;
+    alpha_to_coverage_enable: u32 = RHI_FALSE;
+    alpha_to_one_enable: u32 = RHI_FALSE;
+}
+
+RHICompareOp :: enum {
+    NEVER;
+    LESS;
+    EQUAL;
+    LESS_OR_EQUAL;
+    GREATER;
+    NOT_EQUAL;
+    GREATER_OR_EQUAL;
+    ALWAYS;
+}
+
+RHIStencilOp :: enum {
+    KEEP;
+    ZERO;
+    REPLACE;
+    INCREMENT_AND_CLAMP;
+    DECREMENT_AND_CLAMP;
+    INVERT;
+    INCREMENT_AND_WRAP;
+    DECREMENT_AND_WRAP;
+}
+
+RHIStencilOpState :: struct {
+    fail_op: RHIStencilOp;
+    pass_op: RHIStencilOp;
+    depth_fail_op: RHIStencilOp;
+    compare_op: RHIStencilOp;
+    compare_mask: u32;
+    write_mask: u32;
+    reference: u32;
+}
+
+RHIDepthStencilState :: struct {
+    depth_test_enable: u32 = RHI_FALSE;
+    depth_write_enable: u32 = RHI_FALSE;
+    depth_compare_op: RHICompareOp = .ALWAYS;
+    depth_bounds_test_enable: u32 = RHI_FALSE;
+    stencil_test_enable: u32 = RHI_FALSE;
+    front: RHIStencilOpState;
+    back: RHIStencilOpState;
+    min_depth_bounds: float32 = 0.;
+    max_depth_bounds: float32 = 1.;
+}
+
+RHILogicOp :: enum {
+    CLEAR           :: 0;
+    AND             :: 1;
+    AND_REVERSE     :: 2;
+    COPY            :: 3;
+    AND_INVERTED    :: 4;
+    NO_OP           :: 5;
+    XOR             :: 6;
+    OR              :: 7;
+    NOR             :: 8;
+    EQUIVALENT      :: 9;
+    INVERT          :: 10;
+    OR_REVERSE      :: 11;
+    COPY_INVERTED   :: 12;
+    OR_INVERTED     :: 13;
+    NAND            :: 14;
+    SET             :: 15;
+}
+
+RHIBlendFactor :: enum {
+    ZERO                        :: 0;
+    ONE                         :: 1;
+    SRC_COLO                    :: 2;
+    ONE_MINUS_SRC_COLOR         :: 3;
+    DST_COLO                    :: 4;
+    ONE_MINUS_DST_COLOR         :: 5;
+    SRC_ALPH                    :: 6;
+    ONE_MINUS_SRC_ALPHA         :: 7;
+    DST_ALPH                    :: 8;
+    ONE_MINUS_DST_ALPHA         :: 9;
+    CONSTANT_COL                :: 10;
+    ONE_MINUS_CONSTANT_COLOR    :: 11;
+    CONSTANT_ALP                :: 12;
+    ONE_MINUS_CONSTANT_ALPHA    :: 13;
+    SRC_ALPHA_SATURA            :: 14;
+    SRC1_COL                    :: 15;
+    ONE_MINUS_SRC1_COLOR        :: 16;
+    SRC1_ALP                    :: 17;
+    ONE_MINUS_SRC1_ALPHA        :: 18;
+}
+
+RHIBlendOp :: enum {
+    ADD :: 0;
+    SUBTRACT :: 1;
+    REVERSE_SUBTRACT :: 2;
+    MIN :: 3;
+    MAX :: 4;
+}
+
+RHIColorComponentFlags :: enum_flags {
+    R_BIT :: 0x01;
+    G_BIT :: 0x02;
+    B_BIT :: 0x08;
+    A_BIT :: 0x04;
+    ALL_BITS :: R_BIT | G_BIT | B_BIT | A_BIT;
+}
+
+RHIPipelineColorBlendAttachmentState :: struct {
+    blend_enable: bool = false;
+    src_color_blend_factor: RHIBlendFactor = .ZERO;
+    dst_color_blend_factor: RHIBlendFactor = .ZERO;
+    color_blend_op: RHIBlendOp = .ADD;
+    src_alpha_blend_factor: RHIBlendFactor = .ZERO;
+    dst_alpha_blend_factor: RHIBlendFactor = .ZERO;
+    alpha_blend_op: RHIBlendOp = .ADD;
+    color_write_mask: RHIColorComponentFlags = .ALL_BITS;
+}
+
+RHIBlendState :: struct {
+    logic_op_enable: u32 = RHI_FALSE;
+    logic_op: RHILogicOp = .COPY;
+    attachment_count: u32 = 0;
+    attachments: [8] RHIPipelineColorBlendAttachmentState;
+    blend_constants: [4] float;
+}
+
+RHIDynamicStateFlags :: enum_flags {
+    VIEWPORT_BIT                :: 1 << 0;
+    SCISSOR_BIT                 :: 1 << 1;
+    LINE_WIDTH_BIT              :: 1 << 2;
+    DEPTH_BIAS_BIT              :: 1 << 3;
+    BLEND_CONSTANTS_BIT         :: 1 << 4;
+    DEPTH_BOUNDS_BIT            :: 1 << 5;
+    STENCIL_COMPARE_MASK_BIT    :: 1 << 6;
+    STENCIL_WRITE_MASK_BIT      :: 1 << 7;
+    STENCIL_REFERENCE_BIT       :: 1 << 8;
+}
+
+RHIAttachmentFormats :: struct {
+    color_attachment_count: u32 = 0;
+    color_attachment_formats: [8] RHIFormat;
+    depth_stencil_format: RHIFormat;
+}
+
+RHIDescriptorSetLayoutDecl :: struct {
+    layout: *RHIDescriptorSetLayout;
+    used_bindings: [] RHIDescriptorSetLayoutBinding;
+}
+
+RHIFilter :: enum {
+    NEAREST :: 0;
+    LINEAR  :: 1;
+}
+
+RHISamplerMipmapMode :: enum {
+    NEAREST :: 0;
+    LINEAR  :: 1;
+}
+
+RHISamplerAddressMode :: enum {
+    REPEAT                  :: 0;
+    MIRRORED_REPEAT         :: 1;
+    CLAMP_TO_EDGE           :: 2;
+    CLAMP_TO_BORDER         :: 3;
+    MIRROR_CLAMP_TO_EDGE    :: 4;
+}
+
+RHIBorderColor:: enum {
+    FLOAT_TRANSPARENT_BLACK :: 0;
+    INT_TRANSPARENT_BLACK   :: 1;
+    FLOAT_OPAQUE_BLACK      :: 2;
+    INT_OPAQUE_BLACK        :: 3;
+    FLOAT_OPAQUE_WHITE      :: 4;
+    INT_OPAQUE_WHITE        :: 5;
+}
+
+RHIStaticSamplerDesc :: struct {
+    binding: u32;
+    space: u32;
+    stage_flags: RHIShaderStageFlags;
+    mag_filter: RHIFilter;
+    min_filter: RHIFilter;
+
+    mipmap_mode: RHISamplerMipmapMode;
+    address_mode_u: RHISamplerAddressMode;
+    address_mode_v: RHISamplerAddressMode;
+    address_mode_w: RHISamplerAddressMode;
+    
+    mip_lod_bias: float32;
+    anisotropy_enable: bool;
+    max_anisotropy: float32;
+    compare_enable: bool;
+    compare_op: RHICompareOp;
+    min_lod: float32;
+    max_lod: float32;
+    border_color: RHIBorderColor;
+    unnormalized_coordinates: bool;
+}
+
+RHIPipelineLayoutCreateInfo :: struct {
+    descriptor_set_layout_count: u32;
+    descriptor_set_layout_decls: [4] RHIDescriptorSetLayoutDecl;
+    push_const_range: u32;
+    push_const_stage_flags: RHIShaderStageFlags;
+    static_sampler_set: u32;
+    static_sampler_descs: [] RHIStaticSamplerDesc;
+}
+
 rhi_is_stencil_format :: inline (format: RHIFormat) -> bool {
     if format == {
         case .S8_UINT;           #through;
@@ -574,6 +902,9 @@ rhi_usage_flags :: (state: RHIResourceState, is_image: bool) -> u32 {
 
     return flags;
 }
+
+#load "pipeline_builder.jai";
+#load "rhi_defaults.jai";
 
 RHI_BACKEND :: RHIBackend.VULKAN;
 #if RHI_BACKEND == .VULKAN {

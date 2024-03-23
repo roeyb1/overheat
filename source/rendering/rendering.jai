@@ -116,7 +116,7 @@ render_scene :: (camera: *Camera) {
             render_view_handle := views[0];
 
             clear_color := RHIClearColorValue.{
-                _float32 = .[0.1, 0.1, 0.1, 0.1]
+                _float32 = .[0.1, 1.1, 0.1, 0.1]
             };
             range := RHIImageSubresourceRange.{ 0, 1, 0, 1};
             rhi_cmd_clear_image(cmd_list, rdg_get_image(render_view_handle), clear_color, .[range]);
@@ -175,8 +175,9 @@ render_scene :: (camera: *Camera) {
 
 #scope_file
 
-#load "render_graph.jai";
 #load "../rhi/rhi.jai";
+#load "render_graph.jai";
+#load "sprite_rendering.jai";
 
 #import "Sort";
 #import "File";

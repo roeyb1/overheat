@@ -735,13 +735,67 @@ rhi_translate :: (swizzle: RHIComponentSwizzle) -> VkComponentSwizzle {
     return 0;
 }
 
+rhi_translate :: (filter: RHIFilter) -> VkFilter {
+    if filter == {
+        case .NEAREST; return .NEAREST;
+        case .LINEAR; return .LINEAR;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (mode: RHISamplerMipmapMode) -> VkSamplerMipmapMode {
+    if mode == {
+        case .NEAREST; return .NEAREST;
+        case .LINEAR; return .LINEAR;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (address: RHISamplerAddressMode) -> VkSamplerAddressMode {
+    if address == {
+        case .REPEAT; return .REPEAT;
+        case .MIRRORED_REPEAT; return .MIRRORED_REPEAT;
+        case .CLAMP_TO_EDGE; return .CLAMP_TO_EDGE;
+        case .CLAMP_TO_BORDER; return .CLAMP_TO_BORDER;
+        case .MIRROR_CLAMP_TO_EDGE; return .MIRROR_CLAMP_TO_EDGE;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (compare_op: RHICompareOp) -> VkCompareOp {
+    if compare_op == {
+        case .NEVER; return .NEVER;
+        case .LESS; return .LESS;
+        case .EQUAL; return .EQUAL;
+        case .LESS_OR_EQUAL; return .LESS_OR_EQUAL;
+        case .GREATER; return .GREATER;
+        case .NOT_EQUAL; return .NOT_EQUAL;
+        case .GREATER_OR_EQUAL; return .GREATER_OR_EQUAL;
+        case .ALWAYS; return .ALWAYS;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (border_color: RHIBorderColor) -> VkBorderColor {
+    if border_color == {
+        case .FLOAT_TRANSPARENT_BLACK; return .FLOAT_TRANSPARENT_BLACK;
+        case .INT_TRANSPARENT_BLACK; return .INT_TRANSPARENT_BLACK;
+        case .FLOAT_OPAQUE_BLACK; return .FLOAT_OPAQUE_BLACK;
+        case .INT_OPAQUE_BLACK; return .INT_OPAQUE_BLACK;
+        case .FLOAT_OPAQUE_WHITE; return .FLOAT_OPAQUE_WHITE;
+        case .INT_OPAQUE_WHITE; return .INT_OPAQUE_WHITE;
+        case; assert(false); return 0;
+    }
+}
+
 #load "vk_device.jai";
-#load "vk_semaphore.jai";
 #load "vk_debug.jai";
+#load "vk_allocator.jai";
+#load "vk_semaphore.jai";
 #load "vk_resources.jai";
 #load "vk_swapchain.jai";
 #load "vk_descriptor_set.jai";
 #load "vk_cmd_list.jai";
-#load "vk_allocator.jai";
+#load "vk_pipeline.jai";
 
 #import "Vulkan";

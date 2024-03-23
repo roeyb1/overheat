@@ -20,6 +20,22 @@ RHIGraphicsPipelineCreateInfo :: struct {
     layout_create_info: RHIPipelineLayoutCreateInfo;
 }
 
+rhi_default_graphics_pipeline_create_info :: () -> RHIGraphicsPipelineCreateInfo {
+    result: RHIGraphicsPipelineCreateInfo = ---;
+
+    memset(*result, 0 , size_of(RHIGraphicsPipelineCreateInfo));
+
+    result.viewport_state.viewport_count = 1;
+    result.viewport_state.viewports[0] = .{0., 0., 1., 1., 0., 1.};
+    result.viewport_state.scissors[0] = .{.{0, 0}, .{1, 1}};
+    result.input_assembly_state.primitive_topology = .TRIANGLE_LIST;
+    result.multisample_state.rasterization_samples = ._1;
+    result.multisample_state.sample_mask = 0xFFFFFFFF;
+    result.rasterization_state.line_width = 1.;
+
+    return result;
+}
+
 rhi_set_vertex_shader :: (create_info: *RHIGraphicsPipelineCreateInfo, path: string) {
     create_info.vertex_shader.path = path;
 }
@@ -137,7 +153,7 @@ rhi_set_blend_constants :: (create_info: *RHIGraphicsPipelineCreateInfo, blend_c
     }
 }
 
-rhi_set_color_blend_attachment :: (create_info: *RHIGraphicsPipelineCreateInfo, color_blend_attachments: [] RHIPipelineColorBlendAttachmentState) {
+rhi_set_color_blend_attachments :: (create_info: *RHIGraphicsPipelineCreateInfo, color_blend_attachments: [] RHIPipelineColorBlendAttachmentState) {
     assert(color_blend_attachments.count < 8);
     create_info.blend_state.attachment_count = xx color_blend_attachments.count;
     for attach : color_blend_attachments {
