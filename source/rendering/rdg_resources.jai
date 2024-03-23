@@ -108,9 +108,16 @@ rdg_create_image_view :: (rg: *RenderGraph, image_handle: RDGResourceHandle, nam
     return cast (RDGResourceViewHandle) rg.view_descs.count;
 }
 
-rdg_get_image :: (view_handle: RDGResourceHandle) -> *RHIImage {
+rdg_get_image :: (view_handle: RDGResourceViewHandle) -> *RHIImage {
     rg := g_render_graph;
     frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
 
     return frame_resources.resources[rg.view_descs[view_handle - 1].resource_handle - 1].image;
+}
+
+rdg_get_image_view :: (view_handle: RDGResourceViewHandle) -> *RHIImageView {
+    rg := g_render_graph;
+    frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
+
+    return frame_resources.views[view_handle - 1].image_view;
 }

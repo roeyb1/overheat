@@ -2,7 +2,7 @@
 
 sprite_pipeline: RHIGraphicsPipeline;
 
-rhi_init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
+init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
     render_target_formats := RHIFormat.[
         .R16G16B16A16_SFLOAT,
     ];
@@ -58,4 +58,50 @@ rhi_init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
     rhi_set_pipeline_layout_desc(*create_info, layout_decls, push_const_size, 0, static_samplers, 1);
     
     sprite_pipeline = rhi_graphics_pipeline_build(create_info);
+}
+
+
+render_sprite_pass :: (rg: *RenderGraph) -> RDGResourceViewHandle {
+    depth_image_desc := RDGImageDescription.{
+        debug_name = "Sprite Depth Buffer",
+        width = swapchain.extent.width,
+        height = swapchain.extent.height,
+        format = .D32_SFLOAT,
+        usage_flags = .DEPTH_STENCIL_ATTACHMENT_BIT,
+    };
+    depth_image_handle := rdg_create_image(rg, depth_image_desc);
+    depth_image_view := rdg_create_image_view(rg, depth_image_handle, "Sprite Depth Buffer View");
+
+    color_image_desc := RDGImageDescription.{
+        debug_name = "Sprite Color Buffer",
+        width = swapchain.extent.width,
+        height = swapchain.extent.height,
+        format = .R8G8B8A8_SRGB,
+        usage_flags = .COLOR_ATTACHMENT_BIT,
+    };
+
+    color_image_handle := rdg_create_image(rg, color_image_desc);
+    color_image_view := rdg_create_image_view(rg, color_image_handle, "Sprite Color Buffer View");
+
+    sprite_pass_usage_descs := RDGResourceUsageDesc.[
+        .{depth_image_view, .{resource_state = .WRITE_DEPTH_STENCIL}, .{}},
+        .{color_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
+    ];
+
+    rdg_add_pass(rg, "Sprite pass", .GRAPHICS, sprite_pass_usage_descs, (cmd_list: *RHICmdList, views: [] RDGResourceViewHandle) -> () {
+        depth_image_view := views[0];
+        color_image_view := views[1];
+
+        depth_buffer_desc := RHIDepthStencilAttachmentDesc.{
+            image_view = rdg_get_image_view(depth_image_view),
+            load_op = .CLEAR,
+            store_op = .STORE,
+            stencil_load_op = .DONT_CARE,
+            stencil_store_op =.DONT_CARE,
+        };
+
+        
+    });
+
+    return color_image_view;
 }
