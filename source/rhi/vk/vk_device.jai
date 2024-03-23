@@ -219,6 +219,10 @@ destroy_device :: () {
     vkDestroyDevice(device, null);
 }
 
+rhi_device_wait_idle :: () {
+    vkDeviceWaitIdle(device);
+}
+
 rhi_is_dynamic_rendering_ext_supported :: () -> bool {
     // #todo: support non-dynamic rendering ext path.
     return true;

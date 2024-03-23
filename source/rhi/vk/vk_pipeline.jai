@@ -84,6 +84,13 @@ rhi_graphics_pipeline_build :: (create_info: RHIGraphicsPipelineCreateInfo) -> R
     return result;
 }
 
+rhi_graphics_pipeline_destroy :: (pipeline: RHIGraphicsPipeline) {
+    vkDestroyPipeline(device, pipeline.pipeline, null);
+    vkDestroyPipelineLayout(device, pipeline.pipeline_layout, null);
+    vkDestroyDescriptorPool(device, pipeline.static_sampler_descriptor_pool, null);
+    vkDestroyDescriptorSetLayout(device, pipeline.static_sampler_descriptor_set_layout, null);
+}
+
 #scope_file
 
 create_shader_stage :: (shader: RHIShaderStageCreateInfo, stage: VkShaderStageFlagBits) -> VkShaderModule, VkPipelineShaderStageCreateInfo {

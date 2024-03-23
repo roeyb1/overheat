@@ -74,6 +74,7 @@ rhi_image_create :: (image_create_info: RHIImageCreateInfo, required_memory_prop
 rhi_image_destroy :: (image: RHIImage) {
     assert(image.handle != VK_NULL_HANDLE);
 
+    vkFreeMemory(device, image.memory, null);
     vkDestroyImage(device, image.handle, null);
 }
 

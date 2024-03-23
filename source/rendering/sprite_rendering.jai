@@ -60,6 +60,10 @@ init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
     sprite_pipeline = rhi_graphics_pipeline_build(create_info);
 }
 
+destroy_sprite_pipeline :: () {
+    rhi_graphics_pipeline_destroy(sprite_pipeline);
+}
+
 
 render_sprite_pass :: (rg: *RenderGraph) -> RDGResourceViewHandle {
     depth_image_desc := RDGImageDescription.{
@@ -88,9 +92,19 @@ render_sprite_pass :: (rg: *RenderGraph) -> RDGResourceViewHandle {
         .{color_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
     ];
 
-    rdg_add_pass(rg, "Sprite pass", .GRAPHICS, sprite_pass_usage_descs, (cmd_list: *RHICmdList, views: [] RDGResourceViewHandle) -> () {
-        depth_image_view := views[0];
-        color_image_view := views[1];
+    PassData :: struct {
+        depth_image_view: RDGResourceViewHandle;
+        color_image_view: RDGResourceViewHandle;
+    };
+
+    pass_data := rdg_allocate_pass_data(rg, PassData);
+    pass_data.depth_image_view = depth_image_view;
+    pass_data.color_image_view = color_image_view;
+
+    rdg_add_pass(rg, "Sprite pass", .GRAPHICS, sprite_pass_usage_descs, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
+        pass_data := cast(*PassData) pass_data_ptr;
+        depth_image_view := pass_data.color_image_view;
+        color_image_view := pass_data.depth_image_view;
 
         depth_buffer_desc := RHIDepthStencilAttachmentDesc.{
             image_view = rdg_get_image_view(depth_image_view),

@@ -50,6 +50,11 @@ rdg_init_view_registry :: (using view_registry: *RDGViewRegistry) {
     rhi_descriptor_set_allocate(*view_registry.descriptor_set_pool, 2, view_registry.descriptor_sets);
 }
 
+rdg_destroy_view_registry :: (view_registry: *RDGViewRegistry) {
+    rhi_descriptor_pool_destroy(view_registry.descriptor_set_pool);
+    rhi_descriptor_set_layout_destroy(view_registry.descriptor_set_layout);
+}
+
 rdg_create_texture_view_handle :: (view_registry: *RDGViewRegistry, image_view: *RHIImageView, transient: bool) -> RDGTextureViewHandle {
     return cast(RDGTextureViewHandle) rdg_create_view_handle(view_registry, *view_registry.texture_handles, RHI_TEXTURE_BINDING, transient, .TEXTURE, image_view, null, null);
 }

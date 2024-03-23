@@ -1,6 +1,6 @@
 #scope_export
 
-RDGPassFunction :: #type (cmd_list: *RHICmdList, views: [] RDGResourceViewHandle) -> ();
+RDGPassFunction :: #type (cmd_list: *RHICmdList, pass_data: *void) -> ();
 
 RDGResourceHandle      :: u32;
 RDGResourceViewHandle  :: u32;
@@ -138,7 +138,7 @@ RDGPassData :: struct {
     debug_name: string;
 
     pass_func: RDGPassFunction;
-    views: [..] RDGResourceViewHandle;
+    user_data: *void;
 
     queue: *RHIQueue;
     signal_value: u64;
@@ -202,7 +202,23 @@ rdg_initialize :: (rg: *RenderGraph) {
 }
 
 rdg_shutdown :: (rg: *RenderGraph) {
-    // #todo
+    for 0..RDG_NUM_FRAMES-1 {
+        rdg_next_frame(rg);
+    }
+
+    for 0..RDG_NUM_FRAMES-1 {
+        for *cmd_pool : rg.per_frame_resources[it].frame_cmd_pools.cmd_pools {
+            rhi_cmd_pool_destroy(cmd_pool);
+        }
+        free(rg.per_frame_resources[it].resources.data);
+        free(rg.per_frame_resources[it].views.data);
+    }
+
+    for 0..RHI_QUEUE_COUNT-1 {
+        rhi_semaphore_destroy(rg.semaphores[it]);
+    }
+
+    rdg_destroy_view_registry(*rg.view_registry);
 }
 
 rdg_next_frame :: (rg: *RenderGraph) {
@@ -256,15 +272,23 @@ rdg_next_frame :: (rg: *RenderGraph) {
     deinit(*rg.culled_resources);
 }
 
-rdg_add_pass :: (rg: *RenderGraph, name: string, queue_type: RHIQueueType, usage_descs: [] RDGResourceUsageDesc, pass_func: RDGPassFunction) {
+rdg_allocate_pass_data :: (rg: *RenderGraph, $type: Type) -> *type {
+    // #todo: allocate from a linear allocator that can be freed when graph finishes executing
+    return New(type);
+}
+
+rdg_free_pass_datas :: (rg: *RenderGraph) {
+    for pass : rg.passes {
+        free(pass.user_data);
+    }
+}
+
+rdg_add_pass :: (rg: *RenderGraph, name: string, queue_type: RHIQueueType, usage_descs: [] RDGResourceUsageDesc, user_data: *void, pass_func: RDGPassFunction) {
     pass_data: RDGPassData;
     pass_data.pass_func = pass_func;
     pass_data.debug_name = name;
     pass_data.queue = *rhi_queues[queue_type];
-
-    for *usage : usage_descs {
-        array_add(*pass_data.views, usage.view_handle);
-    }
+    pass_data.user_data = user_data;
 
     pass_index := cast (u16) rg.passes.count;
     array_add(*rg.passes, pass_data);
@@ -729,7 +753,7 @@ rdg_record_and_submit :: (rg: *RenderGraph) {
                 rhi_cmd_barrier(cmd_list, pass_data.before_barriers);
             }
 
-            pass_data.pass_func(cmd_list, pass_data.views);
+            pass_data.pass_func(cmd_list, pass_data.user_data);
 
             if pass_data.after_barriers.count > 0 {
                 rhi_cmd_barrier(cmd_list, pass_data.after_barriers);
@@ -775,6 +799,9 @@ rdg_record_and_submit :: (rg: *RenderGraph) {
     for 0..RHI_QUEUE_COUNT-1 {
         rg.semaphore_values[it] = frame_resources.final_wait_values[it];
     }
+
+    // free all user datas
+    rdg_free_pass_datas(rg);
 }
 
 rdg_frame_cmd_pool_acquire :: (frame_pools: *RDGFrameCmdPools, queue: *RHIQueue) -> *RHICmdList {

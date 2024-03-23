@@ -40,6 +40,8 @@ rendering_init :: () -> bool {
     rdg_initialize(*g_render_graph);
     rdg_init_view_registry(*g_render_graph.view_registry);
 
+    //init_sprite_pipeline(*g_render_graph.view_registry.descriptor_set_layout);
+
     recompute_camera_projection(*main_view_camera);
 
     log("Rendering systems initialized successfully");
@@ -47,7 +49,9 @@ rendering_init :: () -> bool {
 }
 
 rendering_shutdown :: () {
-    vkDeviceWaitIdle(device);
+    rhi_device_wait_idle();
+
+    //destroy_sprite_pipeline();
 
     rdg_shutdown(*g_render_graph);
 
@@ -112,8 +116,16 @@ render_scene :: (camera: *Camera) {
             .{}
         };
 
-        rdg_add_pass(rg, "Clear Render Image", .GRAPHICS, .[usage_desc], (cmd_list: *RHICmdList, views: [] RDGResourceViewHandle) -> () {
-            render_view_handle := views[0];
+        PassData :: struct {
+            render_view_handle: RDGResourceViewHandle;
+        };
+
+        pass_data := rdg_allocate_pass_data(rg, PassData);
+        pass_data.render_view_handle = render_view_handle;
+
+        rdg_add_pass(rg, "Clear Render Image", .GRAPHICS, .[usage_desc], pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
+            pass_data := cast(*PassData) pass_data_ptr;
+            render_view_handle := pass_data.render_view_handle;
 
             clear_color := RHIClearColorValue.{
                 _float32 = .[0.1, 1.1, 0.1, 0.1]
@@ -138,9 +150,19 @@ render_scene :: (camera: *Camera) {
             usage_descs[0] = RDGResourceUsageDesc.{view_handle = render_view_handle, state_and_stage = .{resource_state = .READ_TRANSFER}};
             usage_descs[1] = RDGResourceUsageDesc.{view_handle = swapchain_view_handle, state_and_stage = .{resource_state = .WRITE_TRANSFER}};
 
-            rdg_add_pass(rg, "Copy to Swapchain", .GRAPHICS, usage_descs, (cmd_list: *RHICmdList, views: [] RDGResourceViewHandle) -> () {
-                render_image_view := views[0];
-                swapchain_image_view := views[1];
+            PassData :: struct {
+                render_view_handle: RDGResourceViewHandle;
+                swapchain_view_handle: RDGResourceViewHandle;
+            };
+
+            pass_data := rdg_allocate_pass_data(rg, PassData);
+            pass_data.render_view_handle = render_view_handle;
+            pass_data.swapchain_view_handle = swapchain_view_handle;
+
+            rdg_add_pass(rg, "Copy to Swapchain", .GRAPHICS, usage_descs, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
+                pass_data := cast(*PassData) pass_data_ptr;
+                render_image_view := pass_data.render_view_handle;
+                swapchain_image_view := pass_data.swapchain_view_handle;
 
                 image_copies := RHIImageCopy.[.{
                     src_layer_count = 1,
@@ -152,15 +174,17 @@ render_scene :: (camera: *Camera) {
             });
         }
 
-        present_transition_usages := RDGResourceUsageDesc.{
-            swapchain_view_handle,
-            .{ resource_state = RHIResourceState.PRESENT },
-            .{},
-        };
+        {
+            present_transition_usages := RDGResourceUsageDesc.{
+                swapchain_view_handle,
+                .{ resource_state = RHIResourceState.PRESENT },
+                .{},
+            };
 
-        rdg_add_pass(rg, "Present Transition", .GRAPHICS, .[present_transition_usages], (cmd_list: *RHICmdList, views: [] RDGResourceViewHandle) -> () {
-            rhi_cmd_debug_label_insert(cmd_list, "Present");
-        });
+            rdg_add_pass(rg, "Present Transition", .GRAPHICS, .[present_transition_usages], null, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
+                rhi_cmd_debug_label_insert(cmd_list, "Present");
+            });
+        }
     }
 
     rdg_flush_resource_view_updates(*rg.view_registry);
