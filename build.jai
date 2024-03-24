@@ -42,11 +42,11 @@ build :: () {
 
     copy_module_libraries_to_target(target_options);
 
-    shader_dir := "assets/shaders";
-    if !compile_shaders(shader_dir, debug_symbols=true) {
-        compiler_set_workspace_status(.FAILED);
-        return;
-    }
+    //shader_dir := "assets/shaders";
+    //if !compile_shaders(shader_dir, debug_symbols=true) {
+    //    compiler_set_workspace_status(.FAILED);
+    //    return;
+    //}
 
     // This metaprogram should not generate any output executable:
     set_build_options_dc(.{do_output=false});

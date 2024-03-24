@@ -2,6 +2,10 @@
 
 sprite_pipeline: RHIGraphicsPipeline;
 
+SpritePushConst :: struct {
+    spritesheet_index: u32;
+}
+
 init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
     render_target_formats := RHIFormat.[
         .R16G16B16A16_SFLOAT,
@@ -30,8 +34,8 @@ init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
 
 
     create_info := rhi_default_graphics_pipeline_create_info();
-    rhi_set_vertex_shader(*create_info, "sprite.vert");
-    rhi_set_pixel_shader(*create_info, "sprite.frag");
+    rhi_set_vertex_shader(*create_info, "sprite_vs");
+    rhi_set_pixel_shader(*create_info, "sprite_ps");
     rhi_set_vertex_binding_descs(*create_info, binding_descs);
     rhi_set_vertex_attrib_descs(*create_info, attribute_descs);
     rhi_set_color_blend_attachments(*create_info, blend_states);
@@ -53,9 +57,9 @@ init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
         rhi_static_anisotropic_repeat_sampler(0, 0, .PIXEL_BIT),
     ];
 
-    push_const_size: u32 = 0;
+    push_const_size: u32 = size_of(SpritePushConst);
 
-    rhi_set_pipeline_layout_desc(*create_info, layout_decls, push_const_size, 0, static_samplers, 1);
+    rhi_set_pipeline_layout_desc(*create_info, layout_decls, push_const_size, .PIXEL_BIT, static_samplers, 1);
     
     sprite_pipeline = rhi_graphics_pipeline_build(create_info);
 }

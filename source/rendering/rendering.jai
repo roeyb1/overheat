@@ -30,6 +30,8 @@ Sprite_Draw_Cmd :: struct {
 rendering_init :: () -> bool {
     log("Initialized rendering systems...");
 
+    compile_shaders("assets/shaders", true);
+
     game_window = create_window(g_window_width, g_window_height, "Overheat");
 
     init_rhi();
