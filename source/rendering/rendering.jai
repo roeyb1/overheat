@@ -305,6 +305,12 @@ destroy_rendering_resources :: () {
     for 0..RDG_NUM_FRAMES-1 {
         rhi_linear_allocator_destroy(*constant_buff_linear_allocs[it]);
         rhi_buffer_destroy(*constant_buffers[it]);
+
+        rhi_linear_allocator_destroy(*vertex_buffer_allocators[it]);
+        rhi_buffer_destroy(*vertex_buffers[it]);
+
+        rhi_linear_allocator_destroy(*index_buffer_allocators[it]);
+        rhi_buffer_destroy(*index_buffers[it]);
     }
 }
 
