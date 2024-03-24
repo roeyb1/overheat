@@ -934,6 +934,7 @@ rhi_usage_flags :: (state: RHIResourceState, is_image: bool) -> u32 {
 #load "pipeline_builder.jai";
 #load "rhi_defaults.jai";
 #load "rhi_debug.jai";
+#load "linear_gpu_allocator.jai";
 
 RHI_BACKEND :: RHIBackend.VULKAN;
 #if RHI_BACKEND == .VULKAN {

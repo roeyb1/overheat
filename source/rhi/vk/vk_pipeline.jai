@@ -211,8 +211,10 @@ create_pipeline_layout :: (layout_create_info: RHIPipelineLayoutCreateInfo, out_
         size = layout_create_info.push_const_range
     };
 
+
+    set_layout_count := ifx (<<out_static_sampler_descriptor_set_layout != VK_NULL_HANDLE) then (layout_create_info.descriptor_set_layout_count + 1) else (layout_create_info.descriptor_set_layout_count);
     pipeline_layout_create_info := VkPipelineLayoutCreateInfo.{
-        setLayoutCount = xx ifx (<<out_static_sampler_descriptor_set_layout != VK_NULL_HANDLE) then (layout_create_info.descriptor_set_layout_count + 1) else (layout_create_info.descriptor_set_layout_count),
+        setLayoutCount = xx set_layout_count,
         pSetLayouts = vk_layouts.data,
         pushConstantRangeCount = xx ifx layout_create_info.push_const_range > 0 then 1 else 0,
         pPushConstantRanges = ifx layout_create_info.push_const_range > 0 then *push_constant_range else null,

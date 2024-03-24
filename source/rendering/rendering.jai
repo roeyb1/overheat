@@ -42,7 +42,7 @@ rendering_init :: () -> bool {
     rdg_initialize(*g_render_graph);
     rdg_init_view_registry(*g_render_graph.view_registry);
 
-    init_sprite_pipeline(*g_render_graph.view_registry.descriptor_set_layout);
+    init_rendering_resources();
 
     recompute_camera_projection(*main_view_camera);
 
@@ -53,7 +53,7 @@ rendering_init :: () -> bool {
 rendering_shutdown :: () {
     rhi_device_wait_idle();
 
-    destroy_sprite_pipeline();
+    destroy_rendering_resources();
 
     rdg_shutdown(*g_render_graph);
 
@@ -94,11 +94,23 @@ DrawBucket :: struct {
     count: u64;
     sprite_sheet: *SpriteSheet;
 }
+
+
+constant_buffers: [RDG_NUM_FRAMES] RHIBuffer;
+constant_buff_linear_allocs: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
+
+offset_buffer_descriptor_set_layout: RHIDescriptorSetLayout;
+offset_buffer_descriptor_pool: RHIDescriptorPool;
+offset_buffer_descriptor_sets: [RDG_NUM_FRAMES] RHIDescriptorSet;
+
 #scope_export
 
 render_scene :: (camera: *Camera) {
     rg := *g_render_graph;
-    rdg_next_frame(rg);
+    frame_number := rdg_next_frame(rg);
+    resource_index := frame_number % RDG_NUM_FRAMES;
+
+    rhi_reset(*constant_buff_linear_allocs[resource_index]);
 
     render_image_desc := RDGImageDescription.{
         debug_name = "Render Image",
@@ -195,6 +207,66 @@ render_scene :: (camera: *Camera) {
 
     rhi_swapchain_present(rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS], rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS] + 1);
     rg.semaphore_values[RHIQueueIndex.GRAPHICS] += 1;
+}
+
+init_rendering_resources :: () {
+    // constant buffer:
+    {
+        create_info := RHIBufferCreateInfo.{
+            size = 1024 * 1024 * 4,
+            usage_flags = .CONSTANT_BUFFER_BIT,
+            create_flags = 0,
+        };
+
+        constant_buffers[0] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
+        constant_buffers[1] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
+        rhi_debug_set_object_name(*constant_buffers[0], "Constant Buffer 0");
+        rhi_debug_set_object_name(*constant_buffers[0], "Constant Buffer 1");
+
+        constant_buff_linear_allocs[0] = rhi_linear_allocator_init(*constant_buffers[0]);
+        constant_buff_linear_allocs[1] = rhi_linear_allocator_init(*constant_buffers[1]);
+
+        binding := RHIDescriptorSetLayoutBinding.{
+            descriptor_type = .OFFSET_CONSTANT_BUFFER,
+            binding = 0, space = 0, descriptor_count = 1,
+            stage_flags = .ALL_STAGES,
+        };
+
+        offset_buffer_descriptor_set_layout = rhi_descriptor_set_layout_create(.[binding]);
+        offset_buffer_descriptor_pool = rhi_descriptor_pool_create(RDG_NUM_FRAMES, *offset_buffer_descriptor_set_layout);
+        rhi_descriptor_set_allocate(*offset_buffer_descriptor_pool, RDG_NUM_FRAMES, offset_buffer_descriptor_sets);
+
+        for 0..RDG_NUM_FRAMES-1 {
+            update := RHIDescriptorSetUpdate.{
+                dst_binding = 0, dst_array_element = 0, descriptor_count = 1,
+                descriptor_type = .OFFSET_CONSTANT_BUFFER
+            };
+
+            update.buffer_info = RHIDescriptorBufferInfo.{
+                buffer = *constant_buffers[it],
+                offset = 0,
+                range = constant_buffers[it].desc.size,
+                structure_byte_stride = 0,
+            };
+
+            rhi_descriptor_set_update(offset_buffer_descriptor_sets[it], .[update]);
+        }
+    }
+
+    init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_render_graph.view_registry.descriptor_set_layout);
+}
+
+destroy_rendering_resources :: () {
+    rhi_descriptor_pool_reset(*offset_buffer_descriptor_pool);
+    rhi_descriptor_pool_destroy(offset_buffer_descriptor_pool);
+    rhi_descriptor_set_layout_destroy(offset_buffer_descriptor_set_layout);
+
+    destroy_sprite_pipeline();
+
+    for 0..RDG_NUM_FRAMES-1 {
+        rhi_linear_allocator_destroy(*constant_buff_linear_allocs[it]);
+        rhi_buffer_destroy(*constant_buffers[it]);
+    }
 }
 
 #import "Window_Creation";

@@ -221,7 +221,7 @@ rdg_shutdown :: (rg: *RenderGraph) {
     rdg_destroy_view_registry(*rg.view_registry);
 }
 
-rdg_next_frame :: (rg: *RenderGraph) {
+rdg_next_frame :: (rg: *RenderGraph) -> u64 {
     rg.frame_number += 1;
 
     // wait on semaphore and clean up old frame resources once it completes: 
@@ -270,6 +270,8 @@ rdg_next_frame :: (rg: *RenderGraph) {
         array_reset_keeping_memory(*rg.external_release_barriers[it_index]);
     }
     deinit(*rg.culled_resources);
+
+    return rg.frame_number;
 }
 
 rdg_allocate_pass_data :: (rg: *RenderGraph, $type: Type) -> *type {

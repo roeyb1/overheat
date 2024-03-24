@@ -286,7 +286,8 @@ rhi_descriptor_set_update :: (set: RHIDescriptorSet, updates: [] RHIDescriptorSe
                 case .CONSTANT_BUFFER;
                     for k : 0..update.descriptor_count-1 {
                         buffer_info := ifx update.buffer_infos.count > 0 then update.buffer_infos[k] else *update.buffer_info;
-                        array_add(*buffer_infos, VkDescriptorBufferInfo.{buffer_info.buffer.handle, buffer_info.offset, buffer_info.range});
+                        range := min(physical_device_properties.limits.maxUniformBufferRange, cast(u32) buffer_info.range);
+                        array_add(*buffer_infos, VkDescriptorBufferInfo.{buffer_info.buffer.handle, buffer_info.offset, range});
                     }
                     write.descriptorType = .UNIFORM_BUFFER;
                     write.pBufferInfo = buffer_infos.data + (buffer_infos.count - update.descriptor_count);
@@ -302,7 +303,8 @@ rhi_descriptor_set_update :: (set: RHIDescriptorSet, updates: [] RHIDescriptorSe
                     write.pBufferInfo = buffer_infos.data + (buffer_infos.count - update.descriptor_count);
                 case .OFFSET_CONSTANT_BUFFER;
                     buffer_info := ifx update.buffer_infos.count > 0 then update.buffer_infos[0] else *update.buffer_info;
-                    array_add(*buffer_infos, VkDescriptorBufferInfo.{buffer_info.buffer.handle, buffer_info.offset, buffer_info.range});
+                    range := min(physical_device_properties.limits.maxUniformBufferRange, cast(u32) buffer_info.range);
+                    array_add(*buffer_infos, VkDescriptorBufferInfo.{buffer_info.buffer.handle, buffer_info.offset, range});
                     write.descriptorType = .UNIFORM_BUFFER_DYNAMIC;
                     write.pBufferInfo = buffer_infos.data + (buffer_infos.count - 1);
                 case;

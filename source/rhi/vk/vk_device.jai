@@ -126,6 +126,7 @@ init_device :: () {
     }
 
     unique_queue_families: [..] u32;
+    unique_queue_families.allocator = temp;
 
     array_add(*unique_queue_families, graphics_family_index);
     if unique_queue_families[0] != transfer_family_index {
@@ -197,7 +198,9 @@ init_device :: () {
     assert(result == .SUCCESS);
     
     vkGetDeviceQueue(device, graphics_family_index, queueIndex=0, *rhi_queues[RHIQueueType.GRAPHICS].handle);
+    rhi_queues[RHIQueueType.GRAPHICS].queue_family_index = graphics_family_index;
     vkGetDeviceQueue(device, transfer_family_index, queueIndex=0, *rhi_queues[RHIQueueType.TRANSFER].handle);
+    rhi_queues[RHIQueueType.TRANSFER].queue_family_index = transfer_family_index;
 
     // #todo: unique compute queue:
     rhi_queues[RHIQueueType.COMPUTE] = rhi_queues[RHIQueueType.GRAPHICS];
@@ -303,4 +306,26 @@ rhi_queue_submit :: (queue: *RHIQueue, submit_infos: [] *RHISubmitInfo) {
     }
 
     vk_check_result(vkQueueSubmit(queue.handle, xx submit_infos_vk.count, submit_infos_vk.data, VK_NULL_HANDLE));
+}
+
+rhi_get_buffer_alignment :: (buffer_type: RHIDescriptorType, element_size: u64) -> u64 {
+    if buffer_type == {
+        case .TYPED_BUFFER;
+            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+        case .RW_TYPED_BUFFER;
+            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+        case .CONSTANT_BUFFER;
+            return physical_device_properties.limits.minUniformBufferOffsetAlignment;
+        case .BYTE_BUFFER;
+            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+        case .RW_BYTE_BUFFER;
+            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+        case .STRUCTURED_BUFFER;
+            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+        case .RW_STRUCTURED_BUFFER;
+            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+        case .OFFSET_CONSTANT_BUFFER;
+            return physical_device_properties.limits.minUniformBufferOffsetAlignment;
+        case; assert(false); return 0;
+    }
 }

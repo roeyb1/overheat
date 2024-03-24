@@ -6,7 +6,7 @@ SpritePushConst :: struct {
     spritesheet_index: u32;
 }
 
-init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
+init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
     render_target_formats := RHIFormat.[
         .R16G16B16A16_SFLOAT,
     ];
@@ -44,12 +44,20 @@ init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
     rhi_set_depth_stencil_attachment_format(*create_info, .D32_SFLOAT);
     rhi_set_color_attachment_formats(*create_info, render_target_formats);
 
+    used_offset_buffer_binding := RHIDescriptorSetLayoutBinding.[.{
+        descriptor_type = .OFFSET_CONSTANT_BUFFER,
+        binding = 0,
+        space = 0,
+        descriptor_count = 1,
+        stage_flags = .ALL_STAGES,
+    }];
 
     used_bindless_bindings := RHIDescriptorSetLayoutBinding.[
         rhi_bindless_descriptor_set_layout_binding(.TEXTURE, 0, .PIXEL_BIT), // spritesheet textures
     ];
 
     layout_decls := RHIDescriptorSetLayoutDecl.[
+        .{offset_buffer_set_layout, used_offset_buffer_binding },
         .{bindless_set_layout, used_bindless_bindings }
     ];
 
@@ -59,7 +67,7 @@ init_sprite_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
 
     push_const_size: u32 = size_of(SpritePushConst);
 
-    rhi_set_pipeline_layout_desc(*create_info, layout_decls, push_const_size, .PIXEL_BIT, static_samplers, 1);
+    rhi_set_pipeline_layout_desc(*create_info, layout_decls, push_const_size, .PIXEL_BIT, static_samplers, 2);
     
     sprite_pipeline = rhi_graphics_pipeline_build(create_info);
 }

@@ -115,8 +115,17 @@ rhi_buffer_create :: (buffer_create_info: RHIBufferCreateInfo, required_flags: R
 
     // #todo: allocate from a pool
     result: *RHIBuffer = alloc(size_of(RHIBuffer));
-    << result = .{ handle = handle, memory = device_memory };
+    << result = .{ handle = handle, memory = device_memory, desc = buffer_create_info};
     return result;
+}
+
+rhi_buffer_map :: (buffer: *RHIBuffer) -> *void {
+    ptr: *void = null;
+    vk_check_result(vkMapMemory(device, buffer.memory, 0, VK_WHOLE_SIZE, 0, *ptr));
+    return ptr;
+}
+rhi_buffer_unmap :: (buffer: *RHIBuffer) {
+    vkUnmapMemory(device, buffer.memory);
 }
 
 rhi_image_view_create :: (create_info: RHIImageViewCreateInfo) -> *RHIImageView {
@@ -151,7 +160,8 @@ rhi_image_view_destroy :: (image_view: RHIImageView) {
 }
 
 rhi_buffer_destroy :: (buffer: RHIBuffer) {
-    assert(false); // nyi
+    vkFreeMemory(device, buffer.memory, null);
+    vkDestroyBuffer(device, buffer.handle, null);
 }
 
 rhi_buffer_view_create :: (create_info: RHIBufferViewCreateInfo) -> *RHIBufferView {
