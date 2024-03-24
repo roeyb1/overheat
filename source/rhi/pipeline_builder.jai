@@ -7,7 +7,7 @@ RHIGraphicsPipelineCreateInfo :: struct {
     geometry_shader: RHIShaderStageCreateInfo;
     pixel_shader: RHIShaderStageCreateInfo;
 
-    vertex_input_stage: RHIVertexInputState;
+    vertex_input_state: RHIVertexInputState;
     input_assembly_state: RHIInputAssemblyState;
     tessellation_state: RHITessellationState;
     viewport_state: RHIViewportState;
@@ -55,18 +55,18 @@ rhi_set_pixel_shader :: (create_info: *RHIGraphicsPipelineCreateInfo, path: stri
 rhi_set_vertex_binding_descs :: (create_info: *RHIGraphicsPipelineCreateInfo, descs: [] RHIVertexInputBindingDesc) {
     assert(descs.count < RHIVertexInputState.MAX_VERTEX_BINDING_DESCRIPTIONS);
 
-    create_info.vertex_input_stage.vertex_binding_count = xx descs.count;
+    create_info.vertex_input_state.vertex_binding_count = xx descs.count;
     for desc : descs {
-        create_info.vertex_input_stage.vertex_binding_descs[it_index] = desc;
+        create_info.vertex_input_state.vertex_binding_descs[it_index] = desc;
     }
 }
 
 rhi_set_vertex_attrib_descs :: (create_info: *RHIGraphicsPipelineCreateInfo, descs: [] RHIVertexInputAttributeDesc) {
     assert(descs.count < RHIVertexInputState.MAX_VERTEX_ATTRIBUTE_DESCRIPTIONS);
 
-    create_info.vertex_input_stage.vertex_attribute_count = xx descs.count;
+    create_info.vertex_input_state.vertex_attribute_count = xx descs.count;
     for desc : descs {
-        create_info.vertex_input_stage.vertex_attribute_descs[it_index] = desc;
+        create_info.vertex_input_state.vertex_attribute_descs[it_index] = desc;
     }
 }
 

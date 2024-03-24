@@ -34,6 +34,8 @@ vkCmdInsertDebugUtilsLabelEXT: PFN_vkCmdInsertDebugUtilsLabelEXT;
 vkCmdBeginDebugUtilsLabelEXT: PFN_vkCmdBeginDebugUtilsLabelEXT;
 vkCmdEndDebugUtilsLabelEXT: PFN_vkCmdEndDebugUtilsLabelEXT;
 vkSetDebugUtilsObjectNameEXT: PFN_vkSetDebugUtilsObjectNameEXT;
+vkCmdBeginRenderingKHR : PFN_vkCmdBeginRenderingKHR;
+vkCmdEndRenderingKHR : PFN_vkCmdEndRenderingKHR;
 
 init_device :: () {
     device_handles: [..] VkPhysicalDevice;
@@ -214,6 +216,8 @@ init_device :: () {
     vkCmdBeginDebugUtilsLabelEXT = cast(PFN_vkCmdBeginDebugUtilsLabelEXT) vkGetDeviceProcAddr(device, "vkCmdBeginDebugUtilsLabelEXT");
     vkCmdEndDebugUtilsLabelEXT = cast(PFN_vkCmdEndDebugUtilsLabelEXT) vkGetDeviceProcAddr(device, "vkCmdEndDebugUtilsLabelEXT");
     vkSetDebugUtilsObjectNameEXT = cast(PFN_vkSetDebugUtilsObjectNameEXT) vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
+    vkCmdBeginRenderingKHR = cast(PFN_vkCmdBeginRenderingKHR) vkGetDeviceProcAddr(device, "vkCmdBeginRenderingKHR");
+    vkCmdEndRenderingKHR = cast(PFN_vkCmdEndRenderingKHR) vkGetDeviceProcAddr(device, "vkCmdEndRenderingKHR");
 
     rhi_allocator_init();
 }
@@ -308,24 +312,24 @@ rhi_queue_submit :: (queue: *RHIQueue, submit_infos: [] *RHISubmitInfo) {
     vk_check_result(vkQueueSubmit(queue.handle, xx submit_infos_vk.count, submit_infos_vk.data, VK_NULL_HANDLE));
 }
 
-rhi_get_buffer_alignment :: (buffer_type: RHIDescriptorType, element_size: u64) -> u64 {
+rhi_get_buffer_alignment :: (buffer_type: RHIDescriptorType, element_size: s64) -> s64 {
     if buffer_type == {
         case .TYPED_BUFFER;
-            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+            return xx physical_device_properties.limits.minStorageBufferOffsetAlignment;
         case .RW_TYPED_BUFFER;
-            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+            return xx physical_device_properties.limits.minStorageBufferOffsetAlignment;
         case .CONSTANT_BUFFER;
-            return physical_device_properties.limits.minUniformBufferOffsetAlignment;
+            return xx physical_device_properties.limits.minUniformBufferOffsetAlignment;
         case .BYTE_BUFFER;
-            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+            return xx physical_device_properties.limits.minStorageBufferOffsetAlignment;
         case .RW_BYTE_BUFFER;
-            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+            return xx physical_device_properties.limits.minStorageBufferOffsetAlignment;
         case .STRUCTURED_BUFFER;
-            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+            return xx physical_device_properties.limits.minStorageBufferOffsetAlignment;
         case .RW_STRUCTURED_BUFFER;
-            return physical_device_properties.limits.minStorageBufferOffsetAlignment;
+            return xx physical_device_properties.limits.minStorageBufferOffsetAlignment;
         case .OFFSET_CONSTANT_BUFFER;
-            return physical_device_properties.limits.minUniformBufferOffsetAlignment;
+            return xx physical_device_properties.limits.minUniformBufferOffsetAlignment;
         case; assert(false); return 0;
     }
 }

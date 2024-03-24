@@ -4,11 +4,12 @@ sprite_pipeline: RHIGraphicsPipeline;
 
 SpritePushConst :: struct {
     spritesheet_index: u32;
+    sprite_index: u32;
 }
 
 init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
     render_target_formats := RHIFormat.[
-        .R16G16B16A16_SFLOAT,
+        .R8G8B8A8_UNORM,
     ];
 
     blend_states := RHIPipelineColorBlendAttachmentState.[
@@ -76,8 +77,11 @@ destroy_sprite_pipeline :: () {
     rhi_graphics_pipeline_destroy(sprite_pipeline);
 }
 
+render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResourceViewHandle {
+    draws: [..] SpriteDrawData;
+    draws.allocator = temp;
+    collect_sprite_draw_batches(*draws);
 
-render_sprite_pass :: (rg: *RenderGraph) -> RDGResourceViewHandle {
     depth_image_desc := RDGImageDescription.{
         debug_name = "Sprite Depth Buffer",
         width = swapchain.extent.width,
@@ -107,27 +111,121 @@ render_sprite_pass :: (rg: *RenderGraph) -> RDGResourceViewHandle {
     PassData :: struct {
         depth_image_view: RDGResourceViewHandle;
         color_image_view: RDGResourceViewHandle;
+
+        instance_buffer: RDGResourceViewHandle;
+        
+        view_data: *RenderViewData;
+        sprite_datas: [] SpriteDrawData;
     };
 
     pass_data := rdg_allocate_pass_data(rg, PassData);
     pass_data.depth_image_view = depth_image_view;
     pass_data.color_image_view = color_image_view;
+    pass_data.view_data = view_data;
+    pass_data.sprite_datas = draws;
 
     rdg_add_pass(rg, "Sprite pass", .GRAPHICS, sprite_pass_usage_descs, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
         pass_data := cast(*PassData) pass_data_ptr;
-        depth_image_view := pass_data.color_image_view;
-        color_image_view := pass_data.depth_image_view;
+        view_data := pass_data.view_data;
+        depth_image_view := pass_data.depth_image_view;
+        color_image_view := pass_data.color_image_view;
 
         depth_buffer_desc := RHIDepthStencilAttachmentDesc.{
             image_view = rdg_get_image_view(depth_image_view),
             load_op = .CLEAR,
             store_op = .STORE,
             stencil_load_op = .DONT_CARE,
-            stencil_store_op =.DONT_CARE,
+            stencil_store_op = .DONT_CARE,
         };
 
-        
+        color_buffer_desc := RHIColorAttachmentDesc.{
+            image_view = rdg_get_image_view(color_image_view),
+            load_op = .CLEAR,
+            store_op = .STORE,
+        };
+
+        render_rect := RHIRect.{ .{0, 0}, .{g_window_width, g_window_height}};
+
+        rhi_cmd_begin_renderpass(cmd_list, .[color_buffer_desc], *depth_buffer_desc, render_rect, true);
+        {
+            viewport := RHIViewport.{ 0, 0, cast(float) g_window_width, cast(float) g_window_height, 0., 1.};
+            scissor := RHIRect.{.{0, 0}, .{g_window_width, g_window_height}};
+
+            rhi_cmd_set_viewport(cmd_list, 0, .[viewport]);
+            rhi_cmd_set_scissor(cmd_list, 0, .[scissor]);
+
+            PassConstants :: struct {
+                view_projection_matrix: Matrix4;
+                camera_position: Vector3;
+            }
+            pass_consts: PassConstants = ---;
+            pass_consts.view_projection_matrix = pass_data.view_data.camera_proj;
+            pass_consts.camera_position = pass_data.view_data.camera_position;
+
+            pass_const_addr := rhi_upload_struct(pass_data.view_data.constant_buffer_allocator, .OFFSET_CONSTANT_BUFFER, pass_consts);
+
+            rhi_cmd_bind_pipeline(cmd_list, *sprite_pipeline);
+
+            descriptor_sets := RHIDescriptorSet.[ pass_data.view_data.offset_buffer_set, pass_data.view_data.bindless_set];
+            rhi_cmd_bind_descriptor_sets(cmd_list, *sprite_pipeline, 0, descriptor_sets, .[ xx pass_const_addr ]);
+
+            for *sprite_draw : pass_data.sprite_datas {
+
+            }
+        }
+        rhi_cmd_end_renderpass(cmd_list);
     });
 
     return color_image_view;
+}
+
+#scope_file 
+
+SpriteDrawData :: struct {
+    sheet: *SpriteSheet;
+    sprite_index: s32;
+
+    z_order: s8;
+
+    position: Vector2;
+    scale: Vector2;
+}
+
+
+collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData) {
+    // #todo: automatically register all sprites instead of doing this by specific entity types:
+    add_sprite_draw :: (out_draws: *[..] SpriteDrawData, sprite: Sprite, position: Vector2) {
+        draw := SpriteDrawData.{
+            position = position,
+            sheet = sprite.sheet,
+            z_order = sprite.z_order,
+            scale = sprite.scale,
+            sprite_index = sprite.index,
+        };
+
+        array_add(out_draws, draw);
+    }
+
+    {
+        // Draw a temporary background
+        {
+            ground_sprite: Sprite;
+            ground_sprite.sheet = g_dungeon_tiles;
+            ground_sprite.z_order = -1;
+
+            for x : -20..20 {
+                for y : -20..20 {
+                    ground_sprite.index = 256;
+                    add_sprite_draw(out_draws, ground_sprite, .{ xx x, xx y});
+                }
+            }
+        }
+
+        // Draw players
+        {
+            for :Player_It g_world {
+                add_sprite_draw(out_draws, it.sprite, it.position);
+            }
+        }
+    }
 }

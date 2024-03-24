@@ -805,6 +805,149 @@ rhi_translate :: (store_op: RHIAttachmentStoreOp) -> VkAttachmentStoreOp {
     }
 }
 
+rhi_translate :: (rate: RHIVertexInputRate) -> VkVertexInputRate {
+    if rate == {
+        case .VERTEX; return .VERTEX;
+        case .INSTANCE; return .INSTANCE;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (topo: RHIPrimitiveTopology) -> VkPrimitiveTopology {
+    if topo == {
+        case .POINT_LIST; return .POINT_LIST;
+        case .LINE_LIST; return .LINE_LIST;
+        case .LINE_STRIP; return .LINE_STRIP;
+        case .TRIANGLE_LIST; return .TRIANGLE_LIST;
+        case .TRIANGLE_STRIP; return .TRIANGLE_STRIP;
+        case .TRIANGLE_FAN; return .TRIANGLE_FAN;
+        case .LINE_LIST_WITH_ADJACENCY; return .LINE_LIST_WITH_ADJACENCY;
+        case .LINE_STRIP_WITH_ADJACENCY; return .LINE_STRIP_WITH_ADJACENCY;
+        case .TRIANGLE_LIST_WITH_ADJACENCY; return .TRIANGLE_LIST_WITH_ADJACENCY;
+        case .TRIANGLE_STRIP_WITH_ADJACENCY; return .TRIANGLE_STRIP_WITH_ADJACENCY;
+        case .PATCH_LIST; return .PATCH_LIST;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (mode: RHIPolygonMode) -> VkPolygonMode {
+    if mode == {
+        case .FILL; return .FILL;
+        case .LINE; return .LINE;
+        case .POINT; return .POINT;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (mode: RHICullModeFlags) -> VkCullModeFlags {
+    result: VkCullModeFlags = 0;
+
+    if test_flag_bit(mode, .FRONT_BIT) {
+        result |= .FRONT_BIT;
+    }
+    if test_flag_bit(mode, .BACK_BIT) {
+        result |= .BACK_BIT;
+    }
+    return result;
+}
+
+rhi_translate :: (front_face: RHIFrontFace) -> VkFrontFace {
+    if front_face == {
+        case .COUNTER_CLOCKWISE; return .COUNTER_CLOCKWISE;
+        case .CLOCKWISE; return.CLOCKWISE;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (op: RHIStencilOp) -> VkStencilOp {
+    if op == {
+        case .KEEP; return .KEEP;
+        case .ZERO; return .ZERO;
+        case .REPLACE; return .REPLACE;
+        case .INCREMENT_AND_CLAMP; return .INCREMENT_AND_CLAMP;
+        case .DECREMENT_AND_CLAMP; return .DECREMENT_AND_CLAMP;
+        case .INVERT; return .INVERT;
+        case .INCREMENT_AND_WRAP; return .INCREMENT_AND_WRAP;
+        case .DECREMENT_AND_WRAP; return .DECREMENT_AND_WRAP;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (op: RHILogicOp) -> VkLogicOp {
+    if op == {
+        case .CLEAR; return .CLEAR;
+        case .AND; return .AND;
+        case .AND_REVERSE; return .AND_REVERSE;
+        case .COPY; return .COPY;
+        case .AND_INVERTED; return .AND_INVERTED;
+        case .NO_OP; return .NO_OP;
+        case .XOR; return .XOR;
+        case .OR; return .OR;
+        case .NOR; return .NOR;
+        case .EQUIVALENT; return .EQUIVALENT;
+        case .INVERT; return .INVERT;
+        case .OR_REVERSE; return .OR_REVERSE;
+        case .COPY_INVERTED; return .COPY_INVERTED;
+        case .OR_INVERTED; return .OR_INVERTED;
+        case .NAND; return .NAND;
+        case .SET; return .SET;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (blend: RHIBlendFactor) -> VkBlendFactor {
+    if blend == {
+        case .ZERO; return .ZERO;
+        case .ONE; return .ONE;
+        case .SRC_COLOR; return .SRC_COLOR;
+        case .ONE_MINUS_SRC_COLOR; return .ONE_MINUS_SRC_COLOR;
+        case .DST_COLOR; return .DST_COLOR;
+        case .ONE_MINUS_DST_COLOR; return .ONE_MINUS_DST_COLOR;
+        case .SRC_ALPHA; return .SRC_ALPHA;
+        case .ONE_MINUS_SRC_ALPHA; return .ONE_MINUS_SRC_ALPHA;
+        case .DST_ALPHA; return .DST_ALPHA;
+        case .ONE_MINUS_DST_ALPHA; return .ONE_MINUS_DST_ALPHA;
+        case .CONSTANT_COLOR; return .CONSTANT_COLOR;
+        case .ONE_MINUS_CONSTANT_COLOR; return .ONE_MINUS_CONSTANT_COLOR;
+        case .CONSTANT_ALPHA; return .CONSTANT_ALPHA;
+        case .ONE_MINUS_CONSTANT_ALPHA; return .ONE_MINUS_CONSTANT_ALPHA;
+        case .SRC_ALPHA_SATURATE; return .SRC_ALPHA_SATURATE;
+        case .SRC1_COLOR; return .SRC1_COLOR;
+        case .ONE_MINUS_SRC1_COLOR; return .ONE_MINUS_SRC1_COLOR;
+        case .SRC1_ALPHA; return .SRC1_ALPHA;
+        case .ONE_MINUS_SRC1_ALPHA; return .ONE_MINUS_SRC1_ALPHA;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (op: RHIBlendOp) -> VkBlendOp {
+    if op == {
+        case .ADD; return .ADD;
+        case .SUBTRACT; return .SUBTRACT;
+        case .REVERSE_SUBTRACT; return .REVERSE_SUBTRACT;
+        case .MIN; return .MIN;
+        case .MAX; return .MAX;
+        case; assert(false); return 0;
+    }
+}
+
+rhi_translate :: (color: RHIColorComponentFlags) -> VkColorComponentFlags {
+    result: VkColorComponentFlags = 0;
+    if test_flag_bit(color, .R_BIT) {
+        result |= .R_BIT;
+    }
+    if test_flag_bit(color, .G_BIT) {
+        result |= .G_BIT;
+    }
+    if test_flag_bit(color, .B_BIT) {
+        result |= .B_BIT;
+    }
+    if test_flag_bit(color, .A_BIT) {
+        result |= .A_BIT;
+    }
+    return result;
+}
+
 #load "vk_device.jai";
 #load "vk_debug.jai";
 #load "vk_allocator.jai";

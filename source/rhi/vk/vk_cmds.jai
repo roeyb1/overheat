@@ -180,9 +180,11 @@ rhi_cmd_begin_renderpass :: (cmd_list: *RHICmdList, color_attachments: [] RHICol
             vk_depth_attach.storeOp = rhi_translate(depth_stencil_attachment.store_op);
             vk_depth_attach.clearValue.depthStencil = cast, force(VkClearDepthStencilValue) depth_stencil_attachment.clear_value;
 
-            vk_stencil_attach = vk_depth_attach;
-            vk_stencil_attach.loadOp = rhi_translate(depth_stencil_attachment.stencil_load_op);
-            vk_stencil_attach.storeOp = rhi_translate(depth_stencil_attachment.stencil_store_op);
+            if rhi_is_stencil_format(depth_stencil_attachment.image_view.desc.format) {
+                vk_stencil_attach = vk_depth_attach;
+                vk_stencil_attach.loadOp = rhi_translate(depth_stencil_attachment.stencil_load_op);
+                vk_stencil_attach.storeOp = rhi_translate(depth_stencil_attachment.stencil_store_op);
+            }
         }
 
         vk_rendering_info := VkRenderingInfoKHR.{
@@ -195,7 +197,7 @@ rhi_cmd_begin_renderpass :: (cmd_list: *RHICmdList, color_attachments: [] RHICol
             pStencilAttachment = ifx depth_stencil_attachment != null then *vk_stencil_attach else null,
         };
 
-        vkCmdBeginRendering(cmd_list.handle, *vk_rendering_info);
+        vkCmdBeginRenderingKHR(cmd_list.handle, *vk_rendering_info);
     } else {
         assert(false); //nyi
     }
@@ -203,8 +205,39 @@ rhi_cmd_begin_renderpass :: (cmd_list: *RHICmdList, color_attachments: [] RHICol
 
 rhi_cmd_end_renderpass :: (cmd_list: *RHICmdList) {
     if rhi_is_dynamic_rendering_ext_supported() {
-        vkCmdEndRendering(cmd_list.handle);
+        vkCmdEndRenderingKHR(cmd_list.handle);
     } else {
         vkCmdEndRenderPass(cmd_list.handle);
+    }
+}
+
+rhi_cmd_set_viewport :: (cmd_list: *RHICmdList, first: u32, viewports: [] RHIViewport) {
+    vkCmdSetViewport(cmd_list.handle, first, xx viewports.count, xx viewports.data);
+}
+
+rhi_cmd_set_scissor :: (cmd_list: *RHICmdList, first: u32, scissors: [] RHIRect) {
+    vkCmdSetScissor(cmd_list.handle, first, xx scissors.count, xx scissors.data);
+}
+
+rhi_cmd_bind_pipeline :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipeline) {
+    vkCmdBindPipeline(cmd_list.handle, .GRAPHICS, pipeline.pipeline);
+
+    rhi_bind_static_sampler_set(cmd_list, pipeline);
+}
+
+rhi_cmd_bind_descriptor_sets :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipeline, first: u32, sets: [] RHIDescriptorSet, offsets: [] u32) {
+    vk_sets: [..] VkDescriptorSet;
+    vk_sets.allocator = temp;
+    for *set : sets {
+        array_add(*vk_sets, set.handle);
+    }
+
+    vkCmdBindDescriptorSets(cmd_list.handle, .GRAPHICS, pipeline.pipeline_layout, first, xx vk_sets.count, vk_sets.data, xx offsets.count, offsets.data);
+}
+
+rhi_bind_static_sampler_set :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipeline) {
+
+    if pipeline.static_sampler_descriptor_set != VK_NULL_HANDLE {
+        vkCmdBindDescriptorSets(cmd_list.handle, .GRAPHICS, pipeline.pipeline_layout, pipeline.static_sampler_descriptor_set_index, 1, *pipeline.static_sampler_descriptor_set, 0, null);
     }
 }

@@ -88,7 +88,6 @@ rendering_begin_frame :: () {
 rendering_end_frame :: () {
 }
 
-#scope_file
 DrawBucket :: struct {
     start: u64;
     count: u64;
@@ -96,14 +95,31 @@ DrawBucket :: struct {
 }
 
 
+// generic rendering resources:
 constant_buffers: [RDG_NUM_FRAMES] RHIBuffer;
 constant_buff_linear_allocs: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
+
+vertex_buffers: [RDG_NUM_FRAMES] RHIBuffer;
+vertex_buffer_allocators: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
+
+index_buffers: [RDG_NUM_FRAMES] RHIBuffer;
+index_buffer_allocators: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
 
 offset_buffer_descriptor_set_layout: RHIDescriptorSetLayout;
 offset_buffer_descriptor_pool: RHIDescriptorPool;
 offset_buffer_descriptor_sets: [RDG_NUM_FRAMES] RHIDescriptorSet;
 
-#scope_export
+RenderViewData :: struct {
+    camera_proj: Matrix4;
+    camera_position: Vector3;
+
+    bindless_set: *RHIDescriptorSet;
+    offset_buffer_set: *RHIDescriptorSet;
+
+    constant_buffer_allocator: *RHILinearGPUAllocator;
+    vertex_buffer_allocator: *RHILinearGPUAllocator;
+    index_buffer_allocator: *RHILinearGPUAllocator;
+}
 
 render_scene :: (camera: *Camera) {
     rg := *g_render_graph;
@@ -111,6 +127,10 @@ render_scene :: (camera: *Camera) {
     resource_index := frame_number % RDG_NUM_FRAMES;
 
     rhi_reset(*constant_buff_linear_allocs[resource_index]);
+    rhi_reset(*vertex_buffer_allocators[resource_index]);
+    rhi_reset(*index_buffer_allocators[resource_index]);
+
+    view_data := init_view_data_for_frame(rg, camera, resource_index);
 
     render_image_desc := RDGImageDescription.{
         debug_name = "Render Image",
@@ -120,36 +140,8 @@ render_scene :: (camera: *Camera) {
         usage_flags = .COLOR_ATTACHMENT_BIT | .TEXTURE_BIT | .RW_TEXTURE_BIT | . TRANSFER_SRC_BIT,
     };
 
-    render_image_handle := rdg_create_image(rg, render_image_desc);
-    render_view_handle := rdg_create_image_view(rg, render_image_handle, "Render Image View");
-
-    {
-        usage_desc := RDGResourceUsageDesc.{
-            render_view_handle,
-            .{resource_state = .CLEAR_RESOURCE},
-            .{}
-        };
-
-        PassData :: struct {
-            render_view_handle: RDGResourceViewHandle;
-        };
-
-        pass_data := rdg_allocate_pass_data(rg, PassData);
-        pass_data.render_view_handle = render_view_handle;
-
-        rdg_add_pass(rg, "Clear Render Image", .GRAPHICS, .[usage_desc], pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
-            pass_data := cast(*PassData) pass_data_ptr;
-            render_view_handle := pass_data.render_view_handle;
-
-            clear_color := RHIClearColorValue.{
-                _float32 = .[0.1, 1.1, 0.1, 0.1]
-            };
-            range := RHIImageSubresourceRange.{ 0, 1, 0, 1};
-            rhi_cmd_clear_image(cmd_list, rdg_get_image(render_view_handle), clear_color, .[range]);
-        });
-    }
-
-
+    // render sprites
+    sprite_color_image_view := render_sprite_pass(rg, *view_data);
 
     // present to swapchain:
     {
@@ -161,21 +153,21 @@ render_scene :: (camera: *Camera) {
         // copy render image to swapchain image:
         {
             usage_descs: [2] RDGResourceUsageDesc;
-            usage_descs[0] = RDGResourceUsageDesc.{view_handle = render_view_handle, state_and_stage = .{resource_state = .READ_TRANSFER}};
+            usage_descs[0] = RDGResourceUsageDesc.{view_handle = sprite_color_image_view, state_and_stage = .{resource_state = .READ_TRANSFER}};
             usage_descs[1] = RDGResourceUsageDesc.{view_handle = swapchain_view_handle, state_and_stage = .{resource_state = .WRITE_TRANSFER}};
 
             PassData :: struct {
-                render_view_handle: RDGResourceViewHandle;
+                color_view_handle: RDGResourceViewHandle;
                 swapchain_view_handle: RDGResourceViewHandle;
             };
 
             pass_data := rdg_allocate_pass_data(rg, PassData);
-            pass_data.render_view_handle = render_view_handle;
+            pass_data.color_view_handle = sprite_color_image_view;
             pass_data.swapchain_view_handle = swapchain_view_handle;
 
             rdg_add_pass(rg, "Copy to Swapchain", .GRAPHICS, usage_descs, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
                 pass_data := cast(*PassData) pass_data_ptr;
-                render_image_view := pass_data.render_view_handle;
+                render_image_view := pass_data.color_view_handle;
                 swapchain_image_view := pass_data.swapchain_view_handle;
 
                 image_copies := RHIImageCopy.[.{
@@ -209,8 +201,23 @@ render_scene :: (camera: *Camera) {
     rg.semaphore_values[RHIQueueIndex.GRAPHICS] += 1;
 }
 
+init_view_data_for_frame :: (rg: *RenderGraph, camera: *Camera, resource_index: u64) -> RenderViewData {
+    view_data := RenderViewData.{
+        bindless_set = *rg.view_registry.descriptor_sets[resource_index],
+        offset_buffer_set = *offset_buffer_descriptor_sets[resource_index],
+        constant_buffer_allocator = *constant_buff_linear_allocs[resource_index],
+        vertex_buffer_allocator = *vertex_buffer_allocators[resource_index],
+        index_buffer_allocator = *index_buffer_allocators[resource_index],
+
+        camera_proj = camera.projection,
+        camera_position = make_vector3(camera.position, 1.),
+    };
+
+    return view_data;
+}
+
 init_rendering_resources :: () {
-    // constant buffer:
+    // constant buffers:
     {
         create_info := RHIBufferCreateInfo.{
             size = 1024 * 1024 * 4,
@@ -251,6 +258,38 @@ init_rendering_resources :: () {
 
             rhi_descriptor_set_update(offset_buffer_descriptor_sets[it], .[update]);
         }
+    }
+
+    // vertex buffers: 
+    {
+        create_info := RHIBufferCreateInfo.{
+            size = 1024 * 1024 * 4, // is this enough?
+            usage_flags = .VERTEX_BUFFER_BIT,
+        };
+
+        vertex_buffers[0] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
+        vertex_buffers[1] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
+        rhi_debug_set_object_name(*vertex_buffers[0], "Vertex Buffer 0");
+        rhi_debug_set_object_name(*vertex_buffers[1], "Vertex Buffer 1");
+        
+        vertex_buffer_allocators[0] = rhi_linear_allocator_init(*vertex_buffers[0]);
+        vertex_buffer_allocators[1] = rhi_linear_allocator_init(*vertex_buffers[1]);
+    }
+
+    // index buffers:
+    {
+        create_info := RHIBufferCreateInfo.{
+            size = 1024 * 1024 * 4,
+            usage_flags = .INDEX_BUFFER_BIT,
+        };
+
+        index_buffers[0] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
+        index_buffers[1] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
+        rhi_debug_set_object_name(*index_buffers[0], "Index Buffer 0");
+        rhi_debug_set_object_name(*index_buffers[1], "Index Buffer 1");
+
+        index_buffer_allocators[0] = rhi_linear_allocator_init(*index_buffers[0]);
+        index_buffer_allocators[1] = rhi_linear_allocator_init(*index_buffers[1]);
     }
 
     init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_render_graph.view_registry.descriptor_set_layout);

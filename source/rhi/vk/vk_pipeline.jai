@@ -11,6 +11,60 @@ RHIGraphicsPipeline :: struct {
 }
 
 rhi_graphics_pipeline_build :: (create_info: RHIGraphicsPipelineCreateInfo) -> RHIGraphicsPipeline {
+    translate :: (state: RHIStencilOpState) -> VkStencilOpState {
+        return VkStencilOpState.{
+            failOp = rhi_translate(state.fail_op),
+            passOp = rhi_translate(state.pass_op),
+            depthFailOp = rhi_translate(state.depth_fail_op),
+            compareOp = rhi_translate(state.compare_op),
+            compareMask = state.compare_mask,
+            writeMask = state.write_mask,
+            reference = state.reference,
+        };
+    }
+
+    translate :: (dynamic_state_flags: RHIDynamicStateFlags, out_dynamic_states: [] VkDynamicState) -> u32 {
+        state_count: u32 = 0;
+        if test_flag_bit(dynamic_state_flags, .VIEWPORT_BIT) {
+            out_dynamic_states[state_count] = .VIEWPORT;
+            state_count += 1;
+        }
+        if test_flag_bit(dynamic_state_flags, .SCISSOR_BIT) {
+            out_dynamic_states[state_count] = .SCISSOR;
+            state_count += 1;
+        }
+        if test_flag_bit(dynamic_state_flags, .LINE_WIDTH_BIT) {
+            out_dynamic_states[state_count] = .LINE_WIDTH;
+            state_count += 1;
+        }
+        if test_flag_bit(dynamic_state_flags, .DEPTH_BIAS_BIT) {
+            out_dynamic_states[state_count] = .DEPTH_BIAS;
+            state_count += 1;
+        }
+        if test_flag_bit(dynamic_state_flags, .BLEND_CONSTANTS_BIT) {
+            out_dynamic_states[state_count] = .BLEND_CONSTANTS;
+            state_count += 1;
+        }
+        if test_flag_bit(dynamic_state_flags, .DEPTH_BOUNDS_BIT) {
+            out_dynamic_states[state_count] = .DEPTH_BOUNDS;
+            state_count += 1;
+        }
+        if test_flag_bit(dynamic_state_flags, .STENCIL_COMPARE_MASK_BIT) {
+            out_dynamic_states[state_count] = .STENCIL_COMPARE_MASK;
+            state_count += 1;
+        }
+        if test_flag_bit(dynamic_state_flags, .STENCIL_WRITE_MASK_BIT) {
+            out_dynamic_states[state_count] = .STENCIL_WRITE_MASK;
+            state_count += 1;
+        }
+        if test_flag_bit(dynamic_state_flags, .STENCIL_REFERENCE_BIT) {
+            out_dynamic_states[state_count] = .STENCIL_REFERENCE;
+            state_count += 1;
+        }
+
+        return state_count;
+    }
+
     result: RHIGraphicsPipeline;
     array_reserve(*result.static_samplers, 16);
 
@@ -80,6 +134,140 @@ rhi_graphics_pipeline_build :: (create_info: RHIGraphicsPipelineCreateInfo) -> R
 
         create_pipeline_layout(create_info.layout_create_info, *result.pipeline_layout, *result.static_sampler_descriptor_set_layout, *result.static_sampler_descriptor_pool, *result.static_sampler_descriptor_set, *result.static_samplers);
     }
+
+    vertex_input_state: VkPipelineVertexInputStateCreateInfo;
+    vertex_binding_descs: [RHIVertexInputState.MAX_VERTEX_BINDING_DESCRIPTIONS] VkVertexInputBindingDescription;
+    vertex_attribute_descs: [RHIVertexInputState.MAX_VERTEX_ATTRIBUTE_DESCRIPTIONS] VkVertexInputAttributeDescription;
+    {
+        vertex_input_state.vertexBindingDescriptionCount = create_info.vertex_input_state.vertex_binding_count;
+        vertex_input_state.pVertexBindingDescriptions = vertex_binding_descs.data;
+        vertex_input_state.vertexAttributeDescriptionCount = create_info.vertex_input_state.vertex_attribute_count;
+        vertex_input_state.pVertexAttributeDescriptions = vertex_attribute_descs.data;
+
+        for 0..create_info.vertex_input_state.vertex_binding_count-1 {
+            vertex_binding_descs[it] = VkVertexInputBindingDescription.{
+                binding = create_info.vertex_input_state.vertex_binding_descs[it].binding,
+                stride = create_info.vertex_input_state.vertex_binding_descs[it].stride,
+                inputRate = rhi_translate(create_info.vertex_input_state.vertex_binding_descs[it].input_rate),
+            };
+        }
+
+        for 0..create_info.vertex_input_state.vertex_attribute_count-1 {
+            vertex_attribute_descs[it] = VkVertexInputAttributeDescription.{
+                location = create_info.vertex_input_state.vertex_attribute_descs[it].location,
+                binding = create_info.vertex_input_state.vertex_attribute_descs[it].binding,
+                format = rhi_translate(create_info.vertex_input_state.vertex_attribute_descs[it].format),
+                offset = create_info.vertex_input_state.vertex_attribute_descs[it].offset,
+            };
+        }
+    }
+
+    input_assembly_state := VkPipelineInputAssemblyStateCreateInfo.{
+        topology = rhi_translate(create_info.input_assembly_state.primitive_topology),
+        primitiveRestartEnable = create_info.input_assembly_state.primitive_restart_enabled,
+    };
+
+    tessellation_state := VkPipelineTessellationStateCreateInfo.{
+        patchControlPoints = create_info.tessellation_state.patch_control_points,
+    };
+
+    viewport_state := VkPipelineViewportStateCreateInfo.{
+        viewportCount = create_info.viewport_state.viewport_count,
+        pViewports = cast(*VkViewport) create_info.viewport_state.viewports.data,
+        scissorCount = create_info.viewport_state.viewport_count,
+        pScissors = cast(*VkRect2D) create_info.viewport_state.scissors.data,
+    };
+
+    rasterization_state := VkPipelineRasterizationStateCreateInfo.{
+        depthClampEnable = create_info.rasterization_state.depth_clamp_enable,
+        rasterizerDiscardEnable = create_info.rasterization_state.rasterizer_discard_enable,
+        polygonMode = rhi_translate(create_info.rasterization_state.polygon_mode),
+        cullMode = rhi_translate(create_info.rasterization_state.cull_mode),
+        frontFace = rhi_translate(create_info.rasterization_state.front_face),
+        depthBiasEnable = create_info.rasterization_state.depth_bias_enable,
+        depthBiasConstantFactor = create_info.rasterization_state.depth_bias_constant_factor,
+        depthBiasClamp = create_info.rasterization_state.depth_bias_clamp,
+        depthBiasSlopeFactor = create_info.rasterization_state.depth_bias_slope_factor,
+        lineWidth = create_info.rasterization_state.line_width,
+    };
+
+    multisample_state := VkPipelineMultisampleStateCreateInfo.{
+        rasterizationSamples = cast, force(VkSampleCountFlagBits) create_info.multisample_state.rasterization_samples,
+        sampleShadingEnable = create_info.multisample_state.sample_shading_enable,
+        minSampleShading = create_info.multisample_state.min_sample_shading,
+        pSampleMask = *create_info.multisample_state.sample_mask,
+        alphaToCoverageEnable = create_info.multisample_state.alpha_to_coverage_enable,
+        alphaToOneEnable = create_info.multisample_state.alpha_to_one_enable,
+    };
+
+    depth_stencil_state := VkPipelineDepthStencilStateCreateInfo.{
+        depthTestEnable = create_info.depth_stencil_state.depth_test_enable,
+        depthWriteEnable = create_info.depth_stencil_state.depth_write_enable,
+        depthCompareOp = rhi_translate(create_info.depth_stencil_state.depth_compare_op),
+        depthBoundsTestEnable = create_info.depth_stencil_state.depth_bounds_test_enable,
+        stencilTestEnable = create_info.depth_stencil_state.stencil_test_enable,
+        front = translate(create_info.depth_stencil_state.front),
+        back = translate(create_info.depth_stencil_state.back),
+        minDepthBounds = create_info.depth_stencil_state.min_depth_bounds,
+        maxDepthBounds = create_info.depth_stencil_state.max_depth_bounds,
+    };
+
+    color_blend_state: VkPipelineColorBlendStateCreateInfo;
+    color_blend_attachment_states: [8] VkPipelineColorBlendAttachmentState;
+    {
+        color_blend_state.logicOpEnable = create_info.blend_state.logic_op_enable;
+        color_blend_state.logicOp = rhi_translate(create_info.blend_state.logic_op);
+        color_blend_state.attachmentCount = create_info.blend_state.attachment_count;
+        color_blend_state.pAttachments = color_blend_attachment_states.data;
+        color_blend_state.blendConstants[0] = create_info.blend_state.blend_constants[0];
+        color_blend_state.blendConstants[1] = create_info.blend_state.blend_constants[1];
+        color_blend_state.blendConstants[2] = create_info.blend_state.blend_constants[2];
+        color_blend_state.blendConstants[3] = create_info.blend_state.blend_constants[3];
+
+        for 0..create_info.blend_state.attachment_count-1 {
+            color_blend_attachment_states[it] = VkPipelineColorBlendAttachmentState.{
+                blendEnable = xx create_info.blend_state.attachments[it].blend_enable,
+                srcColorBlendFactor = rhi_translate(create_info.blend_state.attachments[it].src_color_blend_factor),
+                dstColorBlendFactor = rhi_translate(create_info.blend_state.attachments[it].dst_color_blend_factor),
+                colorBlendOp = rhi_translate(create_info.blend_state.attachments[it].color_blend_op),
+                srcAlphaBlendFactor = rhi_translate(create_info.blend_state.attachments[it].src_alpha_blend_factor),
+                dstAlphaBlendFactor = rhi_translate(create_info.blend_state.attachments[it].dst_alpha_blend_factor),
+                alphaBlendOp = rhi_translate(create_info.blend_state.attachments[it].alpha_blend_op),
+                colorWriteMask = rhi_translate(create_info.blend_state.attachments[it].color_write_mask),
+            };
+        }
+    }
+
+
+    dynamic_states: [9] VkDynamicState;
+    dynamic_states_count := translate(create_info.dynamic_state_flags, dynamic_states);
+    dynamic_state := VkPipelineDynamicStateCreateInfo.{
+        dynamicStateCount = dynamic_states_count,
+        pDynamicStates = dynamic_states.data,
+    };
+
+    pipeline_create_info := VkGraphicsPipelineCreateInfo.{
+        flags = 0,
+        stageCount = xx stage_count,
+        pStages = shader_stages.data,
+        pVertexInputState = *vertex_input_state,
+        pInputAssemblyState = *input_assembly_state,
+        pTessellationState = *tessellation_state,
+        pViewportState = *viewport_state,
+        pRasterizationState = *rasterization_state,
+        pMultisampleState = *multisample_state,
+        pDepthStencilState = *depth_stencil_state,
+        pColorBlendState = *color_blend_state,
+        pDynamicState = *dynamic_state,
+        layout = result.pipeline_layout,
+        renderPass = render_pass,
+        subpass = 0,
+        basePipelineHandle = VK_NULL_HANDLE,
+        basePipelineIndex = 0,
+    };
+
+    vk_check_result(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, *pipeline_create_info, null, *result.pipeline));
+
 
     for 0..stage_count-1 {
         vkDestroyShaderModule(device, shader_modules[it], null);

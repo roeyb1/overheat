@@ -5,6 +5,8 @@ RDGPassFunction :: #type (cmd_list: *RHICmdList, pass_data: *void) -> ();
 RDGResourceHandle      :: u32;
 RDGResourceViewHandle  :: u32;
 
+RDG_NULL_HANDLE: RDGResourceHandle : 0;
+
 RDGImageDescription :: struct {
     debug_name: string = "";
 

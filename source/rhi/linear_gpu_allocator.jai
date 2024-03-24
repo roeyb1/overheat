@@ -45,8 +45,8 @@ rhi_reset :: (allocator: *RHILinearGPUAllocator) {
     allocator.current_offset = 0;
 }
 
-rhi_upload_struct :: (allocator: *RHILinearGPUAllocator, descriptor_type: RHIDescriptorType, data: $T) -> u64 {
-    size: u64 = size_of(T);
+rhi_upload_struct :: (allocator: *RHILinearGPUAllocator, descriptor_type: RHIDescriptorType, data: $T) -> s64 {
+    size: s64 = size_of(T);
     
     mapped_ptr, allocation_offset := rhi_allocate(allocator, rhi_get_buffer_alignment(descriptor_type, size), size);
     if mapped_ptr != null {
