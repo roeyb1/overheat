@@ -48,7 +48,7 @@ main :: () {
     }
 
     main_view_camera.entity_to_track = g_local_player;
-    make_anim_sm_player(g_local_player);
+    
 
     while !g_should_exit {
         networking_update();
@@ -71,6 +71,10 @@ main :: () {
 
         rendering_end_frame();
 
+        for :Player_It g_world {
+            it.prev_position = it.position;
+        }
+
         // Reset temporary storage at the end of each frame
         reset_temporary_storage();
 
@@ -92,7 +96,7 @@ simulate :: (delta_time: float64) {
         player_moved.networking_id = g_local_player.networking_id;
         player_moved.new_position = g_local_player.position;
 
-        networking_send_packet(*player_moved);;
+        networking_send_packet(*player_moved);
     }
 }
 
@@ -117,6 +121,7 @@ draw_scene :: (camera: *Camera) {
     {
         for :Player_It g_world {
             update_player_state_machine(*it.anim_statemachine,it);
+            if !is_server() && it != g_local_player then print("HELLO I AM % \n",it.position - it.prev_position); 
             test_loop(*it.sprite);
             draw_sprite(camera, *it.sprite, it.position);
         }

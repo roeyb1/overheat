@@ -18,11 +18,10 @@ update_player_state_machine :: (using state_machine: *Player_Anim_State_Machine,
 	assert(state_list.count>current_state);
 	states_to_consider: [..] u16;
 	states_to_consider.allocator = temp;
-	print("HELLO I AM %\n",current_state);
+	//if !is_server() && player != g_local_player then print("HELLO I AM %\n",current_state);
 	for state_list[current_state].transition_rules {
 		if it != null {
 			if it(player){
-				print("I HAVEA BIG PENIS %\n",states_to_consider);
 				array_add(*states_to_consider, cast(u16)it_index);
 			}
 			

@@ -573,10 +573,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             
             log("New player has joined the game: %", player_joined.networking_id);
 
-            player := make_entity(*g_world, Player, tprint("Player_%", player_joined.networking_id));
-            player.position = player_joined.position;
-            player.networking_id = player_joined.networking_id;
-            player.sprite = Sprite.{g_player_sprite, .{1.5, 1.5}, 0, 1};
+            player := init_remote_player(player_joined.networking_id,player_joined.position);
 
         case .PLAYER_MOVE;
             player_move: PlayerMove_Packet;
