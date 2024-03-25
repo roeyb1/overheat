@@ -223,6 +223,7 @@ init_device :: () {
 }
 
 destroy_device :: () {
+    rhi_allocator_destroy();
     vkDestroyDevice(device, null);
 }
 

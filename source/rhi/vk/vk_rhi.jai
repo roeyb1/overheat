@@ -10,6 +10,9 @@ surface: VkSurfaceKHR;
     debug_callback_handle: VkDebugReportCallbackEXT;
 }
 
+vk_api_version :: inline () -> u32{
+    return VK_API_VERSION_1_2;
+}
 
 init_rhi :: () {
     result: VkResult = .ERROR_INITIALIZATION_FAILED;
@@ -20,7 +23,7 @@ init_rhi :: () {
     app_info.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
     app_info.pEngineName = "Overheat Engine";
     app_info.engineVersion = VK_MAKE_VERSION(0, 1, 0);
-    app_info.apiVersion = VK_API_VERSION_1_2;
+    app_info.apiVersion = vk_api_version();
 
     create_info: VkInstanceCreateInfo;
     create_info.sType = .INSTANCE_CREATE_INFO;
