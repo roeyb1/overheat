@@ -3,7 +3,7 @@
 RHIImage :: struct {
     handle: VkImage;
     desc: RHIImageCreateInfo;
-    memory: VkDeviceMemory;
+    alloc: VmaAllocation;
 }
 
 RHIImageView :: struct {
@@ -14,7 +14,6 @@ RHIImageView :: struct {
 RHIBuffer :: struct {
     handle: VkBuffer;
     alloc: VmaAllocation;
-    alloc_info: VmaAllocationInfo;
     desc: RHIBufferCreateInfo;
 }
 
@@ -63,20 +62,13 @@ rhi_image_create :: (image_create_info: RHIImageCreateInfo, required_memory_prop
         preferred_flags = rhi_translate(preferred_memory_prop_flags),
     };
 
-    handle, device_memory := rhi_allocate_image(alloc_info, create_info);
+    handle, vma_alloc := rhi_allocate_image(alloc_info, create_info);
 
     // #todo: use pool allocation instead of this garbage
     result: *RHIImage = alloc(size_of(RHIImage));
-    << result = RHIImage.{ handle = handle, desc = image_create_info, memory = device_memory };
+    << result = RHIImage.{ handle = handle, desc = image_create_info, alloc = vma_alloc };
 
     return result;
-}
-
-rhi_image_destroy :: (image: RHIImage) {
-    assert(image.handle != VK_NULL_HANDLE);
-
-    vkFreeMemory(device, image.memory, null);
-    vkDestroyImage(device, image.handle, null);
 }
 
 rhi_buffer_create :: (buffer_create_info: RHIBufferCreateInfo, required_flags: RHIMemoryPropertyFlags, preferred_flags: RHIMemoryPropertyFlags, dedicated: bool) -> *RHIBuffer {
@@ -112,11 +104,11 @@ rhi_buffer_create :: (buffer_create_info: RHIBufferCreateInfo, required_flags: R
         pQueueFamilyIndices = unique_queue_family_indices.data,
     };
 
-    handle, vma_alloc, vma_alloc_info := rhi_allocate_buffer(alloc_info, vk_buffer_create_info);
+    handle, vma_alloc := rhi_allocate_buffer(alloc_info, vk_buffer_create_info);
 
     // #todo: allocate from a pool
     result: *RHIBuffer = alloc(size_of(RHIBuffer));
-    << result = .{ handle = handle, alloc = vma_alloc, alloc_info = vma_alloc_info, desc = buffer_create_info};
+    << result = .{ handle = handle, alloc = vma_alloc, desc = buffer_create_info};
     return result;
 }
 
@@ -163,6 +155,10 @@ rhi_image_view_destroy :: (image_view: RHIImageView) {
 
 rhi_buffer_destroy :: (buffer: RHIBuffer) {
     vmaDestroyBuffer(vma, buffer.handle, buffer.alloc);
+}
+
+rhi_image_destroy :: (image: RHIImage) {
+    vmaDestroyImage(vma, image.handle, image.alloc);
 }
 
 rhi_buffer_view_create :: (create_info: RHIBufferViewCreateInfo) -> *RHIBufferView {

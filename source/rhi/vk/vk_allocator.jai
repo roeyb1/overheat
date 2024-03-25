@@ -63,29 +63,22 @@ rhi_find_memory_type :: (memory_type_requirements: u32, required_props: VkMemory
     return .ERROR_FEATURE_NOT_PRESENT, 0;
 }
 
-rhi_allocate_image :: (alloc_info: RHIAllocationCreateInfo, image_create_info: VkImageCreateInfo) -> (VkImage, VkDeviceMemory) {
+rhi_allocate_image :: (alloc_info: RHIAllocationCreateInfo, image_create_info: VkImageCreateInfo) -> (VkImage, VmaAllocation) {
+    alloc_create_info := VmaAllocationCreateInfo.{
+        requiredFlags = alloc_info.required_flags,
+        preferredFlags = alloc_info.preferred_flags,
+    };
+
     image: VkImage;
-    vk_check_result(vkCreateImage(device, *image_create_info, null, *image));
-    
-    memory_requirements: VkMemoryRequirements;
-    vkGetImageMemoryRequirements(device, image, *memory_requirements);
+    alloc: VmaAllocation;
+    vma_alloc_info := VmaAllocationInfo.{};
 
-    result, memory_type_index := rhi_find_memory_type(memory_requirements.memoryTypeBits, alloc_info.required_flags, alloc_info.preferred_flags);
-    vk_check_result(result);
+    vk_check_result(vmaCreateImage(vma, *image_create_info, *alloc_create_info, *image, *alloc, *vma_alloc_info));
 
-    vk_alloc_info: VkMemoryAllocateInfo;
-    vk_alloc_info.allocationSize = memory_requirements.size;
-    vk_alloc_info.memoryTypeIndex = memory_type_index;
-
-    image_memory: VkDeviceMemory;
-    vk_check_result(vkAllocateMemory(device, *vk_alloc_info, null, *image_memory));
-    
-    vkBindImageMemory(device, image, image_memory, 0);
-
-    return image, image_memory;
+    return image, alloc;
 }
 
-rhi_allocate_buffer :: (alloc_info: RHIAllocationCreateInfo, buffer_create_info: VkBufferCreateInfo) -> (VkBuffer, VmaAllocation, VmaAllocationInfo) {
+rhi_allocate_buffer :: (alloc_info: RHIAllocationCreateInfo, buffer_create_info: VkBufferCreateInfo) -> (VkBuffer, VmaAllocation) {
 
     alloc_create_info := VmaAllocationCreateInfo.{
         requiredFlags = alloc_info.required_flags,
@@ -117,7 +110,7 @@ rhi_allocate_buffer :: (alloc_info: RHIAllocationCreateInfo, buffer_create_info:
         //vkBindBufferMemory(device, buffer, buffer_memory, 0);
     }
     
-    return buffer, buffer_alloc, buffer_alloc_info;
+    return buffer, buffer_alloc;
 }
 
 #import "Vulkan_Memory_Allocator";
