@@ -14,19 +14,21 @@ Player_Anim_State :: struct {
 	transition_rules: [..] #type (entity: *Entity) -> bool;
 }
 
-update_state_machine :: (using state_machine: *Player_Anim_State_Machine, entity: *Entity) {
+update_player_state_machine :: (using state_machine: *Player_Anim_State_Machine, player: *Player) {
 	assert(state_list.count>current_state);
 	states_to_consider: [..] u16;
 	states_to_consider.allocator = temp;
+	print("HELLO I AM %\n",current_state);
 	for state_list[current_state].transition_rules {
 		if it != null {
-			if it(entity){
+			if it(player){
+				print("I HAVEA BIG PENIS %\n",states_to_consider);
 				array_add(*states_to_consider, cast(u16)it_index);
 			}
 			
 		}
 	}
-
+	
 	if (states_to_consider.count == 0) then return;
 
 	current_highest := states_to_consider[0];
@@ -35,6 +37,7 @@ update_state_machine :: (using state_machine: *Player_Anim_State_Machine, entity
 	}
 
 	current_state = current_highest;
+	player.sprite = state_list[current_state].anim_sprites;
 }
 
 

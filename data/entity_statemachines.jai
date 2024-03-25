@@ -12,7 +12,7 @@
     
 
     state_list[idle_state].anim_sprites.sheet = load_spritesheet("assets/orc_mage_walk_2.png", 64, 0, 0);
-    state_list[movement_state].anim_sprites.sheet = load_spritesheet("assets/orc_mage_walk_2.png", 64, 0, 0);
+    state_list[movement_state].anim_sprites.sheet = load_spritesheet("assets/orc_mage_walk.png", 64, 0, 0);
     state_list[attack_state].anim_sprites.sheet = load_spritesheet("assets/orc_mage_walk_2.png", 64, 0, 0);
 
     //state_list[idle_state].anim_sprites.z_order = cast(s8) SpriteZLayer.PLAYER;

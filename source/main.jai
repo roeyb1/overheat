@@ -48,6 +48,7 @@ main :: () {
     }
 
     main_view_camera.entity_to_track = g_local_player;
+    make_anim_sm_player(g_local_player);
 
     while !g_should_exit {
         networking_update();
@@ -115,6 +116,7 @@ draw_scene :: (camera: *Camera) {
     // Draw players
     {
         for :Player_It g_world {
+            update_player_state_machine(*it.anim_statemachine,it);
             test_loop(*it.sprite);
             draw_sprite(camera, *it.sprite, it.position);
         }
@@ -156,4 +158,4 @@ draw_scene :: (camera: *Camera) {
 #load "../data/entity_stats.jai";
 #load "animation_statemachine.jai";
 #load "../data/entity_statemachines.jai";
-#load "../data/player_anim_states.jai";
+#load "../data/anim_states.jai";
