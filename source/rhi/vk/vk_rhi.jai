@@ -948,6 +948,14 @@ rhi_translate :: (color: RHIColorComponentFlags) -> VkColorComponentFlags {
     return result;
 }
 
+rhi_translate :: (type: RHIIndexType) -> VkIndexType {
+    if type == {
+        case .UINT16; return .UINT16;
+        case .UINT32; return .UINT32;
+        case; assert(false); return 0;
+    }
+}
+
 #load "vk_device.jai";
 #load "vk_debug.jai";
 #load "vk_allocator.jai";

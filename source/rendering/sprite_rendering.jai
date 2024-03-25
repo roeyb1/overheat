@@ -7,9 +7,15 @@ SpritePushConst :: struct {
     sprite_index: u32;
 }
 
+SpriteVertex :: struct {
+    pos: Vector2;
+    uv: Vector2;
+}
+
+
 init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
     render_target_formats := RHIFormat.[
-        .R8G8B8A8_UNORM,
+        .R8G8B8A8_SRGB,
     ];
 
     blend_states := RHIPipelineColorBlendAttachmentState.[
@@ -18,19 +24,16 @@ init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bind
 
     // #todo: maybe automate creation of attributes directly from vertex struct members
     attribute_descs := RHIVertexInputAttributeDesc.[
-        .{ "VERTEX_POSITION", 0, 0, .R32G32B32_SFLOAT, 0},
-        .{ "TEXCOORD", 1, 1, .R32G32_SFLOAT, 0},
-        .{ "INSTANCE_POS", 2, 2, .R32G32B32_SFLOAT, 0},
-        .{ "INSTANCE_SCALE", 3, 3, .R32G32_SFLOAT, 0},
-        .{ "SPRITE_INDEX", 4, 4, .R32_UINT, 0},
+        .{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, 0},
+        .{ "TEXCOORD", 1, 0, .R32G32_SFLOAT, cast(u32) offset_of(SpriteVertex, "uv")},
+        //.{ "INSTANCE_POS", 2, 2, .R32G32B32_SFLOAT, 0},
+        //.{ "INSTANCE_SCALE", 3, 3, .R32G32_SFLOAT, 0},
+        //.{ "SPRITE_INDEX", 4, 4, .R32_UINT, 0},
     ];
 
     binding_descs := RHIVertexInputBindingDesc.[
-        .{0, size_of(float) * 3, .VERTEX },
-        .{1, size_of(float) * 2, .VERTEX },
-        .{2, size_of(float) * 3, .INSTANCE },
-        .{3, size_of(float) * 2, .INSTANCE },
-        .{4, size_of(u32) * 1, .INSTANCE },
+        .{0, size_of(float) * 4, .VERTEX },
+        //.{1, size_of(float) * x, .INSTANCE },
     ];
 
 
@@ -127,6 +130,34 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
     rdg_add_pass(rg, "Sprite pass", .GRAPHICS, sprite_pass_usage_descs, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
         pass_data := cast(*PassData) pass_data_ptr;
         view_data := pass_data.view_data;
+
+        // upload sprite vertex buffers
+        vertex_buffer_offset: s64 = -1;
+        index_buffer_offset: s64 = -1;
+        {
+            vertices := SpriteVertex.[
+                .{.{-0.5, -0.5}, .{0., 0.}},
+                .{.{+0.5, -0.5}, .{1., 0.}},
+                .{.{-0.5, +0.5}, .{0., 1.}},
+                .{.{+0.5, +0.5}, .{1., 1.}},
+            ];
+
+            indices := u32.[
+                0, 1, 3,
+                0, 3, 2,
+            ];
+
+            vertex_dst:, vertex_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(SpriteVertex), size_of(SpriteVertex) * vertices.count);
+            index_dst:, index_buffer_offset = rhi_allocate(view_data.index_buffer_allocator, size_of(u32), size_of(u32) * indices.count);
+
+            memcpy(vertex_dst, vertices.data, size_of(SpriteVertex) * vertices.count);
+            memcpy(index_dst, indices.data, size_of(u32) * indices.count);
+        }
+        assert(vertex_buffer_offset != -1);
+        assert(index_buffer_offset != -1);
+
+
+
         depth_image_view := pass_data.depth_image_view;
         color_image_view := pass_data.color_image_view;
 
@@ -168,6 +199,10 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
 
             descriptor_sets := RHIDescriptorSet.[ pass_data.view_data.offset_buffer_set, pass_data.view_data.bindless_set];
             rhi_cmd_bind_descriptor_sets(cmd_list, *sprite_pipeline, 0, descriptor_sets, .[ xx pass_const_addr ]);
+            
+            rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset]);
+            rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
+            rhi_cmd_draw_indexed(cmd_list, 6, 1, 0, 0, 0);
 
             for *sprite_draw : pass_data.sprite_datas {
 

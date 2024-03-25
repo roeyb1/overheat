@@ -228,6 +228,7 @@ rhi_cmd_bind_pipeline :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipeline) 
 rhi_cmd_bind_descriptor_sets :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipeline, first: u32, sets: [] RHIDescriptorSet, offsets: [] u32) {
     vk_sets: [..] VkDescriptorSet;
     vk_sets.allocator = temp;
+    array_reserve(*vk_sets, sets.count);
     for *set : sets {
         array_add(*vk_sets, set.handle);
     }
@@ -240,4 +241,24 @@ rhi_bind_static_sampler_set :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipe
     if pipeline.static_sampler_descriptor_set != VK_NULL_HANDLE {
         vkCmdBindDescriptorSets(cmd_list.handle, .GRAPHICS, pipeline.pipeline_layout, pipeline.static_sampler_descriptor_set_index, 1, *pipeline.static_sampler_descriptor_set, 0, null);
     }
+}
+
+rhi_cmd_bind_vertex_buffers :: (cmd_list: *RHICmdList, first: u32, buffers: [] *RHIBuffer, offsets: [] u64) {
+    vk_buffers: [..] VkBuffer;
+    vk_buffers.allocator = temp;
+    array_reserve(*vk_buffers, buffers.count);
+
+    for buffer : buffers {
+        array_add(*vk_buffers, buffer.handle);
+    }
+
+    vkCmdBindVertexBuffers(cmd_list.handle, first, xx vk_buffers.count, vk_buffers.data, offsets.data);
+}
+
+rhi_cmd_bind_index_buffer :: (cmd_list: *RHICmdList, buffer: *RHIBuffer, offset: u64, type: RHIIndexType) {
+    vkCmdBindIndexBuffer(cmd_list.handle, buffer.handle, offset, rhi_translate(type));
+}
+
+rhi_cmd_draw_indexed :: (cmd_list: *RHICmdList, index_count: u32, instance_count: u32, first_index: u32, vertex_offset: s32, first_instance: u32) {
+    vkCmdDrawIndexed(cmd_list.handle, index_count, instance_count, first_index, vertex_offset, first_instance);
 }

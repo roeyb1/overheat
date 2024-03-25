@@ -831,6 +831,11 @@ RHIDepthStencilAttachmentDesc :: struct {
     read_only: bool;
 }
 
+RHIIndexType :: enum {
+    UINT16    :: 0;
+    UINT32    :: 1;
+}
+
 rhi_is_stencil_format :: inline (format: RHIFormat) -> bool {
     if format == {
         case .S8_UINT;           #through;

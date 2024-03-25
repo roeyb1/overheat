@@ -108,32 +108,32 @@ rhi_graphics_pipeline_build :: (create_info: RHIGraphicsPipelineCreateInfo) -> R
             shader_stages[stage_count] = shader_stage;
             stage_count += 1;
         }
+    }
 
-        pipeline_rendering_create_info: VkPipelineRenderingCreateInfoKHR;
-        color_attachment_formats: [8] VkFormat;
+    pipeline_rendering_create_info: VkPipelineRenderingCreateInfoKHR;
+    color_attachment_formats: [8] VkFormat;
 
-        dynamic_rendering_enabled := rhi_is_dynamic_rendering_ext_supported();
+    dynamic_rendering_enabled := rhi_is_dynamic_rendering_ext_supported();
 
-        if dynamic_rendering_enabled {
-            for 0..create_info.attachment_formats.color_attachment_count-1 {
-                color_attachment_formats[it] = rhi_translate(create_info.attachment_formats.color_attachment_formats[it]);
-            }
-
-            depth_stencil_format := rhi_translate(create_info.attachment_formats.depth_stencil_format);
-
-            pipeline_rendering_create_info.viewMask = 0;
-            pipeline_rendering_create_info.colorAttachmentCount = create_info.attachment_formats.color_attachment_count;
-            pipeline_rendering_create_info.pColorAttachmentFormats = color_attachment_formats.data;
-            pipeline_rendering_create_info.depthAttachmentFormat = depth_stencil_format;
-            pipeline_rendering_create_info.stencilAttachmentFormat = depth_stencil_format;
-        } else {
-            assert(false);// nyi
+    if dynamic_rendering_enabled {
+        for 0..create_info.attachment_formats.color_attachment_count-1 {
+            color_attachment_formats[it] = rhi_translate(create_info.attachment_formats.color_attachment_formats[it]);
         }
 
-        result.static_sampler_descriptor_set_index = create_info.layout_create_info.static_sampler_set;
+        depth_stencil_format := rhi_translate(create_info.attachment_formats.depth_stencil_format);
 
-        create_pipeline_layout(create_info.layout_create_info, *result.pipeline_layout, *result.static_sampler_descriptor_set_layout, *result.static_sampler_descriptor_pool, *result.static_sampler_descriptor_set, *result.static_samplers);
+        pipeline_rendering_create_info.viewMask = 0;
+        pipeline_rendering_create_info.colorAttachmentCount = create_info.attachment_formats.color_attachment_count;
+        pipeline_rendering_create_info.pColorAttachmentFormats = color_attachment_formats.data;
+        pipeline_rendering_create_info.depthAttachmentFormat = depth_stencil_format;
+        pipeline_rendering_create_info.stencilAttachmentFormat = ifx rhi_is_stencil_format(create_info.attachment_formats.depth_stencil_format) then depth_stencil_format else .UNDEFINED;
+    } else {
+        assert(false);// nyi
     }
+
+    result.static_sampler_descriptor_set_index = create_info.layout_create_info.static_sampler_set;
+
+    create_pipeline_layout(create_info.layout_create_info, *result.pipeline_layout, *result.static_sampler_descriptor_set_layout, *result.static_sampler_descriptor_pool, *result.static_sampler_descriptor_set, *result.static_samplers);
 
     vertex_input_state: VkPipelineVertexInputStateCreateInfo;
     vertex_binding_descs: [RHIVertexInputState.MAX_VERTEX_BINDING_DESCRIPTIONS] VkVertexInputBindingDescription;
@@ -247,6 +247,7 @@ rhi_graphics_pipeline_build :: (create_info: RHIGraphicsPipelineCreateInfo) -> R
     };
 
     pipeline_create_info := VkGraphicsPipelineCreateInfo.{
+        pNext = ifx rhi_is_dynamic_rendering_ext_supported() then *pipeline_rendering_create_info else null,
         flags = 0,
         stageCount = xx stage_count,
         pStages = shader_stages.data,
