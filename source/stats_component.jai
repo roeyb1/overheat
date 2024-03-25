@@ -32,21 +32,6 @@ init_monster_stats :: (monster_stats: *Monster_Stats_Component, stats_component_
     monster_stats.aggro_range = stats_component_base.aggro_range;
 }
 
-//sets passed monster stats component to be equal to given template
-update_stats_component :: (using stats_component: *Stats_Component){
-    if current_health <= 0 {
-        is_alive = false;
-    }
-}
-
-add_health :: (using stats_component: *Stats_Component,amount: float){
-    stats_component.current_health = max(current_health + amount,maximum_health);
-}
-
-add_energy :: (using stats_component: *Stats_Component,amount: float){
-    stats_component.current_energy = max(current_energy + amount,maximum_energy);
-}
-
 Player_Stats_Component :: struct {
     using #as stats_component : Stats_Component;
     
@@ -65,8 +50,8 @@ test_stats_component :: () -> bool {
         
         player_test: Player_Stats_Component;
         goblin_test: Monster_Stats_Component;
-        init_player_stats(*player_test,DEFAULT_OVERHEAT_STATS);
-        assert(player_test.movement_speed == DEFAULT_OVERHEAT_STATS.movement_speed);
+        init_player_stats(*player_test,DEFAULT_PLAYER_STATS);
+        assert(player_test.movement_speed == DEFAULT_PLAYER_STATS.movement_speed);
 
         init_monster_stats(*goblin_test,DEFAULT_GOBLIN_STATS);
         assert(goblin_test.aggro_range == DEFAULT_GOBLIN_STATS.aggro_range);

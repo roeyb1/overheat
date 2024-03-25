@@ -1,4 +1,4 @@
-DEFAULT_OVERHEAT_STATS :: Player_Stats_Component .{
+DEFAULT_PLAYER_STATS :: Player_Stats_Component .{
 
     maximum_health = 50,
     maximum_energy = 100,

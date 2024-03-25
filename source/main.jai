@@ -88,7 +88,7 @@ simulate :: (delta_time: float64) {
         g_local_player.position += g_local_player.velocity * cast(float32) delta_time;
 
         player_moved: PlayerMove_Packet = ---;
-        player_moved.player_id = g_local_player.player_id;
+        player_moved.networking_id = g_local_player.networking_id;
         player_moved.new_position = g_local_player.position;
 
         networking_send_packet(*player_moved);;
@@ -127,7 +127,7 @@ draw_scene :: (camera: *Camera) {
         Simp.set_shader_for_color(); // this call is required or SIMP will not set the active shader program. Since we hijack this in the custom rendering code we need to force it here
 
         Simp.set_shader_for_text();
-        text_width := Simp.prepare_text(g_large_font, tprint("Connected as player % (%)", g_local_player.player_id, ifx is_server() then "server" else "client"));
+        text_width := Simp.prepare_text(g_large_font, tprint("Connected as player % (%)", g_local_player.networking_id, ifx is_server() then "server" else "client"));
         Simp.draw_prepared_text(g_large_font, 6, 6, color = Vector4.{0.227, 0.204, 0.921, 1.});
 
         // draw fps

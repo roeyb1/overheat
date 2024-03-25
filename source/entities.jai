@@ -18,7 +18,7 @@ Entity :: struct {
 Player :: struct {
     #as using entity: *Entity;
 
-    player_id: u64;
+    networking_id: u64;
 
     sprite: Sprite;
 
@@ -31,14 +31,33 @@ EntityCast :: (entity: *Entity, $type: Type) -> *type {
     return cast(*type) entity.data;
 }
 
-//requires better system for assigning sprites
-init_player :: (player: *Player){
-    sprite: *SpriteSheet;
-    if player == g_local_player sprite = g_local_player_sprite;
-    else sprite = g_player_sprite;
+
+init_local_player :: (networking_id: u64) -> *Player {
+    player := make_entity(*g_world, Player, tprint("Player_%",networking_id));
+    player.networking_id = networking_id;
+
+    
+    sprite := g_local_player_sprite;
+    
 
     player.sprite = Sprite.{sprite, .{1.5, 1.5}, 0, 1};
-    init_player_stats(*player.stats_component,DEFAULT_OVERHEAT_STATS);
+    init_player_stats(*player.stats_component,DEFAULT_PLAYER_STATS);
+
+    return player;
+}
+
+init_remote_player :: (networking_id: u64, player_position: Vector2) -> *Player {
+    player := make_entity(*g_world, Player, tprint("Player_%", networking_id));
+    player.networking_id = networking_id;
+    player.position = player_position;
+
+  
+    sprite := g_player_sprite;
+
+    player.sprite = Sprite.{sprite, .{1.5, 1.5}, 0, 1};
+    init_player_stats(*player.stats_component,DEFAULT_PLAYER_STATS);
+
+    return player;
 }
 
 #load "math.jai";
