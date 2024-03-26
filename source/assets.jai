@@ -6,10 +6,12 @@ SpriteSheet :: struct {
     /** Size of a single sprite in the sheet: (only supports square sprites for now) */
     extent: s32;
 
-    /** distance between entries in the sprite sheet, if it is not packed. */
+    /** Distance between entries in the sprite sheet, if it is not packed. */
     x_offset: u32;
     y_offset: u32;
-    remove_me_please :: 7;
+
+    /** Number of sprites in the sprite sheet. */
+    count: s32; 
 }
 
 // just for now, store some common stuff globally until we have a proper map loading system with asset references
@@ -42,8 +44,9 @@ get_spritesheet :: (filename: string) -> *SpriteSheet {
 load_spritesheet :: (filename: string, extent: s32, x_offset: u32, y_offset: u32) -> *SpriteSheet {
     key := copy_string(filename);
     texture := load_texture(filename);
+    count := (texture.width * texture.height) / (square(extent));
 
-    result := table_add(*sprite_sheets, key, .{texture, extent, x_offset, y_offset});
+    result := table_add(*sprite_sheets, key, .{texture, extent, x_offset, y_offset,count});
     assert(result != null);
 
     return result;

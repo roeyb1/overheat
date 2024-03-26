@@ -121,8 +121,7 @@ draw_scene :: (camera: *Camera) {
     {
         for :Player_It g_world {
             update_player_state_machine(*it.anim_statemachine,it);
-            if !is_server() && it != g_local_player then print("HELLO I AM % \n",it.position - it.prev_position); 
-            test_loop(*it.sprite);
+            update_current_sprite(*it.sprite,g_delta_time);
             draw_sprite(camera, *it.sprite, it.position);
         }
     }

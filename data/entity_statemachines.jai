@@ -5,19 +5,15 @@
     idle_state := add_state(*player.anim_statemachine); //0
     movement_state := add_state(*player.anim_statemachine); //1
     attack_state := add_state(*player.anim_statemachine); //2
-
-    //load_anim_sprite(*state_list[idle_state].anim_sprites, "player1/player_idle%.png", 0.1, 8);
-    //load_anim_sprite(*state_list[movement_state].anim_sprites, "player1/player_walk%.png", 0.04, 8);
-    //load_anim_sprite(*state_list[attack_state].anim_sprites, "player1/player_attack%.png", 0.04, 9);
+   
     
+    state_list[idle_state].anim_sprites.sheet = get_spritesheet("assets/orc_mage_walk_2.png");
+    state_list[movement_state].anim_sprites.sheet = get_spritesheet("assets/orc_mage_walk.png");
+    state_list[attack_state].anim_sprites.sheet = get_spritesheet("assets/orc_mage_walk_2.png");
 
-    state_list[idle_state].anim_sprites.sheet = load_spritesheet("assets/orc_mage_walk_2.png", 64, 0, 0);
-    state_list[movement_state].anim_sprites.sheet = load_spritesheet("assets/orc_mage_walk.png", 64, 0, 0);
-    state_list[attack_state].anim_sprites.sheet = load_spritesheet("assets/orc_mage_walk_2.png", 64, 0, 0);
-
-    //state_list[idle_state].anim_sprites.z_order = cast(s8) SpriteZLayer.PLAYER;
-    //state_list[movement_state].anim_sprites.z_order = cast(s8) SpriteZLayer.PLAYER;
-    //state_list[attack_state].anim_sprites.z_order = cast(s8) SpriteZLayer.PLAYER;
+    state_list[idle_state].anim_sprites.time_per_frame = 0.15;
+    state_list[movement_state].anim_sprites.time_per_frame = 0.15;
+    state_list[attack_state].anim_sprites.time_per_frame = 0.15;
 
     state_list[attack_state].priority = 1;
 

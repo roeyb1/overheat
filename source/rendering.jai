@@ -10,6 +10,9 @@ Sprite :: struct {
     scale: Vector2 = .{1, 1};
     index: s32 = 0;
     z_order: s8 = 0;
+
+    time_till_switch: float;
+    time_per_frame: float;
 }
 
 // Copy over the sprite data required for rendering so we don't need to directly reference it
@@ -70,11 +73,17 @@ rendering_end_frame :: () {
     sprite_draw_cmds.count = 0;
 }
 
-test_loop :: (sprite: *Sprite) {
-    if sprite.index < sprite.sheet.remove_me_please {
-        sprite.index = sprite.index+1;
+update_current_sprite :: (using sprite: *Sprite,delta_time: float) {
+
+    time_till_switch -= delta_time;
+
+    if time_till_switch <= 0.0 {
+        if index < sprite.sheet.count-1 {
+            index = sprite.index+1;
+        }
+        else index = 0;
+        time_till_switch = time_per_frame;
     }
-    else sprite.index = 0;
 }
 
 draw_sprite :: (camera: *Camera, sprite: *Sprite, position: Vector2) {

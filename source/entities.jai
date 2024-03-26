@@ -40,10 +40,9 @@ EntityCast :: (entity: *Entity, $type: Type) -> *type {
 init_local_player :: (networking_id: u64) -> *Player {
     player := make_entity(*g_world, Player, tprint("Player_%",networking_id));
     player.networking_id = networking_id;
-
-    sprite := g_local_player_sprite;
     
-    player.sprite = Sprite.{sprite, .{1.5, 1.5}, 0, 1};
+    player.sprite.sheet = get_spritesheet("assets/orc_mage_walk_2.png");
+    player.sprite.time_per_frame = 0.15;
     make_anim_sm_player(player);
 
     init_player_stats(*player.stats_component,DEFAULT_PLAYER_STATS);
@@ -57,9 +56,8 @@ init_remote_player :: (networking_id: u64, player_position: Vector2) -> *Player 
     player.networking_id = networking_id;
     player.position = player_position;
 
-    sprite := g_player_sprite;
-
-    player.sprite = Sprite.{sprite, .{1.5, 1.5}, 0, 1};
+    player.sprite.sheet = get_spritesheet("assets/orc_mage_walk_2.png");
+    player.sprite.time_per_frame = 0.15;
     make_anim_sm_player(player);
 
     init_player_stats(*player.stats_component,DEFAULT_PLAYER_STATS);
