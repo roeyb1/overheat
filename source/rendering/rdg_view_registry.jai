@@ -25,6 +25,8 @@ RDGViewRegistry :: struct {
     frame_index: u32;
 }
 
+g_view_registry: RDGViewRegistry;
+
 rdg_init_view_registry :: (using view_registry: *RDGViewRegistry) {
     texture_handles.max_handle = 65536;
     rw_texture_handles.max_handle = 65536;
@@ -55,39 +57,74 @@ rdg_destroy_view_registry :: (view_registry: *RDGViewRegistry) {
     rhi_descriptor_set_layout_destroy(view_registry.descriptor_set_layout);
 }
 
-rdg_create_texture_view_handle :: (view_registry: *RDGViewRegistry, image_view: *RHIImageView, transient: bool) -> RDGTextureViewHandle {
+//-------------------------------------------------- CREATE --------------------------------------------------  
+rdg_create_texture_view_handle :: (view_registry: *RDGViewRegistry, image_view: *RHIImageView, transient: bool = false) -> RDGTextureViewHandle {
     return cast(RDGTextureViewHandle) rdg_create_view_handle(view_registry, *view_registry.texture_handles, RHI_TEXTURE_BINDING, transient, .TEXTURE, image_view, null, null);
 }
 
-rdg_create_rw_texture_view_handle :: (view_registry: *RDGViewRegistry, image_view: *RHIImageView, transient: bool) -> RDGRWTextureViewHandle {
+rdg_create_rw_texture_view_handle :: (view_registry: *RDGViewRegistry, image_view: *RHIImageView, transient: bool = false) -> RDGRWTextureViewHandle {
     return cast(RDGRWTextureViewHandle) rdg_create_view_handle(view_registry, *view_registry.rw_texture_handles, RHI_RW_TEXTURE_BINDING, transient, .RW_TEXTURE, image_view, null, null);
 }
 
-rdg_create_typed_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_view: *RHIBufferView, transient: bool) -> RDGTypedBufferViewHandle {
+rdg_create_typed_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_view: *RHIBufferView, transient: bool = false) -> RDGTypedBufferViewHandle {
     return cast(RDGTypedBufferViewHandle) rdg_create_view_handle(view_registry, *view_registry.typed_buffer_handles, RHI_TYPED_BUFFER_BINDING, transient, .TYPED_BUFFER, null, buffer_view, null);
 }
 
-rdg_create_rw_typed_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_view: *RHIBufferView, transient: bool) -> RDGRWTypedBufferViewHandle {
+rdg_create_rw_typed_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_view: *RHIBufferView, transient: bool = false) -> RDGRWTypedBufferViewHandle {
     return cast(RDGRWTypedBufferViewHandle) rdg_create_view_handle(view_registry, *view_registry.rw_typed_buffer_handles, RHI_RW_TYPED_BUFFER_BINDING, transient, .RW_TYPED_BUFFER, null, buffer_view, null);
 }
 
-rdg_create_byte_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_info: RHIDescriptorBufferInfo, transient: bool) -> RDGByteBufferViewHandle {
+rdg_create_byte_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_info: RHIDescriptorBufferInfo, transient: bool = false) -> RDGByteBufferViewHandle {
     return cast(RDGByteBufferViewHandle) rdg_create_view_handle(view_registry, *view_registry.byte_buffer_handles, RHI_BYTE_BUFFER_BINDING, transient, .BYTE_BUFFER, null, null, *buffer_info);
 }
 
-rdg_create_rw_byte_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_info: RHIDescriptorBufferInfo, transient: bool) -> RDGRWByteBufferViewHandle {
+rdg_create_rw_byte_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_info: RHIDescriptorBufferInfo, transient: bool = false) -> RDGRWByteBufferViewHandle {
     return cast(RDGRWByteBufferViewHandle) rdg_create_view_handle(view_registry, *view_registry.rw_byte_buffer_handles, RHI_RW_BYTE_BUFFER_BINDING, transient, .RW_BYTE_BUFFER, null, null, *buffer_info);
 }
 
-rdg_create_structured_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_info: RHIDescriptorBufferInfo, transient: bool) -> RDGStructuredBufferViewHandle {
+rdg_create_structured_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_info: RHIDescriptorBufferInfo, transient: bool = false) -> RDGStructuredBufferViewHandle {
     return cast(RDGStructuredBufferViewHandle) rdg_create_view_handle(view_registry, *view_registry.byte_buffer_handles, RHI_BYTE_BUFFER_BINDING, transient, .STRUCTURED_BUFFER, null, null, *buffer_info);
 }
 
-rdg_create_rw_structured_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_info: RHIDescriptorBufferInfo, transient: bool) -> RDGRWStructuredBufferViewHandle {
+rdg_create_rw_structured_buffer_view_handle :: (view_registry: *RDGViewRegistry, buffer_info: RHIDescriptorBufferInfo, transient: bool = false) -> RDGRWStructuredBufferViewHandle {
     return cast(RDGRWStructuredBufferViewHandle) rdg_create_view_handle(view_registry, *view_registry.rw_byte_buffer_handles, RHI_RW_BYTE_BUFFER_BINDING, transient, .RW_STRUCTURED_BUFFER, null, null, *buffer_info);
 }
 
-rdg_create_view_handle :: (view_registry: *RDGViewRegistry, handle_manager: *HandleManager, binding: u32, transient: bool, descriptor_type: RHIDescriptorType, image_view: *RHIImageView, buffer_view: *RHIBufferView, buffer_info: *RHIDescriptorBufferInfo) -> RDGResourceViewHandle{
+//-------------------------------------------------- DESTROY --------------------------------------------------  
+
+rdg_destroy_handle :: (view_registry: *RDGViewRegistry, handle: RDGTextureViewHandle) {
+    rdg_destroy_view_handle(view_registry, *view_registry.texture_handles, xx handle, RHI_TEXTURE_BINDING);
+}
+
+rdg_destroy_handle :: (view_registry: *RDGViewRegistry, handle: RDGRWTextureViewHandle) {
+    rdg_destroy_view_handle(view_registry, *view_registry.rw_texture_handles, xx handle, RHI_RW_TEXTURE_BINDING);
+}
+
+rdg_destroy_handle :: (view_registry: *RDGViewRegistry, handle: RDGTypedBufferViewHandle) {
+    rdg_destroy_view_handle(view_registry, *view_registry.typed_buffer_handles, xx handle, RHI_TYPED_BUFFER_BINDING);
+}
+
+rdg_destroy_handle :: (view_registry: *RDGViewRegistry, handle: RDGRWTypedBufferViewHandle) {
+    rdg_destroy_view_handle(view_registry, *view_registry.rw_typed_buffer_handles, xx handle, RHI_RW_TYPED_BUFFER_BINDING);
+}
+
+rdg_destroy_handle :: (view_registry: *RDGViewRegistry, handle: RDGByteBufferViewHandle) {
+    rdg_destroy_view_handle(view_registry, *view_registry.byte_buffer_handles, xx handle, RHI_BYTE_BUFFER_BINDING);
+}
+
+rdg_destroy_handle :: (view_registry: *RDGViewRegistry, handle: RDGRWByteBufferViewHandle) {
+    rdg_destroy_view_handle(view_registry, *view_registry.rw_byte_buffer_handles, xx handle, RHI_RW_BYTE_BUFFER_BINDING);
+}
+
+rdg_destroy_handle :: (view_registry: *RDGViewRegistry, handle: RDGStructuredBufferViewHandle) {
+    rdg_destroy_handle(view_registry, cast(RDGByteBufferViewHandle)handle);
+}
+
+rdg_destroy_handle :: (view_registry: *RDGViewRegistry, handle: RDGRWStructuredBufferViewHandle) {
+    rdg_destroy_handle(view_registry, cast(RDGRWByteBufferViewHandle)handle);
+}
+
+rdg_create_view_handle :: (view_registry: *RDGViewRegistry, handle_manager: *HandleManager, binding: u32, transient: bool = false, descriptor_type: RHIDescriptorType, image_view: *RHIImageView, buffer_view: *RHIBufferView, buffer_info: *RHIDescriptorBufferInfo) -> RDGResourceViewHandle{
     handle := alloc_handle(handle_manager, transient);
 
     if handle == 0 then return handle;
@@ -137,7 +174,7 @@ rdg_destroy_view_handle :: (view_registry: *RDGViewRegistry, manager: *HandleMan
     free_handle(manager, handle);
 }
 
-rdg_add_view_handle_update :: (view_registry: *RDGViewRegistry, update: RHIDescriptorSetUpdate, transient: bool) {
+rdg_add_view_handle_update :: (view_registry: *RDGViewRegistry, update: RHIDescriptorSetUpdate, transient: bool = false) {
     for frame : 0..RDG_NUM_FRAMES-1 {
         // only update transient views for the current frame
         if transient && (frame != view_registry.frame_index % RDG_NUM_FRAMES) {

@@ -334,3 +334,11 @@ rhi_get_buffer_alignment :: (buffer_type: RHIDescriptorType, element_size: s64) 
         case; assert(false); return 0;
     }
 }
+
+rhi_get_buffer_copy_offset_alignment :: () -> s64 {
+    return cast(s64) physical_device_properties.limits.optimalBufferCopyOffsetAlignment;
+}
+
+rhi_get_buffer_copy_row_pitch_alignment :: () -> s64 {
+    return cast(s64) physical_device_properties.limits.optimalBufferCopyRowPitchAlignment;
+}

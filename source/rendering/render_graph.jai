@@ -188,8 +188,6 @@ RenderGraph :: struct {
     external_release_barriers: [RHI_QUEUE_COUNT][..] RHIBarrier;
 
     per_frame_resources: [RHI_QUEUE_COUNT] RDGPerFrameGPUResources;
-
-    view_registry: RDGViewRegistry;
 }
 
 g_render_graph: RenderGraph;
@@ -219,8 +217,6 @@ rdg_shutdown :: (rg: *RenderGraph) {
     for 0..RHI_QUEUE_COUNT-1 {
         rhi_semaphore_destroy(rg.semaphores[it]);
     }
-
-    rdg_destroy_view_registry(*rg.view_registry);
 }
 
 rdg_next_frame :: (rg: *RenderGraph) -> u64 {
@@ -338,7 +334,7 @@ rdg_execute :: (rg: *RenderGraph) {
     rdg_create_resources(rg);
     rdg_create_synchronization(rg);
 
-    rdg_flush_resource_view_updates(*rg.view_registry);
+    rdg_flush_resource_view_updates(*g_view_registry);
 
     rdg_record_and_submit(rg);
 }
@@ -437,10 +433,10 @@ rdg_create_resources :: (using rg: *RenderGraph) {
             usage_flags := view_create_info.image.desc.usage_flags;
 
             if (usage_flags & RHIImageUsageFlags.TEXTURE_BIT) != 0 {
-                view_data.texture_handle = rdg_create_texture_view_handle(*rg.view_registry, view_data.image_view, true);
+                view_data.texture_handle = rdg_create_texture_view_handle(*g_view_registry, view_data.image_view, true);
             }
             if (usage_flags & RHIImageUsageFlags.RW_TEXTURE_BIT) != 0 {
-                view_data.rw_texture_handle = rdg_create_rw_texture_view_handle(*rg.view_registry, view_data.image_view, true);
+                view_data.rw_texture_handle = rdg_create_rw_texture_view_handle(*g_view_registry, view_data.image_view, true);
             }
         } else if view_desc.format != RHIFormat.UNDEFINED {
             view_create_info := RHIBufferViewCreateInfo.{
@@ -467,22 +463,22 @@ rdg_create_resources :: (using rg: *RenderGraph) {
             };
 
             if (usage_flags & RHIBufferUsageFlags.TYPED_BUFFER_BIT) != 0 && view_data.buffer_view {
-                view_data.typed_buffer_handle = rdg_create_typed_buffer_view_handle(*rg.view_registry, view_data.buffer_view, true);
+                view_data.typed_buffer_handle = rdg_create_typed_buffer_view_handle(*g_view_registry, view_data.buffer_view, true);
             }
             if (usage_flags & RHIBufferUsageFlags.RW_TYPED_BUFFER_BIT) != 0 && view_data.buffer_view {
-                view_data.rw_typed_buffer_handle = rdg_create_rw_typed_buffer_view_handle(*rg.view_registry, view_data.buffer_view, true);
+                view_data.rw_typed_buffer_handle = rdg_create_rw_typed_buffer_view_handle(*g_view_registry, view_data.buffer_view, true);
             }
             if (usage_flags & RHIBufferUsageFlags.BYTE_BUFFER_BIT) != 0 {
-                view_data.byte_buffer_handle = rdg_create_byte_buffer_view_handle(*rg.view_registry, buffer_info, true);
+                view_data.byte_buffer_handle = rdg_create_byte_buffer_view_handle(*g_view_registry, buffer_info, true);
             }
             if (usage_flags & RHIBufferUsageFlags.RW_BYTE_BUFFER_BIT) != 0 {
-                view_data.rw_byte_buffer_handle = rdg_create_rw_byte_buffer_view_handle(*rg.view_registry, buffer_info, true);
+                view_data.rw_byte_buffer_handle = rdg_create_rw_byte_buffer_view_handle(*g_view_registry, buffer_info, true);
             }
             if view_desc.structure_byte_stride != 0 && ((usage_flags & RHIBufferUsageFlags.STRUCTURED_BUFFER_BIT) != 0) {
-                view_data.structured_buffer_handle = rdg_create_structured_buffer_view_handle(*rg.view_registry, buffer_info, true);
+                view_data.structured_buffer_handle = rdg_create_structured_buffer_view_handle(*g_view_registry, buffer_info, true);
             }
             if view_desc.structure_byte_stride != 0 && ((usage_flags & RHIBufferUsageFlags.RW_STRUCTURED_BUFFER_BIT) != 0) {
-                view_data.rw_structured_buffer_handle = rdg_create_rw_structured_buffer_view_handle(*rg.view_registry, buffer_info, true);
+                view_data.rw_structured_buffer_handle = rdg_create_rw_structured_buffer_view_handle(*g_view_registry, buffer_info, true);
             }
         }
     }

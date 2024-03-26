@@ -133,6 +133,27 @@ rhi_cmd_copy_image :: (cmd_list: *RHICmdList, src: *RHIImage, dst: *RHIImage, re
     vkCmdCopyImage(cmd_list.handle, src_handle, .TRANSFER_SRC_OPTIMAL, dst_handle, .TRANSFER_DST_OPTIMAL, xx vk_regions.count, vk_regions.data);
 }
 
+rhi_cmd_copy_buffer_to_image :: (cmd_list: *RHICmdList, buffer: *RHIBuffer, image: *RHIImage, regions: [] RHIBufferImageCopy) {
+    vk_regions: [..] VkBufferImageCopy;
+    vk_regions.allocator = temp;
+    array_reserve(*vk_regions, regions.count);
+
+    dst_aspect_mask := rhi_image_aspect_mask(rhi_translate(image.desc.format));
+
+    for *region : regions {
+        array_add(*vk_regions, VkBufferImageCopy.{
+            bufferOffset = xx region.buffer_offset,
+            bufferRowLength = region.buffer_row_length,
+            bufferImageHeight = region.buffer_image_height,
+            imageSubresource = .{dst_aspect_mask, region.image_mip_level, region.image_base_layer, region.image_layer_count},
+            imageOffset = cast, force(VkOffset3D) region.offset,
+            imageExtent = cast, force(VkExtent3D) region.extent,
+        });
+    }
+
+    vkCmdCopyBufferToImage(cmd_list.handle, buffer.handle, image.handle, .TRANSFER_DST_OPTIMAL, xx regions.count, vk_regions.data);
+}
+
 rhi_cmd_clear_image :: (cmd_list: *RHICmdList, image: *RHIImage, color: RHIClearColorValue, ranges: [] RHIImageSubresourceRange) {
     handle := image.handle;
 

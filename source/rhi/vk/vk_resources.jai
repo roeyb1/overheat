@@ -149,6 +149,28 @@ rhi_image_view_create :: (create_info: RHIImageViewCreateInfo) -> *RHIImageView 
     return result;
 }
 
+rhi_image_view_create :: (image: *RHIImage) -> *RHIImageView {
+    create_info := RHIImageViewCreateInfo.{
+        image = image,
+        view_type = cast, force(RHIImageViewType) image.desc.image_type,
+        format = image.desc.format,
+        base_mip_level = 0,
+        level_count = image.desc.levels,
+        base_array_layer = 0,
+        layer_count = image.desc.layers,
+    };
+
+    if create_info.view_type != .CUBE && create_info.layer_count > 1 {
+        if create_info.view_type == {
+            case ._1D; create_info.view_type = ._1D_ARRAY;
+            case ._2D; create_info.view_type = ._2D_ARRAY;
+            case; assert(false);
+        }
+    }
+
+    return rhi_image_view_create(create_info);
+}
+
 rhi_image_view_destroy :: (image_view: RHIImageView) {
     vkDestroyImageView(device, image_view.handle, null);
 }

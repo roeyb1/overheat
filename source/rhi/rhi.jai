@@ -374,6 +374,17 @@ RHIImageCopy :: struct {
     extent: Extent3D;
 }
 
+RHIBufferImageCopy :: struct {
+    buffer_offset: s64;
+    buffer_row_length: u32;
+    buffer_image_height: u32;
+    image_mip_level: u32;
+    image_base_layer: u32;
+    image_layer_count: u32;
+    offset: Offset3D;
+    extent: Extent3D;
+}
+
 RHIBarrierFlags :: enum_flags {
     QUEUE_OWNERSHIP_RELEASE :: 1 << 0;
     QUEUE_OWNERSHIP_ACQUIRE :: 1 << 1;

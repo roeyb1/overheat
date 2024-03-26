@@ -24,7 +24,7 @@ is_valid_handle :: (using manager: *HandleManager, handle: u32) -> bool {
     return handle != 0;
 }
 
-alloc_handle :: (using manager: *HandleManager, transient: bool) -> u32 {
+alloc_handle :: (using manager: *HandleManager, transient: bool = false) -> u32 {
     result: u32 = 0;
     if free_handles.count > 0 {
         result = pop(*free_handles);

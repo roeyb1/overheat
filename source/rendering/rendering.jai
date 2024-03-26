@@ -40,7 +40,8 @@ rendering_init :: () -> bool {
     rhi_swapchain_init(g_window_width, g_window_height);
 
     rdg_initialize(*g_render_graph);
-    rdg_init_view_registry(*g_render_graph.view_registry);
+    rdg_init_view_registry(*g_view_registry);
+    init_texture_manager();
 
     init_rendering_resources();
 
@@ -55,6 +56,9 @@ rendering_shutdown :: () {
 
     destroy_rendering_resources();
 
+    destroy_texture_manager();
+
+    rdg_destroy_view_registry(*g_view_registry);
     rdg_shutdown(*g_render_graph);
 
     rhi_swapchain_destroy();
@@ -132,6 +136,12 @@ render_scene :: (camera: *Camera) {
 
     view_data := init_view_data_for_frame(rg, camera, resource_index);
 
+    texture_manager_flush_deletions();
+
+    rdg_add_pass(rg, "Flush Uploads", .GRAPHICS, .[], null, (cmd_list: *RHICmdList, pass_data: *void) -> () {
+        texture_loader_flush_uploads(cmd_list);
+    });
+
     render_image_desc := RDGImageDescription.{
         debug_name = "Render Image",
         width = swapchain.extent.width,
@@ -193,7 +203,7 @@ render_scene :: (camera: *Camera) {
         }
     }
 
-    rdg_flush_resource_view_updates(*rg.view_registry);
+    rdg_flush_resource_view_updates(*g_view_registry);
     rdg_execute(rg);
 
 
@@ -203,7 +213,7 @@ render_scene :: (camera: *Camera) {
 
 init_view_data_for_frame :: (rg: *RenderGraph, camera: *Camera, resource_index: u64) -> RenderViewData {
     view_data := RenderViewData.{
-        bindless_set = *rg.view_registry.descriptor_sets[resource_index],
+        bindless_set = *g_view_registry.descriptor_sets[resource_index],
         offset_buffer_set = *offset_buffer_descriptor_sets[resource_index],
         constant_buffer_allocator = *constant_buff_linear_allocs[resource_index],
         vertex_buffer_allocator = *vertex_buffer_allocators[resource_index],
@@ -292,7 +302,7 @@ init_rendering_resources :: () {
         index_buffer_allocators[1] = rhi_linear_allocator_init(*index_buffers[1]);
     }
 
-    init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_render_graph.view_registry.descriptor_set_layout);
+    init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
 }
 
 destroy_rendering_resources :: () {
@@ -321,6 +331,8 @@ destroy_rendering_resources :: () {
 #load "../rhi/rhi.jai";
 #load "render_graph.jai";
 #load "sprite_rendering.jai";
+#load "texture_loader.jai";
+#load "texture_manager.jai";
 
 #import "Sort";
 #import "File";
