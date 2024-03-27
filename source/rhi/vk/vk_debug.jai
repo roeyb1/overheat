@@ -9,43 +9,51 @@ vk_check_result :: inline (result: VkResult) -> bool {
 }
 
 rhi_debug_set_object_name :: (image: *RHIImage, name: string) {
-    info := VkDebugUtilsObjectNameInfoEXT.{
-        pObjectName = temp_c_string(name),
-        objectType = .IMAGE,
-        objectHandle = xx image.handle,
-    };
+    #if DEBUG_VULKAN {
+        info := VkDebugUtilsObjectNameInfoEXT.{
+            pObjectName = temp_c_string(name),
+            objectType = .IMAGE,
+            objectHandle = xx image.handle,
+        };
 
-    vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+        vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+    }
 }
 
 rhi_debug_set_object_name :: (buffer: *RHIBuffer, name: string) {
-    info := VkDebugUtilsObjectNameInfoEXT.{
-        pObjectName = temp_c_string(name),
-        objectType = .BUFFER,
-        objectHandle = xx buffer.handle,
-    };
+    #if DEBUG_VULKAN {
+        info := VkDebugUtilsObjectNameInfoEXT.{
+            pObjectName = temp_c_string(name),
+            objectType = .BUFFER,
+            objectHandle = xx buffer.handle,
+        };
 
-    vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+        vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+    }
 }
 
 rhi_debug_set_object_name :: (image_view: *RHIImageView, name: string) {
-    info := VkDebugUtilsObjectNameInfoEXT.{
-        pObjectName = temp_c_string(name),
-        objectType = .IMAGE_VIEW,
-        objectHandle = xx image_view.handle,
-    };
+    #if DEBUG_VULKAN {
+        info := VkDebugUtilsObjectNameInfoEXT.{
+            pObjectName = temp_c_string(name),
+            objectType = .IMAGE_VIEW,
+            objectHandle = xx image_view.handle,
+        };
 
-    vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+        vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+    }
 }
 
 rhi_debug_set_object_name :: (buffer_view: *RHIBufferView, name: string) {
-    info := VkDebugUtilsObjectNameInfoEXT.{
-        pObjectName = temp_c_string(name),
-        objectType = .BUFFER_VIEW,
-        objectHandle = xx buffer_view.handle,
-    };
+    #if DEBUG_VULKAN {
+        info := VkDebugUtilsObjectNameInfoEXT.{
+            pObjectName = temp_c_string(name),
+            objectType = .BUFFER_VIEW,
+            objectHandle = xx buffer_view.handle,
+        };
 
-    vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+        vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+    }
 }
 
 #if DEBUG_VULKAN {

@@ -4,7 +4,6 @@ sprite_pipeline: RHIGraphicsPipeline;
 
 SpritePushConst :: struct {
     spritesheet_index: u32;
-    sprite_index: u32;
 }
 
 SpriteVertex :: struct {
@@ -195,6 +194,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
 
             pass_const_addr := rhi_upload_struct(pass_data.view_data.constant_buffer_allocator, .OFFSET_CONSTANT_BUFFER, pass_consts);
 
+
             rhi_cmd_bind_pipeline(cmd_list, *sprite_pipeline);
 
             descriptor_sets := RHIDescriptorSet.[ pass_data.view_data.offset_buffer_set, pass_data.view_data.bindless_set];
@@ -202,10 +202,13 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
             
             rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset]);
             rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
-            rhi_cmd_draw_indexed(cmd_list, 6, 1, 0, 0, 0);
 
             for *sprite_draw : pass_data.sprite_datas {
-
+                push_const: SpritePushConst = .{
+                    spritesheet_index = cast(u32) get_texture_view_handle(sprite_draw.sheet.texture),
+                };
+                rhi_cmd_push_constants(cmd_list, *sprite_pipeline, .PIXEL_BIT, 0, size_of(SpritePushConst), *push_const);
+                rhi_cmd_draw_indexed(cmd_list, 6, 1, 0, 0, 0);
             }
         }
         rhi_cmd_end_renderpass(cmd_list);

@@ -1,23 +1,29 @@
 #scope_export
 
 rhi_cmd_debug_label_insert :: (cmd_list: *RHICmdList, label: string) {
-    debug_label:= VkDebugUtilsLabelEXT.{
-        pLabelName = temp_c_string(label),
-    };
+    #if DEBUG_VULKAN {
+        debug_label:= VkDebugUtilsLabelEXT.{
+            pLabelName = temp_c_string(label),
+        };
 
-    vkCmdInsertDebugUtilsLabelEXT(cmd_list.handle, *debug_label);
+        vkCmdInsertDebugUtilsLabelEXT(cmd_list.handle, *debug_label);
+    }
 }
 
 rhi_cmd_debug_label_begin :: (cmd_list: *RHICmdList, label: string) {
-    debug_label:= VkDebugUtilsLabelEXT.{
-        pLabelName = temp_c_string(label),
-    };
+    #if DEBUG_VULKAN {
+        debug_label:= VkDebugUtilsLabelEXT.{
+            pLabelName = temp_c_string(label),
+        };
 
-    vkCmdBeginDebugUtilsLabelEXT(cmd_list.handle, *debug_label);
+        vkCmdBeginDebugUtilsLabelEXT(cmd_list.handle, *debug_label);
+    }
 }
 
 rhi_cmd_debug_label_end :: (cmd_list: *RHICmdList) {
-    vkCmdEndDebugUtilsLabelEXT(cmd_list.handle);
+    #if DEBUG_VULKAN {
+        vkCmdEndDebugUtilsLabelEXT(cmd_list.handle);
+    }
 }
 
 rhi_cmd_barrier :: (cmd_list: *RHICmdList, barriers: [] RHIBarrier) {
@@ -282,4 +288,8 @@ rhi_cmd_bind_index_buffer :: (cmd_list: *RHICmdList, buffer: *RHIBuffer, offset:
 
 rhi_cmd_draw_indexed :: (cmd_list: *RHICmdList, index_count: u32, instance_count: u32, first_index: u32, vertex_offset: s32, first_instance: u32) {
     vkCmdDrawIndexed(cmd_list.handle, index_count, instance_count, first_index, vertex_offset, first_instance);
+}
+
+rhi_cmd_push_constants :: (cmd_list: *RHICmdList, pipeline: *RHIGraphicsPipeline, stage_flags: RHIShaderStageFlags, offset: u32, size: u32, data: *void) {
+    vkCmdPushConstants(cmd_list.handle, pipeline.pipeline_layout, rhi_translate(stage_flags), offset, size, data);
 }

@@ -75,3 +75,9 @@ texture_manager_flush_deletions :: () {
     }
     array_reset_keeping_memory(textures_to_free);
 }
+
+get_texture_view_handle :: (handle: TextureHandle) -> RDGTextureViewHandle {
+    assert(handle != 0 && cast(u32) handle < g_texture_manager.textures.count);
+
+    return g_texture_manager.textures[handle].view_handle;
+}

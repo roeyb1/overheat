@@ -45,3 +45,10 @@ free_handle :: (using manager: *HandleManager, handle: u32) {
         array_add(*free_handles, handle);
     }
 }
+
+free_transient_handles :: (using manager: *HandleManager) {
+    if transient_handles.count > 0 {
+        array_append(*free_handles, transient_handles);
+        array_reset_keeping_memory(*transient_handles);
+    }
+}

@@ -30,7 +30,9 @@ PUSH_CONSTS(DrawConstants, g_draw_consts);
 PSOutput main(PSInput input) {
     PSOutput output;
 
-    output.color = float4(1., 0.5, 0.5, 1.);
+    const uint spritesheet_index = uint(g_draw_consts.spritesheet_index);
+    output.color = g_textures[spritesheet_index].SampleLevel(g_aniso_repeat_sampler, input.tex_coord, 0);
+    //output.color = float4(1, g_draw_consts.spritesheet_index, 0., 1.0);
 
     return output;
 }

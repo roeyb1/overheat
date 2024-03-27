@@ -17,4 +17,10 @@ array_zero :: inline (arr: [] $T) {
     memset(arr.data, 0, arr.count * size_of(T));
 }
 
+array_append :: (arr: *[..] $T, to_append: [] T) {
+    for val : to_append {
+        array_add(arr, val);
+    }
+}
+
 #load "handle_manager.jai";

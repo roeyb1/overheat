@@ -57,6 +57,24 @@ rdg_destroy_view_registry :: (view_registry: *RDGViewRegistry) {
     rhi_descriptor_set_layout_destroy(view_registry.descriptor_set_layout);
 }
 
+rdg_flush_resource_view_updates :: (view_registry: *RDGViewRegistry) {
+    frame_index := view_registry.frame_index % RDG_NUM_FRAMES;
+
+    rhi_descriptor_set_update(view_registry.descriptor_sets[frame_index], view_registry.pending_updates[frame_index]);
+    array_reset_keeping_memory(*view_registry.pending_updates[frame_index]);
+}
+
+rdg_swap_sets :: (view_registry: *RDGViewRegistry) {
+    free_transient_handles(*view_registry.texture_handles);
+    free_transient_handles(*view_registry.rw_texture_handles);
+    free_transient_handles(*view_registry.typed_buffer_handles);
+    free_transient_handles(*view_registry.rw_typed_buffer_handles);
+    free_transient_handles(*view_registry.byte_buffer_handles);
+    free_transient_handles(*view_registry.rw_byte_buffer_handles);
+
+    view_registry.frame_index += 1;
+}
+
 //-------------------------------------------------- CREATE --------------------------------------------------  
 rdg_create_texture_view_handle :: (view_registry: *RDGViewRegistry, image_view: *RHIImageView, transient: bool = false) -> RDGTextureViewHandle {
     return cast(RDGTextureViewHandle) rdg_create_view_handle(view_registry, *view_registry.texture_handles, RHI_TEXTURE_BINDING, transient, .TEXTURE, image_view, null, null);
@@ -193,11 +211,4 @@ rdg_add_view_handle_update :: (view_registry: *RDGViewRegistry, update: RHIDescr
             array_add(*view_registry.pending_updates[frame], update);
         }
     }
-}
-
-rdg_flush_resource_view_updates :: (view_registry: *RDGViewRegistry) {
-    frame_index := view_registry.frame_index % RDG_NUM_FRAMES;
-
-    rhi_descriptor_set_update(view_registry.descriptor_sets[frame_index], view_registry.pending_updates[frame_index]);
-    array_reset_keeping_memory(*view_registry.pending_updates[frame_index]);
 }

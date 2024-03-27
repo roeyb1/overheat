@@ -98,6 +98,7 @@ texture_load :: (filename: string) -> TextureHandle {
 texture_loader_flush_uploads :: (cmd_list: *RHICmdList) {
     defer g_texture_loader.staging_buffers_index = (g_texture_loader.staging_buffers_index + 1) % RDG_NUM_FRAMES;
 
+    // delete the buffers from the previous frame:
     for buffer_to_delete : g_texture_loader.staging_buffers_to_delete[g_texture_loader.staging_buffers_index] {
         rhi_buffer_destroy(buffer_to_delete);
     }

@@ -30,8 +30,6 @@ Sprite_Draw_Cmd :: struct {
 rendering_init :: () -> bool {
     log("Initialized rendering systems...");
 
-    compile_shaders("assets/shaders", true);
-
     game_window = create_window(g_window_width, g_window_height, "Overheat");
 
     init_rhi();
@@ -209,11 +207,13 @@ render_scene :: (camera: *Camera) {
 
     rhi_swapchain_present(rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS], rg.semaphores[RHIQueueIndex.GRAPHICS].handle, rg.semaphore_values[RHIQueueIndex.GRAPHICS] + 1);
     rg.semaphore_values[RHIQueueIndex.GRAPHICS] += 1;
+
+    rdg_swap_sets(*g_view_registry);
 }
 
 init_view_data_for_frame :: (rg: *RenderGraph, camera: *Camera, resource_index: u64) -> RenderViewData {
     view_data := RenderViewData.{
-        bindless_set = *g_view_registry.descriptor_sets[resource_index],
+        bindless_set = *g_view_registry.descriptor_sets[g_view_registry.frame_index % RDG_NUM_FRAMES],
         offset_buffer_set = *offset_buffer_descriptor_sets[resource_index],
         constant_buffer_allocator = *constant_buff_linear_allocs[resource_index],
         vertex_buffer_allocator = *vertex_buffer_allocators[resource_index],
