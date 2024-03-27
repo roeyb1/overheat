@@ -72,6 +72,8 @@ application_window_update :: () {
 
     for get_window_resizes() {
         if it.window == game_window {
+            g_window_width = xx it.width;
+            g_window_height = xx it.height;
             rhi_swapchain_resize(g_window_width, g_window_height, acquire_image = true);
 
             recompute_camera_projection(*main_view_camera);

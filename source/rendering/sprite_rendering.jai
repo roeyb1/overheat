@@ -58,7 +58,7 @@ init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bind
     rhi_set_vertex_binding_descs(*create_info, binding_descs);
     rhi_set_vertex_attrib_descs(*create_info, attribute_descs);
     rhi_set_color_blend_attachments(*create_info, blend_states);
-    rhi_set_depth_test(*create_info, true, true, .EQUAL); // #todo: disable depth write if we ever implement a depth prepass
+    rhi_set_depth_test(*create_info, true, true, .LESS_OR_EQUAL); // #todo: disable depth write if we ever implement a depth prepass
     rhi_set_dynamic_state(*create_info, .VIEWPORT_BIT | .SCISSOR_BIT);
     rhi_set_depth_stencil_attachment_format(*create_info, .D32_SFLOAT);
     rhi_set_color_attachment_formats(*create_info, render_target_formats);
