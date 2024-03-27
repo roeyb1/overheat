@@ -11,7 +11,7 @@ main_view_camera: Camera;
 Sprite :: struct {
     sheet: *SpriteSheet = null;
     scale: Vector2 = .{1, 1};
-    index: s32 = 0;
+    index: u32 = 0;
     z_order: s8 = 0;
 }
 
@@ -20,7 +20,7 @@ Sprite :: struct {
 Sprite_Draw_Cmd :: struct {
     sheet: *SpriteSheet;
 
-    sprite_index: s32;
+    sprite_index: u32;
     z_order: s8;
 
     position: Vector2;

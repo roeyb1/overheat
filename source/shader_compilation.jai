@@ -58,7 +58,7 @@ compile_shader :: (shader_compiler: string, shader_path: string, output_director
         "-D VULKAN=1",
         "-spirv",
         "-fspv-target-env=vulkan1.2",
-        ifx shader_type[0] == #char "v" then "-fvk-invert-y" else "",
+        ifx shader_type[3] == #char "v" then "-fvk-invert-y" else "",
         shader_type,
         "-E main",
         shader_path,
