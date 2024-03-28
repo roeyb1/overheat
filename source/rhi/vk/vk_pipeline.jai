@@ -1,13 +1,21 @@
 #scope_export
 
-RHIGraphicsPipeline :: struct {
+RHIPipeline :: struct {
     pipeline: VkPipeline;
     pipeline_layout: VkPipelineLayout;
-    static_sampler_descriptor_set_index: u32;
+    static_sampler_descriptor_set_index: s32;
     static_sampler_descriptor_set_layout: VkDescriptorSetLayout;
     static_sampler_descriptor_pool: VkDescriptorPool;
     static_sampler_descriptor_set: VkDescriptorSet;
     static_samplers: [..] VkSampler;
+}
+
+RHIGraphicsPipeline :: struct {
+    using #as p: RHIPipeline;
+}
+
+RHIComputePipeline :: struct {
+    using #as p: RHIPipeline;
 }
 
 rhi_graphics_pipeline_build :: (create_info: RHIGraphicsPipelineCreateInfo) -> RHIGraphicsPipeline {
@@ -289,6 +297,37 @@ rhi_graphics_pipeline_destroy :: (pipeline: RHIGraphicsPipeline) {
     vkDestroyDescriptorSetLayout(device, pipeline.static_sampler_descriptor_set_layout, null);
 }
 
+rhi_compute_pipeline_build :: (create_info: RHIComputePipelineCreateInfo) -> RHIComputePipeline {
+    compute_module:, compute_stage_info := create_shader_stage(create_info.compute_shader, .COMPUTE_BIT);
+    defer vkDestroyShaderModule(device, compute_module, null);
+
+    result: RHIComputePipeline;
+    array_reserve(*result.static_samplers, 16);
+
+    create_pipeline_layout(create_info.layout_create_info, *result.pipeline_layout, *result.static_sampler_descriptor_set_layout, *result.static_sampler_descriptor_pool, *result.static_sampler_descriptor_set, *result.static_samplers);
+
+    vk_create_info := VkComputePipelineCreateInfo.{
+        stage = compute_stage_info,
+        layout = result.pipeline_layout,
+    };
+
+    vk_check_result(vkCreateComputePipelines(device, null, 1, *vk_create_info, null, *result.pipeline));
+    
+    return result;
+}
+
+rhi_compute_pipeline_destroy :: (pipeline: RHIComputePipeline) {
+    for sampler : pipeline.static_samplers {
+        vkDestroySampler(device, sampler, null);
+    }
+    array_free(pipeline.static_samplers);
+
+    vkDestroyPipeline(device, pipeline.pipeline, null);
+    vkDestroyPipelineLayout(device, pipeline.pipeline_layout, null);
+    vkDestroyDescriptorPool(device, pipeline.static_sampler_descriptor_pool, null);
+    vkDestroyDescriptorSetLayout(device, pipeline.static_sampler_descriptor_set_layout, null);
+}
+
 #scope_file
 
 create_shader_stage :: (shader: RHIShaderStageCreateInfo, stage: VkShaderStageFlagBits) -> VkShaderModule, VkPipelineShaderStageCreateInfo {
@@ -390,7 +429,7 @@ create_pipeline_layout :: (layout_create_info: RHIPipelineLayoutCreateInfo, out_
     for 0..layout_create_info.descriptor_set_layout_count-1 {
         vk_layouts[it] = layout_create_info.descriptor_set_layout_decls[it].layout.handle;
     }
-    if out_static_sampler_descriptor_set_layout != VK_NULL_HANDLE {
+    if (<<out_static_sampler_descriptor_set_layout != VK_NULL_HANDLE) {
         vk_layouts[layout_create_info.static_sampler_set] = << out_static_sampler_descriptor_set_layout;
     }
 

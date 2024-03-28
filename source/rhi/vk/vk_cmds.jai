@@ -252,7 +252,13 @@ rhi_cmd_bind_pipeline :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipeline) 
     rhi_bind_static_sampler_set(cmd_list, pipeline);
 }
 
-rhi_cmd_bind_descriptor_sets :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipeline, first: u32, sets: [] RHIDescriptorSet, offsets: [] u32) {
+rhi_cmd_bind_pipeline :: (cmd_list: *RHICmdList, pipeline: RHIComputePipeline) {
+    vkCmdBindPipeline(cmd_list.handle, .COMPUTE, pipeline.pipeline);
+
+    rhi_bind_static_sampler_set(cmd_list, pipeline);
+}
+
+rhi_cmd_bind_descriptor_sets :: (cmd_list: *RHICmdList, pipeline: RHIPipeline, first: u32, sets: [] RHIDescriptorSet, offsets: [] u32) {
     vk_sets: [..] VkDescriptorSet;
     vk_sets.allocator = temp;
     array_reserve(*vk_sets, sets.count);
@@ -263,10 +269,9 @@ rhi_cmd_bind_descriptor_sets :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPip
     vkCmdBindDescriptorSets(cmd_list.handle, .GRAPHICS, pipeline.pipeline_layout, first, xx vk_sets.count, vk_sets.data, xx offsets.count, offsets.data);
 }
 
-rhi_bind_static_sampler_set :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipeline) {
-
+rhi_bind_static_sampler_set :: (cmd_list: *RHICmdList, pipeline: RHIPipeline) {
     if pipeline.static_sampler_descriptor_set != VK_NULL_HANDLE {
-        vkCmdBindDescriptorSets(cmd_list.handle, .GRAPHICS, pipeline.pipeline_layout, pipeline.static_sampler_descriptor_set_index, 1, *pipeline.static_sampler_descriptor_set, 0, null);
+        vkCmdBindDescriptorSets(cmd_list.handle, .GRAPHICS, pipeline.pipeline_layout, xx pipeline.static_sampler_descriptor_set_index, 1, *pipeline.static_sampler_descriptor_set, 0, null);
     }
 }
 
@@ -290,6 +295,10 @@ rhi_cmd_draw_indexed :: (cmd_list: *RHICmdList, index_count: u32, instance_count
     vkCmdDrawIndexed(cmd_list.handle, index_count, instance_count, first_index, vertex_offset, first_instance);
 }
 
-rhi_cmd_push_constants :: (cmd_list: *RHICmdList, pipeline: *RHIGraphicsPipeline, stage_flags: RHIShaderStageFlags, offset: u32, size: u32, data: *void) {
+rhi_cmd_push_constants :: (cmd_list: *RHICmdList, pipeline: RHIPipeline, stage_flags: RHIShaderStageFlags, offset: u32, size: u32, data: *void) {
     vkCmdPushConstants(cmd_list.handle, pipeline.pipeline_layout, rhi_translate(stage_flags), offset, size, data);
+}
+
+rhi_cmd_dispatch :: (cmd_list: *RHICmdList, group_count_x: u32, group_count_y: u32, group_count_z: u32) {
+    vkCmdDispatch(cmd_list.handle, group_count_x, group_count_y, group_count_z);
 }

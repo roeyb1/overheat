@@ -1,25 +1,5 @@
 #scope_export
 
-RHIGraphicsPipelineCreateInfo :: struct {
-    vertex_shader: RHIShaderStageCreateInfo;
-    hull_shader: RHIShaderStageCreateInfo;
-    domain_shader: RHIShaderStageCreateInfo;
-    geometry_shader: RHIShaderStageCreateInfo;
-    pixel_shader: RHIShaderStageCreateInfo;
-
-    vertex_input_state: RHIVertexInputState;
-    input_assembly_state: RHIInputAssemblyState;
-    tessellation_state: RHITessellationState;
-    viewport_state: RHIViewportState;
-    rasterization_state: RHIRasterizationState;
-    multisample_state: RHIMultisampleState;
-    depth_stencil_state: RHIDepthStencilState;
-    blend_state: RHIBlendState;
-    dynamic_state_flags: RHIDynamicStateFlags = 0;
-    attachment_formats: RHIAttachmentFormats;
-    layout_create_info: RHIPipelineLayoutCreateInfo;
-}
-
 rhi_default_graphics_pipeline_create_info :: () -> RHIGraphicsPipelineCreateInfo {
     result: RHIGraphicsPipelineCreateInfo = ---;
 
@@ -50,6 +30,9 @@ rhi_set_geometry_shader :: (create_info: *RHIGraphicsPipelineCreateInfo, path: s
 }
 rhi_set_pixel_shader :: (create_info: *RHIGraphicsPipelineCreateInfo, path: string) {
     create_info.pixel_shader.path = path;
+}
+rhi_set_compute_shader :: (create_info: *RHIComputePipelineCreateInfo, path: string) {
+    create_info.compute_shader.path = path;
 }
 
 rhi_set_vertex_binding_descs :: (create_info: *RHIGraphicsPipelineCreateInfo, descs: [] RHIVertexInputBindingDesc) {
@@ -88,7 +71,6 @@ rhi_set_viewport_scissors :: (create_info: *RHIGraphicsPipelineCreateInfo, viewp
         create_info.viewport_state.scissors[it] = scissors[it];
     }
 }
-
 
 rhi_set_depth_clamp_enable :: (create_info: *RHIGraphicsPipelineCreateInfo, depth_clamp_enable: bool) {
     create_info.rasterization_state.depth_clamp_enable = xx depth_clamp_enable;
@@ -177,16 +159,24 @@ rhi_set_depth_stencil_attachment_format :: (create_info: *RHIGraphicsPipelineCre
     create_info.attachment_formats.depth_stencil_format = format;
 }
 
-rhi_set_pipeline_layout_desc :: (create_info: *RHIGraphicsPipelineCreateInfo, set_layout_decls: [] RHIDescriptorSetLayoutDecl, push_const_range: u32, push_const_stage_flags: RHIShaderStageFlags, static_sampler_descs: [] RHIStaticSamplerDesc, static_sampler_set: u32) {
+rhi_set_pipeline_layout_desc :: (create_info: *RHIGraphicsPipelineCreateInfo, set_layout_decls: [] RHIDescriptorSetLayoutDecl, push_const_range: u32, push_const_stage_flags: RHIShaderStageFlags, static_sampler_descs: [] RHIStaticSamplerDesc, static_sampler_set: s32 = -1) {
+    set_pipeline_layout_desc(*create_info.layout_create_info, set_layout_decls, push_const_range, push_const_stage_flags, static_sampler_descs, static_sampler_set);
+}
+
+rhi_set_pipeline_layout_desc :: (create_info: *RHIComputePipelineCreateInfo, set_layout_decls: [] RHIDescriptorSetLayoutDecl, push_const_range: u32, push_const_stage_flags: RHIShaderStageFlags, static_sampler_descs: [] RHIStaticSamplerDesc, static_sampler_set: s32 = -1) {
+    set_pipeline_layout_desc(*create_info.layout_create_info, set_layout_decls, push_const_range, push_const_stage_flags, static_sampler_descs, static_sampler_set);
+}
+
+set_pipeline_layout_desc :: (layout_create_info: *RHIPipelineLayoutCreateInfo, set_layout_decls: [] RHIDescriptorSetLayoutDecl, push_const_range: u32, push_const_stage_flags: RHIShaderStageFlags, static_sampler_descs: [] RHIStaticSamplerDesc, static_sampler_set: s32) {
     assert(set_layout_decls.count < 4);
-    create_info.layout_create_info.descriptor_set_layout_count = xx set_layout_decls.count;
+    layout_create_info.descriptor_set_layout_count = xx set_layout_decls.count;
     for layout_decl : set_layout_decls {
-        create_info.layout_create_info.descriptor_set_layout_decls[it_index] = layout_decl;
+        layout_create_info.descriptor_set_layout_decls[it_index] = layout_decl;
     }
 
-    create_info.layout_create_info.push_const_range = push_const_range;
-    create_info.layout_create_info.push_const_stage_flags = push_const_stage_flags;
-    create_info.layout_create_info.static_sampler_descs = static_sampler_descs;
-    create_info.layout_create_info.static_sampler_set = static_sampler_set;
+    layout_create_info.push_const_range = push_const_range;
+    layout_create_info.push_const_stage_flags = push_const_stage_flags;
+    layout_create_info.static_sampler_descs = static_sampler_descs;
+    layout_create_info.static_sampler_set = static_sampler_set;
 }
 

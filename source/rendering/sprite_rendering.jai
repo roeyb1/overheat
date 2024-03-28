@@ -1,4 +1,4 @@
-#scope_export
+#scope_file
 
 sprite_pipeline: RHIGraphicsPipeline;
 
@@ -19,6 +19,8 @@ SpriteInstanceData :: struct {
     instance_scale: Vector2;
     sprite_index: u32;
 }
+
+#scope_export
 
 init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
     render_target_formats := RHIFormat.[

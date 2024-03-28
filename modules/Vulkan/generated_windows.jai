@@ -7272,6 +7272,7 @@ VkGraphicsPipelineCreateInfo :: struct {
     basePipelineIndex:   s32;
 }
 
+
 VkPushConstantRange :: struct {
     stageFlags: VkShaderStageFlags;
     offset:     u32;

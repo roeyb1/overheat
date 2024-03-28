@@ -121,3 +121,28 @@ rdg_get_image_view :: (view_handle: RDGResourceViewHandle) -> *RHIImageView {
 
     return frame_resources.views[view_handle - 1].image_view;
 }
+
+rdg_get_bindless_handle :: (handle: RDGResourceViewHandle, type: RHIDescriptorType) -> u32 {
+    rg := g_render_graph;
+    frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
+
+    if type == {
+        case .TEXTURE;
+            return xx frame_resources.views[handle - 1].texture_handle;
+        case .RW_TEXTURE;
+            return xx frame_resources.views[handle - 1].rw_texture_handle;
+        case .TYPED_BUFFER;
+            return xx frame_resources.views[handle - 1].typed_buffer_handle;
+        case .RW_TYPED_BUFFER;
+            return xx frame_resources.views[handle - 1].rw_typed_buffer_handle;
+        case .BYTE_BUFFER;
+            return xx frame_resources.views[handle - 1].byte_buffer_handle;
+        case .RW_BYTE_BUFFER;
+            return xx frame_resources.views[handle - 1].rw_byte_buffer_handle;
+        case .STRUCTURED_BUFFER;
+            return xx frame_resources.views[handle - 1].structured_buffer_handle;
+        case .RW_STRUCTURED_BUFFER;
+            return xx frame_resources.views[handle - 1].rw_structured_buffer_handle;
+        case; assert(false); return 0;
+    }
+}

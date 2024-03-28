@@ -153,6 +153,9 @@ render_scene :: (camera: *Camera) {
     // render sprites
     sprite_color_image_view := render_sprite_pass(rg, *view_data);
 
+    // render post process
+    tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view);
+
     // present to swapchain:
     {
         swapchain_index := swapchain.current_image_index;
@@ -163,7 +166,7 @@ render_scene :: (camera: *Camera) {
         // copy render image to swapchain image:
         {
             usage_descs: [2] RDGResourceUsageDesc;
-            usage_descs[0] = RDGResourceUsageDesc.{view_handle = sprite_color_image_view, state_and_stage = .{resource_state = .READ_TRANSFER}};
+            usage_descs[0] = RDGResourceUsageDesc.{view_handle = tonemap_result_image_view, state_and_stage = .{resource_state = .READ_TRANSFER}};
             usage_descs[1] = RDGResourceUsageDesc.{view_handle = swapchain_view_handle, state_and_stage = .{resource_state = .WRITE_TRANSFER}};
 
             PassData :: struct {
@@ -172,7 +175,7 @@ render_scene :: (camera: *Camera) {
             };
 
             pass_data := rdg_allocate_pass_data(rg, PassData);
-            pass_data.color_view_handle = sprite_color_image_view;
+            pass_data.color_view_handle = tonemap_result_image_view;
             pass_data.swapchain_view_handle = swapchain_view_handle;
 
             rdg_add_pass(rg, "Copy to Swapchain", .GRAPHICS, usage_descs, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
@@ -305,6 +308,7 @@ init_rendering_resources :: () {
     }
 
     init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
+    init_post_process_pipelines(*g_view_registry.descriptor_set_layout);
 }
 
 destroy_rendering_resources :: () {
@@ -312,6 +316,7 @@ destroy_rendering_resources :: () {
     rhi_descriptor_pool_destroy(offset_buffer_descriptor_pool);
     rhi_descriptor_set_layout_destroy(offset_buffer_descriptor_set_layout);
 
+    destroy_post_process_pipelines();
     destroy_sprite_pipeline();
 
     for 0..RDG_NUM_FRAMES-1 {
@@ -332,9 +337,10 @@ destroy_rendering_resources :: () {
 
 #load "../rhi/rhi.jai";
 #load "render_graph.jai";
-#load "sprite_rendering.jai";
 #load "texture_loader.jai";
 #load "texture_manager.jai";
+#load "sprite_rendering.jai";
+#load "post_process.jai";
 
 #import "Sort";
 #import "File";

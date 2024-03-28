@@ -810,7 +810,7 @@ RHIPipelineLayoutCreateInfo :: struct {
     descriptor_set_layout_decls: [4] RHIDescriptorSetLayoutDecl;
     push_const_range: u32;
     push_const_stage_flags: RHIShaderStageFlags;
-    static_sampler_set: u32;
+    static_sampler_set: s32;
     static_sampler_descs: [] RHIStaticSamplerDesc;
 }
 
@@ -845,6 +845,31 @@ RHIDepthStencilAttachmentDesc :: struct {
 RHIIndexType :: enum {
     UINT16    :: 0;
     UINT32    :: 1;
+}
+
+RHIGraphicsPipelineCreateInfo :: struct {
+    vertex_shader: RHIShaderStageCreateInfo;
+    hull_shader: RHIShaderStageCreateInfo;
+    domain_shader: RHIShaderStageCreateInfo;
+    geometry_shader: RHIShaderStageCreateInfo;
+    pixel_shader: RHIShaderStageCreateInfo;
+
+    vertex_input_state: RHIVertexInputState;
+    input_assembly_state: RHIInputAssemblyState;
+    tessellation_state: RHITessellationState;
+    viewport_state: RHIViewportState;
+    rasterization_state: RHIRasterizationState;
+    multisample_state: RHIMultisampleState;
+    depth_stencil_state: RHIDepthStencilState;
+    blend_state: RHIBlendState;
+    dynamic_state_flags: RHIDynamicStateFlags = 0;
+    attachment_formats: RHIAttachmentFormats;
+    layout_create_info: RHIPipelineLayoutCreateInfo;
+}
+
+RHIComputePipelineCreateInfo :: struct {
+    compute_shader: RHIShaderStageCreateInfo;
+    layout_create_info: RHIPipelineLayoutCreateInfo;
 }
 
 rhi_is_stencil_format :: inline (format: RHIFormat) -> bool {
