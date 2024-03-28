@@ -48,12 +48,21 @@ float3 uchimura(float3 x)
 	return uchimura(x, P, a, m, l, c, b);
 }
 
+float3 accurateLinearToSRGB(in float3 linearCol)
+{
+	float3 sRGBLo = linearCol * 12.92f;
+	float3 sRGBHi = (pow(abs(linearCol), 1.0f / 2.4f) * 1.055f) - 0.055f;
+	float3 sRGB = any(linearCol <= 0.0031308f) ? sRGBLo : sRGBHi;
+	return sRGB;
+}
+
 
 [numthreads(8, 8, 1)]
 void main(uint3 thread_id: SV_DispatchThreadID) {
 
     float3 color = g_textures[g_push_consts.input_image_index].Load(int3(thread_id.xy, 0)).rgb;
     color = uchimura(color);
+	color = accurateLinearToSRGB(color);
 
     g_rw_textures[g_push_consts.output_image_index][thread_id.xy] = float4(color, 1.f);
 }

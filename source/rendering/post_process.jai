@@ -47,6 +47,7 @@ render_post_process_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color
     tonemap_view_handle := rdg_create_image_view(rg, tonemap_result_handle, "Tonemap Result View");
 
     tonemap_pass_usage_descs := RDGResourceUsageDesc.[
+        .{color_texture_handle, .{.READ_RESOURCE, .COMPUTE_SHADER_BIT}, .{}},
         .{tonemap_view_handle, .{.RW_RESOURCE_WRITE_ONLY, .COMPUTE_SHADER_BIT }, .{}}
     ];
 
