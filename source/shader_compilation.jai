@@ -6,7 +6,7 @@ compile_shaders :: (base_directory: string, debug_symbols := false) -> bool {
     output_dir := tprint("%/compiled", base_directory);
 
     #if OS == .WINDOWS {
-        shader_compiler := "dxc.exe";
+        shader_compiler := "utils/win/dxc.exe";
     } else #if OS == .LINUX {
         #assert false, "Vulkan shader compilation is not supported in this platform";
     } else #if OS == .MACOS {
