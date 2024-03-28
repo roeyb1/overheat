@@ -40,6 +40,7 @@ render_post_process_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color
         width = swapchain.extent.width,
         height = swapchain.extent.height,
         format = swapchain.format,
+        usage_flags = .RW_TEXTURE_BIT | .TEXTURE_BIT,
     };
 
     tonemap_result_handle := rdg_create_image(rg, tonemap_result_desc);
