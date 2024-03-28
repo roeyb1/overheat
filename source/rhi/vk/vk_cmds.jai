@@ -258,7 +258,7 @@ rhi_cmd_bind_pipeline :: (cmd_list: *RHICmdList, pipeline: RHIComputePipeline) {
     rhi_bind_static_sampler_set(cmd_list, pipeline);
 }
 
-rhi_cmd_bind_descriptor_sets :: (cmd_list: *RHICmdList, pipeline: RHIPipeline, first: u32, sets: [] RHIDescriptorSet, offsets: [] u32) {
+rhi_cmd_bind_descriptor_sets :: (cmd_list: *RHICmdList, pipeline: RHIGraphicsPipeline, first: u32, sets: [] RHIDescriptorSet, offsets: [] u32) {
     vk_sets: [..] VkDescriptorSet;
     vk_sets.allocator = temp;
     array_reserve(*vk_sets, sets.count);
@@ -267,6 +267,17 @@ rhi_cmd_bind_descriptor_sets :: (cmd_list: *RHICmdList, pipeline: RHIPipeline, f
     }
 
     vkCmdBindDescriptorSets(cmd_list.handle, .GRAPHICS, pipeline.pipeline_layout, first, xx vk_sets.count, vk_sets.data, xx offsets.count, offsets.data);
+}
+
+rhi_cmd_bind_descriptor_sets :: (cmd_list: *RHICmdList, pipeline: RHIComputePipeline, first: u32, sets: [] RHIDescriptorSet, offsets: [] u32) {
+    vk_sets: [..] VkDescriptorSet;
+    vk_sets.allocator = temp;
+    array_reserve(*vk_sets, sets.count);
+    for *set : sets {
+        array_add(*vk_sets, set.handle);
+    }
+
+    vkCmdBindDescriptorSets(cmd_list.handle, .COMPUTE, pipeline.pipeline_layout, first, xx vk_sets.count, vk_sets.data, xx offsets.count, offsets.data);
 }
 
 rhi_bind_static_sampler_set :: (cmd_list: *RHICmdList, pipeline: RHIPipeline) {
