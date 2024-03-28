@@ -100,13 +100,13 @@ DrawBucket :: struct {
 
 
 // generic rendering resources:
-constant_buffers: [RDG_NUM_FRAMES] RHIBuffer;
+constant_buffers: [RDG_NUM_FRAMES] *RHIBuffer;
 constant_buff_linear_allocs: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
 
-vertex_buffers: [RDG_NUM_FRAMES] RHIBuffer;
+vertex_buffers: [RDG_NUM_FRAMES] *RHIBuffer;
 vertex_buffer_allocators: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
 
-index_buffers: [RDG_NUM_FRAMES] RHIBuffer;
+index_buffers: [RDG_NUM_FRAMES] *RHIBuffer;
 index_buffer_allocators: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
 
 offset_buffer_descriptor_set_layout: RHIDescriptorSetLayout;
@@ -242,11 +242,11 @@ init_rendering_resources :: () {
 
         constant_buffers[0] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
         constant_buffers[1] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
-        rhi_debug_set_object_name(*constant_buffers[0], "Constant Buffer 0");
-        rhi_debug_set_object_name(*constant_buffers[0], "Constant Buffer 1");
+        rhi_debug_set_object_name(constant_buffers[0], "Constant Buffer 0");
+        rhi_debug_set_object_name(constant_buffers[0], "Constant Buffer 1");
 
-        constant_buff_linear_allocs[0] = rhi_linear_allocator_init(*constant_buffers[0]);
-        constant_buff_linear_allocs[1] = rhi_linear_allocator_init(*constant_buffers[1]);
+        constant_buff_linear_allocs[0] = rhi_linear_allocator_init(constant_buffers[0]);
+        constant_buff_linear_allocs[1] = rhi_linear_allocator_init(constant_buffers[1]);
 
         binding := RHIDescriptorSetLayoutBinding.{
             descriptor_type = .OFFSET_CONSTANT_BUFFER,
@@ -265,7 +265,7 @@ init_rendering_resources :: () {
             };
 
             update.buffer_info = RHIDescriptorBufferInfo.{
-                buffer = *constant_buffers[it],
+                buffer = constant_buffers[it],
                 offset = 0,
                 range = constant_buffers[it].desc.size,
                 structure_byte_stride = 0,
@@ -284,11 +284,11 @@ init_rendering_resources :: () {
 
         vertex_buffers[0] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
         vertex_buffers[1] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
-        rhi_debug_set_object_name(*vertex_buffers[0], "Vertex Buffer 0");
-        rhi_debug_set_object_name(*vertex_buffers[1], "Vertex Buffer 1");
+        rhi_debug_set_object_name(vertex_buffers[0], "Vertex Buffer 0");
+        rhi_debug_set_object_name(vertex_buffers[1], "Vertex Buffer 1");
         
-        vertex_buffer_allocators[0] = rhi_linear_allocator_init(*vertex_buffers[0]);
-        vertex_buffer_allocators[1] = rhi_linear_allocator_init(*vertex_buffers[1]);
+        vertex_buffer_allocators[0] = rhi_linear_allocator_init(vertex_buffers[0]);
+        vertex_buffer_allocators[1] = rhi_linear_allocator_init(vertex_buffers[1]);
     }
 
     // index buffers:
@@ -300,11 +300,11 @@ init_rendering_resources :: () {
 
         index_buffers[0] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
         index_buffers[1] = rhi_buffer_create(create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, .DEVICE_LOCAL_BIT, false);
-        rhi_debug_set_object_name(*index_buffers[0], "Index Buffer 0");
-        rhi_debug_set_object_name(*index_buffers[1], "Index Buffer 1");
+        rhi_debug_set_object_name(index_buffers[0], "Index Buffer 0");
+        rhi_debug_set_object_name(index_buffers[1], "Index Buffer 1");
 
-        index_buffer_allocators[0] = rhi_linear_allocator_init(*index_buffers[0]);
-        index_buffer_allocators[1] = rhi_linear_allocator_init(*index_buffers[1]);
+        index_buffer_allocators[0] = rhi_linear_allocator_init(index_buffers[0]);
+        index_buffer_allocators[1] = rhi_linear_allocator_init(index_buffers[1]);
     }
 
     init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
@@ -321,14 +321,16 @@ destroy_rendering_resources :: () {
 
     for 0..RDG_NUM_FRAMES-1 {
         rhi_linear_allocator_destroy(*constant_buff_linear_allocs[it]);
-        rhi_buffer_destroy(*constant_buffers[it]);
+        rhi_buffer_destroy(constant_buffers[it]);
 
         rhi_linear_allocator_destroy(*vertex_buffer_allocators[it]);
-        rhi_buffer_destroy(*vertex_buffers[it]);
+        rhi_buffer_destroy(vertex_buffers[it]);
 
         rhi_linear_allocator_destroy(*index_buffer_allocators[it]);
-        rhi_buffer_destroy(*index_buffers[it]);
+        rhi_buffer_destroy(index_buffers[it]);
     }
+
+    texture_loader_destroy();
 }
 
 #import "Window_Creation";

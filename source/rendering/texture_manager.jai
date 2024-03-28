@@ -70,8 +70,8 @@ texture_manager_flush_deletions :: () {
     textures_to_free := *g_texture_manager.textures_to_free[g_texture_manager.textures_to_free_index];
 
     for texture : (<< textures_to_free) {
-        if texture.view != null then rhi_image_view_destroy(<< texture.view);
-        if texture.image != null then rhi_image_destroy(<< texture.image);
+        if texture.view != null then rhi_image_view_destroy(texture.view);
+        if texture.image != null then rhi_image_destroy(texture.image);
     }
     array_reset_keeping_memory(textures_to_free);
 }

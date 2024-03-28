@@ -59,6 +59,7 @@ texture_load :: (filename: string) -> TextureHandle {
         };
 
         staging_buffer = rhi_buffer_create(buffer_create_info, .HOST_COHERENT_BIT | .HOST_VISIBLE_BIT, 0, false);
+        rhi_debug_set_object_name(staging_buffer, "Staging Buffer");
     }
 
 
@@ -66,6 +67,7 @@ texture_load :: (filename: string) -> TextureHandle {
     {
         memcpy(mapped_ptr, pixel_data, image_memory_size);
     }
+    rhi_buffer_unmap(staging_buffer);
 
     // #todo: implement optimal row length/height for copies
     buffer_copy := RHIBufferImageCopy.{
@@ -98,10 +100,13 @@ texture_load :: (filename: string) -> TextureHandle {
 texture_loader_flush_uploads :: (cmd_list: *RHICmdList) {
     defer g_texture_loader.staging_buffers_index = (g_texture_loader.staging_buffers_index + 1) % RDG_NUM_FRAMES;
 
+    staging_buffers_to_delete := *g_texture_loader.staging_buffers_to_delete[g_texture_loader.staging_buffers_index];
     // delete the buffers from the previous frame:
-    for buffer_to_delete : g_texture_loader.staging_buffers_to_delete[g_texture_loader.staging_buffers_index] {
+    for buffer_to_delete : (<<staging_buffers_to_delete) {
         rhi_buffer_destroy(buffer_to_delete);
     }
+    array_reset_keeping_memory(staging_buffers_to_delete);
+
 
     if g_texture_loader.upload_queue.count == 0 {
         return;
@@ -131,6 +136,8 @@ texture_loader_flush_uploads :: (cmd_list: *RHICmdList) {
     {
         for upload : g_texture_loader.upload_queue {
             rhi_cmd_copy_buffer_to_image(cmd_list, upload.staging_buffer, upload.texture, .[upload.copy_region]);
+
+            array_add(staging_buffers_to_delete, upload.staging_buffer);
         }
     }
 
@@ -153,4 +160,17 @@ texture_loader_flush_uploads :: (cmd_list: *RHICmdList) {
 
 
     array_reset_keeping_memory(*g_texture_loader.upload_queue);
+}
+
+texture_loader_destroy :: () {
+    for upload : g_texture_loader.upload_queue {
+        rhi_buffer_destroy(upload.staging_buffer);
+    }
+
+    for 0..RDG_NUM_FRAMES-1 {
+        staging_buffers_to_delete: [] *RHIBuffer = g_texture_loader.staging_buffers_to_delete[it];
+        for buffer : staging_buffers_to_delete {
+            rhi_buffer_destroy(buffer);
+        }
+    }
 }

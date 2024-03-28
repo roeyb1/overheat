@@ -10,25 +10,35 @@ vk_check_result :: inline (result: VkResult) -> bool {
 
 rhi_debug_set_object_name :: (image: *RHIImage, name: string) {
     #if DEBUG_VULKAN {
+        c_name := temp_c_string(name);
         info := VkDebugUtilsObjectNameInfoEXT.{
-            pObjectName = temp_c_string(name),
+            pObjectName = c_name,
             objectType = .IMAGE,
             objectHandle = xx image.handle,
         };
 
         vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+
+        if image.alloc {
+            vmaSetAllocationName(vma, image.alloc, temp_c_string(tprint("% Memory", c_name)));
+        }
     }
 }
 
 rhi_debug_set_object_name :: (buffer: *RHIBuffer, name: string) {
     #if DEBUG_VULKAN {
+        c_name := temp_c_string(name);
         info := VkDebugUtilsObjectNameInfoEXT.{
-            pObjectName = temp_c_string(name),
+            pObjectName = c_name,
             objectType = .BUFFER,
             objectHandle = xx buffer.handle,
         };
 
         vk_check_result(vkSetDebugUtilsObjectNameEXT(device, *info));
+
+        if buffer.alloc {
+            vmaSetAllocationName(vma, buffer.alloc, temp_c_string(tprint("% Memory", c_name)));
+        }
     }
 }
 

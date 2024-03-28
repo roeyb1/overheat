@@ -171,16 +171,22 @@ rhi_image_view_create :: (image: *RHIImage) -> *RHIImageView {
     return rhi_image_view_create(create_info);
 }
 
-rhi_image_view_destroy :: (image_view: RHIImageView) {
+rhi_image_view_destroy :: (image_view: *RHIImageView) {
     vkDestroyImageView(device, image_view.handle, null);
+
+    free(image_view);
 }
 
-rhi_buffer_destroy :: (buffer: RHIBuffer) {
-    vmaDestroyBuffer(vma, buffer.handle, buffer.alloc);
+rhi_buffer_destroy :: (buffer: *RHIBuffer) {
+    rhi_free_buffer(buffer);
+
+    free(buffer);
 }
 
-rhi_image_destroy :: (image: RHIImage) {
-    vmaDestroyImage(vma, image.handle, image.alloc);
+rhi_image_destroy :: (image: *RHIImage) {
+    rhi_free_image(image);
+
+    free(image);
 }
 
 rhi_buffer_view_create :: (create_info: RHIBufferViewCreateInfo) -> *RHIBufferView {
