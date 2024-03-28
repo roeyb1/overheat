@@ -1,7 +1,7 @@
 #scope_export
 
 SpriteSheet :: struct {
-    texture: *Simp.Texture;
+    texture: TextureHandle;
 
     /** Size of a single sprite in the sheet: (only supports square sprites for now) */
     extent: s32;
@@ -13,8 +13,7 @@ SpriteSheet :: struct {
 
 // just for now, store some common stuff globally until we have a proper map loading system with asset references
 g_dungeon_tiles: *SpriteSheet;
-g_default_grid: *Simp.Texture;
-g_large_font: *Simp.Dynamic_Font;
+g_default_grid: TextureHandle;
 g_local_player_sprite: *SpriteSheet;
 g_player_sprite: *SpriteSheet;
 
@@ -25,9 +24,6 @@ load_all_assets :: () {
     g_local_player_sprite = load_spritesheet("assets/orc_mage_walk.png", 64, 0, 0);
     g_player_sprite = load_spritesheet("assets/orc_mage_walk_2.png", 64, 0, 0);
     g_default_grid = load_texture("assets/grid.png");
-
-    // #todo: move this to a table
-    g_large_font = Simp.load_font("assets", "monogram.ttf", 38);
 
     log("Asset loading complete");
 }
@@ -48,31 +44,28 @@ load_spritesheet :: (filename: string, extent: s32, x_offset: u32, y_offset: u32
     return result;
 }
 
-get_texture :: (filename: string) -> *Simp.Texture {
+get_texture :: (filename: string) -> TextureHandle {
     result := table_find_pointer(*textures, filename);
-    if result == null then result = load_texture(filename);
-    assert(result != null);
-    
-#import "Hash_Table";
+    if result == null then return load_texture(filename);
 
-    return result;
+    return << result;
 }
 
-load_texture :: (filename: string) -> *Simp.Texture {
+load_texture :: (filename: string) -> TextureHandle {
     key := copy_string(filename);
-    result := table_add(*textures, key, .{});
-    success := Simp.texture_load_from_file(result, filename);
-    assert(success);
+    result := table_add(*textures, key, 0);
+    texture := texture_load(filename);
+    << result = texture;
 
     log("Loaded new texture asset: %", filename);
 
-    return result;
+    return << result;
 }
 
 #scope_file
 
 sprite_sheets: Table(string, SpriteSheet);
-textures: Table(string, Simp.Texture);
+textures: Table(string, TextureHandle);
 
 #import "Hash_Table";
 #import "stb_image";

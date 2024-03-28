@@ -1,3 +1,5 @@
+DEBUG :: true;
+
 g_delta_time: float = 0.013;
 g_smooth_delta_time: float = 0.013;
 
@@ -33,12 +35,20 @@ main :: () {
         networking_update();
         input_manager_update();
 
+        application_window_update();
+
+        if g_should_exit {
+            break;
+        }
+
+        // #todo: re-enable this when we can support drawing 0 sprites
         rendering_begin_frame();
+        render_scene(*main_view_camera);
 
         {
-            Simp.set_shader_for_text();
-            text_width := Simp.prepare_text(g_large_font, "Connecting to server...");
-            Simp.draw_prepared_text(g_large_font, (g_window_width - text_width) / 2, g_window_height / 2);
+            //Simp.set_shader_for_text();
+            //text_width := Simp.prepare_text(g_large_font, "Connecting to server...");
+            //Simp.draw_prepared_text(g_large_font, (g_window_width - text_width) / 2, g_window_height / 2);
         }
 
         rendering_end_frame();
@@ -49,10 +59,14 @@ main :: () {
 
     main_view_camera.entity_to_track = g_local_player;
 
-    while !g_should_exit {
+    while true {
         networking_update();
-
         input_manager_update();
+        application_window_update();
+
+        if g_should_exit {
+            break;
+        }
 
         rendering_begin_frame();
 
@@ -66,7 +80,7 @@ main :: () {
 
         update_camera_position(*main_view_camera, g_delta_time);
 
-        draw_scene(*main_view_camera);
+        render_scene(*main_view_camera);
 
         rendering_end_frame();
 
@@ -95,55 +109,15 @@ simulate :: (delta_time: float64) {
     }
 }
 
-draw_scene :: (camera: *Camera) {
-    Simp.set_shader_for_images(g_default_grid);
-
-    // Draw a temporary background
-    {
-        ground_sprite: Sprite;
-        ground_sprite.sheet = g_dungeon_tiles;
-        ground_sprite.z_order = -1;
-
-        for x : -20..20 {
-            for y : -20..20 {
-                ground_sprite.index = 256;
-                draw_sprite(camera, *ground_sprite, .{xx x,  xx y });
-            }
-        }
-    }
-
-    // Draw players
-    {
-        for :Player_It g_world {
-            draw_sprite(camera, *it.sprite, it.position);
-        }
-    }
-
-    render_scene(camera);
-
-
-    // Draw some basic hud
-    {
-        Simp.set_shader_for_color(); // this call is required or SIMP will not set the active shader program. Since we hijack this in the custom rendering code we need to force it here
-
-        Simp.set_shader_for_text();
-        text_width := Simp.prepare_text(g_large_font, tprint("Connected as player % (%)", g_local_player.networking_id, ifx is_server() then "server" else "client"));
-        Simp.draw_prepared_text(g_large_font, 6, 6, color = Vector4.{0.227, 0.204, 0.921, 1.});
-
-        // draw fps
-        Simp.set_shader_for_text();
-        fps_width := Simp.prepare_text(g_large_font, tprint("FPS: %",  cast(u64) (1. / g_smooth_delta_time)));
-        Simp.draw_prepared_text(g_large_font, g_window_width - (20 + fps_width + Simp.get_baseline_height(g_large_font)), g_window_height - (20 + Simp.get_baseline_height(g_large_font)), color = Vector4.{0.227, 0.204, 0.921, 1.});
-    }
-}
 
 
 #import "Basic";
 #import "Input";
 
+#load "utils.jai";
 #load "logging.jai";
 #load "networking.jai";
-#load "rendering.jai";
+#load "rendering/rendering.jai";
 #load "player.jai";
 #load "input.jai";
 #load "unit_test.jai";

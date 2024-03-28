@@ -12,5 +12,7 @@ execute_unit_tests :: () -> bool {
         result &= it();
     }
 
+    reset_temporary_storage();
+
     return result;
 }
