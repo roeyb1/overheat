@@ -131,4 +131,4 @@ simulate :: (delta_time: float64) {
 #load "camera.jai";
 #load "assets.jai";
 #load "stats_component.jai";
-#load "../data/entity_stats.jai";
+#load "entity_defaults/entity_stats.jai";
