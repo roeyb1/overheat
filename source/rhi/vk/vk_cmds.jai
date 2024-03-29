@@ -1,7 +1,7 @@
 #scope_export
 
 rhi_cmd_debug_label_insert :: (cmd_list: *RHICmdList, label: string) {
-    #if DEBUG_VULKAN {
+    #if VULKAN_DEBUG {
         debug_label:= VkDebugUtilsLabelEXT.{
             pLabelName = temp_c_string(label),
         };
@@ -11,7 +11,7 @@ rhi_cmd_debug_label_insert :: (cmd_list: *RHICmdList, label: string) {
 }
 
 rhi_cmd_debug_label_begin :: (cmd_list: *RHICmdList, label: string) {
-    #if DEBUG_VULKAN {
+    #if VULKAN_DEBUG {
         debug_label:= VkDebugUtilsLabelEXT.{
             pLabelName = temp_c_string(label),
         };
@@ -21,7 +21,7 @@ rhi_cmd_debug_label_begin :: (cmd_list: *RHICmdList, label: string) {
 }
 
 rhi_cmd_debug_label_end :: (cmd_list: *RHICmdList) {
-    #if DEBUG_VULKAN {
+    #if VULKAN_DEBUG {
         vkCmdEndDebugUtilsLabelEXT(cmd_list.handle);
     }
 }

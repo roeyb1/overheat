@@ -107,6 +107,9 @@ build :: () {
     output_executable_name: string;
     output_path:            string;
 
+    enable_rhi_validation := false;
+    enable_vulkan_debug := false;
+
     intercept_flags: Intercept_Flags;
 
     while index < args.count {
@@ -126,6 +129,12 @@ build :: () {
             case "-";
                 // Everything after this is user arguments.
                 got_user_arguments_delimiter = true;
+            
+            case "-rhivalidation";
+                enable_rhi_validation = true;
+
+            case "-vkdebug";
+                enable_vulkan_debug = true;
 
             case "-release";
                 set_optimization(*options, .OPTIMIZED);
@@ -301,6 +310,18 @@ build :: () {
     // To tell the compiler to give us messages, we need to call compiler_begin_intercept
     // before we add any code to the target workspace.
     compiler_begin_intercept(w, intercept_flags);
+
+    if enable_rhi_validation {
+        add_build_string("RHI_VALIDATION :: true;", w);
+    } else {
+        add_build_string("RHI_VALIDATION :: false;", w);
+    }
+    if enable_vulkan_debug {
+        add_build_string("VULKAN_DEBUG :: true;", w);
+    }
+    else {
+        add_build_string("VULKAN_DEBUG :: false;", w);
+    }
 
     if verbose {
         print("Plugins:     %\n", plugins);
@@ -525,6 +546,8 @@ plugins: [..] *Metaprogram_Plugin;
 HELP_STRING :: #string DONE
 Available Command-Line Arguments:
 
+-rhivalidation   Enables RHI validation layers if available. Mildly impacts performance
+-vkdebug         Enables vulkan gpu debug callbacks. Severely impacts performance.
 -debugger        If there is a crash in compile-time execution, drop into the interactive debugger.
 -debug_for       Enable debugging of for_expansion macros. (Otherwise the debugger will never step into them to make stepping through for loops more convenient.)
 -import_dir arg  Add this directory to the list of directories searched by #import. Can be

@@ -9,7 +9,7 @@ vk_check_result :: inline (result: VkResult) -> bool {
 }
 
 rhi_debug_set_object_name :: (image: *RHIImage, name: string) {
-    #if DEBUG_VULKAN {
+    #if VULKAN_DEBUG {
         c_name := temp_c_string(name);
         info := VkDebugUtilsObjectNameInfoEXT.{
             pObjectName = c_name,
@@ -26,7 +26,7 @@ rhi_debug_set_object_name :: (image: *RHIImage, name: string) {
 }
 
 rhi_debug_set_object_name :: (buffer: *RHIBuffer, name: string) {
-    #if DEBUG_VULKAN {
+    #if VULKAN_DEBUG {
         c_name := temp_c_string(name);
         info := VkDebugUtilsObjectNameInfoEXT.{
             pObjectName = c_name,
@@ -43,7 +43,7 @@ rhi_debug_set_object_name :: (buffer: *RHIBuffer, name: string) {
 }
 
 rhi_debug_set_object_name :: (image_view: *RHIImageView, name: string) {
-    #if DEBUG_VULKAN {
+    #if VULKAN_DEBUG {
         info := VkDebugUtilsObjectNameInfoEXT.{
             pObjectName = temp_c_string(name),
             objectType = .IMAGE_VIEW,
@@ -55,7 +55,7 @@ rhi_debug_set_object_name :: (image_view: *RHIImageView, name: string) {
 }
 
 rhi_debug_set_object_name :: (buffer_view: *RHIBufferView, name: string) {
-    #if DEBUG_VULKAN {
+    #if VULKAN_DEBUG {
         info := VkDebugUtilsObjectNameInfoEXT.{
             pObjectName = temp_c_string(name),
             objectType = .BUFFER_VIEW,
@@ -66,7 +66,7 @@ rhi_debug_set_object_name :: (buffer_view: *RHIBufferView, name: string) {
     }
 }
 
-#if DEBUG_VULKAN {
+#if VULKAN_DEBUG {
     validation_callback :: (flags: VkDebugReportFlagsEXT, objType: VkDebugReportObjectTypeEXT, obj: u64, location: u64, code: s32, layerPrefix: *u8, msg: *u8, userData: *void) -> VkBool32 #c_call {
         new_context: Context;
         new_context.logger = logger;

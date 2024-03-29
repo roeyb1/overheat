@@ -1,13 +1,10 @@
 #scope_export
 
-DEBUG_VULKAN :: true;
-VULKAN_VALIDATION :: true;
-
 // Instance data:
 instance: VkInstance;
 surface: VkSurfaceKHR;
 
-#if VULKAN_VALIDATION {
+#if RHI_VALIDATION {
     debug_callback_handle: VkDebugReportCallbackEXT;
 }
 
@@ -32,10 +29,10 @@ init_rhi :: () {
 
     instance_extensions: [..] *u8;
     instance_extensions.allocator = temp;
-    #if VULKAN_VALIDATION {
+    #if RHI_VALIDATION {
         array_add(*instance_extensions, VK_EXT_DEBUG_REPORT_EXTENSION_NAME.data);
     }
-    #if DEBUG_VULKAN {
+    #if VULKAN_DEBUG {
         array_add(*instance_extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME.data);
     }
 
@@ -49,7 +46,7 @@ init_rhi :: () {
     create_info.enabledExtensionCount = xx instance_extensions.count;
     create_info.ppEnabledExtensionNames = instance_extensions.data;
 
-    #if VULKAN_VALIDATION {
+    #if RHI_VALIDATION {
         debug_create_info := create_info;
         debug_create_info.enabledLayerCount = 1;
         debug_create_info.ppEnabledLayerNames = (*u8).["VK_LAYER_KHRONOS_validation"].data;
@@ -101,7 +98,7 @@ init_rhi :: () {
 }
 
 destroy_rhi :: () {
-    #if VULKAN_VALIDATION {
+    #if RHI_VALIDATION {
         vkDestroyDebugReportCallbackEXT: PFN_vkDestroyDebugReportCallbackEXT = xx vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
         if vkDestroyDebugReportCallbackEXT != null {
             vkDestroyDebugReportCallbackEXT(instance, debug_callback_handle, null);
