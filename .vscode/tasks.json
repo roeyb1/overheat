@@ -6,7 +6,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "jai ${workspaceFolder}/build.jai"
+            "command": "jai ${workspaceFolder}/build.jai - -natvis"
         },
         {
             "label": "build (Profiling)",
