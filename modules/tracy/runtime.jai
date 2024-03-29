@@ -33,6 +33,19 @@
 		`defer ___tracy_emit_zone_end(tracy_ctx);
 	}
 
+	ZoneScoped :: (name: string, text := "", color: u32 = 0, value: u64 = 0) #expand #no_debug {
+        location := #location(#this);
+
+		tracy_loc := ___tracy_alloc_srcloc(xx location.line_number, location.fully_pathed_filename.data, xx location.fully_pathed_filename.count, name.data, xx name.count);
+		tracy_ctx := ___tracy_emit_zone_begin_alloc(tracy_loc, 1);
+
+		if text  ___tracy_emit_zone_text(tracy_ctx, text.data, cast(u64) text.count);
+		if color ___tracy_emit_zone_color(tracy_ctx, color);
+		if value ___tracy_emit_zone_value(tracy_ctx, value);
+
+		`defer ___tracy_emit_zone_end(tracy_ctx);
+	}
+
     #run {
         Compiler :: #import "Compiler";
         // Tracy requires these libs to work.
