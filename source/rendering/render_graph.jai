@@ -279,6 +279,8 @@ rdg_allocate_pass_data :: (rg: *RenderGraph, $type: Type) -> *type {
 
 rdg_free_pass_datas :: (rg: *RenderGraph) {
     for pass : rg.passes {
+        free(pass.before_barriers.data);
+        free(pass.after_barriers.data);
         free(pass.user_data);
     }
 }
@@ -500,6 +502,7 @@ rdg_create_synchronization :: (rg: *RenderGraph) {
     frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
 
     semaphore_deps: [..] SemaphoreDependencyInfo;
+    semaphore_deps.allocator = temp;
     array_resize(*semaphore_deps, rg.passes.count);
 
     for res_idx : 0..rg.resource_descs.count-1 {

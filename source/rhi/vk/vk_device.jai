@@ -136,6 +136,7 @@ init_device :: () {
     }
 
     queue_create_infos: [..] VkDeviceQueueCreateInfo;
+    queue_create_infos.allocator = temp;
     queue_priority := 1.;
     for queue_family_index : unique_queue_families {
         queue_create_info := array_add(*queue_create_infos);
