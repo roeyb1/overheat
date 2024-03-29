@@ -39,7 +39,6 @@ init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bind
         }
     ];
 
-    // #todo: maybe automate creation of attributes directly from vertex struct members
     attribute_descs := RHIVertexInputAttributeDesc.[
         .{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, xx offset_of(SpriteVertex, "pos")},
         .{ "TEXCOORD", 1, 0, .R32G32_SFLOAT, xx offset_of(SpriteVertex, "uv")},

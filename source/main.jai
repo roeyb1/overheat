@@ -43,7 +43,6 @@ main :: () {
             break;
         }
 
-        // #todo: re-enable this when we can support drawing 0 sprites
         rendering_begin_frame();
         render_scene(*main_view_camera);
 
@@ -102,7 +101,6 @@ main :: () {
 simulate :: (delta_time: float64) {
     // update player position based on velocity:
     if update_player_controller() {
-        // #todo: send a packet indicating the movement to other clients:
         g_local_player.position += g_local_player.velocity * cast(float32) delta_time;
 
         player_moved: PlayerMove_Packet = ---;

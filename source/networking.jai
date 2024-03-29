@@ -21,7 +21,6 @@ Server :: struct {
     }
     clients: [..] ClientConnection;
 
-    // #todo: is this good enough to just increment every time?
     next_valid_networking_id: u64 = 0;
 
     should_shutdown: bool = false;
@@ -43,10 +42,8 @@ ConnectionEstablished_Packet :: struct {
     PACKET_TYPE :: PacketType.CONNECTION_ESTABLISHED;
 
     networking_id: u64;
-    // #todo: this can include some information about what already exists in the world so the player joining an existing session can set up properly
-    // could start by just sending some position data about existing players.
 
-    // #hack: use the player joined packet
+    // #hack: using the player joined packet to avoid adding a new struct
     existing_players: [..] PlayerJoined_Packet;
 }
 
@@ -439,8 +436,8 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             }
 
             new_networking_id := server.next_valid_networking_id;
+
             // validate this player id is not currently in use:
-            // #todo: should be non-shipping builds only
             {
                 for * server.clients {
                     assert(it.networking_id != new_networking_id, "player id % is already in use!", new_networking_id);
