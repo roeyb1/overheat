@@ -4,6 +4,7 @@
 ByteBuffer :: struct {
     buff: [..] u8;
     cursor: s64;
+    allocator: Allocator; @NoSerialize;
 }
 
 byte_buffer_write :: (out_buffer: *ByteBuffer, data: *$Type) {
@@ -81,7 +82,11 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info) {
                 result := cast(*[..] u8) data_out;
                 // Reallocing here could lead to a memory leak if we try to read into an array that already has some data allocated.
                 assert(result.allocated == 0);
-                result.data = realloc(null, array_count * array_info.element_type.runtime_size, 0);
+                {
+                    if buffer.allocator.proc == null    buffer.allocator = context.allocator;
+                    push_allocator(buffer.allocator);
+                    result.data = realloc(null, array_count * array_info.element_type.runtime_size, 0);
+                }
                 result.count = array_count;
                 result.allocated = array_count;
 				
@@ -110,6 +115,12 @@ free :: (byte_buff: *ByteBuffer) {
     byte_buff.buff.data = null;
     byte_buff.buff.count = 0;
     byte_buff.cursor = 0;
+}
+
+copy_to_buffer :: (buffer: *ByteBuffer, data: [] u8) {
+    buffer.buff.allocator = buffer.allocator;
+    array_copy(*buffer.buff, data);
+    buffer.cursor = data.count;
 }
 
 test_binary_serialization :: () -> bool {
@@ -286,6 +297,7 @@ BasicEnum :: enum u8 {
 write_struct_members :: (out_buffer: *ByteBuffer, data: *void, members: [] Type_Info_Struct_Member) {
     for * member : members {
         if member.flags & .CONSTANT then continue;
+        for note : member.notes    if note == "NoSerialize" then continue member;
         
         byte_buffer_write(out_buffer, data + member.offset_in_bytes, member.type);
     }
@@ -294,6 +306,7 @@ write_struct_members :: (out_buffer: *ByteBuffer, data: *void, members: [] Type_
 read_struct_members :: (buffer: *ByteBuffer, data_out: *void, members: [] Type_Info_Struct_Member) {
     for * member : members {
         if member.flags & .CONSTANT then continue;
+        for note : member.notes    if note == "NoSerialize" then continue member;
         
         byte_buffer_read(buffer, data_out + member.offset_in_bytes, member.type);
     }

@@ -336,8 +336,8 @@ client_update :: (client: *Client) {
 
             // copy the incoming data into the buffer
             buffer: ByteBuffer;
-            buffer.buff.allocator = temp;
-            array_copy(*buffer.buff, message_view);
+            buffer.allocator = temp;
+            copy_to_buffer(*buffer, message_view);
 
             buffer.cursor = 0;
 
