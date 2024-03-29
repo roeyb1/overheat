@@ -143,11 +143,6 @@ test_binary_serialization :: () -> bool {
         assert(read_actual == test_data);
     }
 
-    BasicEnum :: enum u8 {
-        Foo;
-        Bar;
-    }
-
     BasicStruct :: struct {
         type: BasicEnum;
         x: u32;
@@ -158,6 +153,8 @@ test_binary_serialization :: () -> bool {
     // Test simple struct serialization
     {
         test_data := BasicStruct.{.Bar, 10, 20, 30};
+        assert(size_of(BasicStruct) == 24);
+        assert(size_of(BasicEnum) == size_of(u8));
 
         buffer: ByteBuffer;
         defer free(*buffer);
@@ -280,6 +277,11 @@ test_binary_serialization :: () -> bool {
 } @UnitTest
 
 #scope_file
+
+BasicEnum :: enum u8 {
+    Foo;
+    Bar;
+}
 
 write_struct_members :: (out_buffer: *ByteBuffer, data: *void, members: [] Type_Info_Struct_Member) {
     for * member : members {

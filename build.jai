@@ -6,6 +6,24 @@ build :: () {
         return;
     }
 
+    plugin_names: [..] string;
+    // parse the compile time command line arguments:
+    {
+        args := get_build_options().compile_time_command_line;
+
+        index := 0;
+        while index < args.count {
+            defer index += 1;
+
+            it := args[index];
+            if it == {
+                case "-profile";
+                    array_add(*plugin_names, "tracy");
+                case;
+            }
+        }
+    }
+
     // Set the executable name.
     target_options := get_build_options(w);
     target_options.output_executable_name = "overheat";
@@ -23,20 +41,32 @@ build :: () {
 
     make_directory_if_it_does_not_exist(target_options.output_path, recursive=true);
 
+    init_plugins(plugin_names, *plugins, w);
+
     set_build_options(target_options, w);
+
+    intercept_flags: Intercept_Flags;
+    for plugins if it.before_intercept it.before_intercept(it, *intercept_flags);
+
 
     // compiler_begin_intercept causes us to get messages from this workspace.
     // For this particular program, we are only looking for procedures that have
     // notes attached. So our compiler_begin_intercept has an optional flag that says,
     // don't bother to tell us about anything that doesn't have notes. This means
     // we see many fewer messages, so our metaprogram will go faster.
-    compiler_begin_intercept(w, .SKIP_EXPRESSIONS_WITHOUT_NOTES);
+    compiler_begin_intercept(w, intercept_flags);
+
+    for plugins if it.add_source it.add_source(it);
 
     add_build_file(tprint("%source/main.jai", #filepath), w);  // @Cleanup: Fix this to not require #filepath.
 
     message_loop();
 
     compiler_end_intercept(w);
+
+
+    for plugins if it.finish   it.finish  (it);
+    for plugins if it.shutdown it.shutdown(it);
 
     print("\nDone!\n\n");
 
@@ -68,6 +98,7 @@ build :: () {
 message_loop :: () {
     while true {
         message := compiler_wait_for_message();
+        for plugins if it.message it.message(it, message);
 
         if message.kind == {
           case .TYPECHECKED;
@@ -203,6 +234,8 @@ generate_unit_test_actions :: (w: Workspace) {
     add_build_string(build_string, w);
 }
 
+plugins: [..] *Metaprogram_Plugin;
+
 key_mapped_actions: [..] *Code_Procedure_Header;
 generated_keymap_actions := false;
 
@@ -217,5 +250,6 @@ has_run_procedures := false;
 #import "Compiler";
 #import "String";
 #import "File_Utilities";
+#import "Metaprogram_Plugins";
 
 #load "source/shader_compilation.jai";

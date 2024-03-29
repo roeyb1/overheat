@@ -32,6 +32,8 @@ main :: () {
 
     // Only update networking while we attempt to connect to the server and don't yet have a player:
     while g_local_player == null {
+        FrameMark();
+
         networking_update();
         input_manager_update();
 
@@ -60,6 +62,8 @@ main :: () {
     main_view_camera.entity_to_track = g_local_player;
 
     while true {
+        FrameMark();
+
         networking_update();
         input_manager_update();
         application_window_update();
@@ -113,6 +117,7 @@ simulate :: (delta_time: float64) {
 
 #import "Basic";
 #import "Input";
+#import "tracy"(IMPORT_MODE = .CLIENT);
 
 #load "utils.jai";
 #load "logging.jai";
