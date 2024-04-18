@@ -23,6 +23,8 @@ Player :: struct {
     sprite: Sprite;
 
     stats_component: Player_Stats_Component;
+
+    buff_list: [..] Buff_Component; 
 }
 
 EntityCast :: (entity: *Entity, $type: Type) -> *type {
@@ -58,6 +60,19 @@ init_remote_player :: (networking_id: u64, player_position: Vector2) -> *Player 
     init_player_stats(*player.stats_component,DEFAULT_PLAYER_STATS);
 
     return player;
+}
+
+update_buff_list :: (using player: *Player) {
+    to_remove: [..] int;
+    for buff,i: buff_list {
+        buff.function(*player.stats_component,*buff);
+        if (buff.duration < 0){
+            array_add(*to_remove,i);
+        } 
+    }
+    for < index: to_remove {
+        array_ordered_remove_by_index(*buff_list,index);
+    }
 }
 
 #load "math.jai";

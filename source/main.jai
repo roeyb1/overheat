@@ -60,6 +60,8 @@ main :: () {
 
     main_view_camera.entity_to_track = g_local_player;
 
+    add_damage_over_time(g_local_player,5,10);
+
     while true {
         FrameMark();
 
@@ -109,6 +111,7 @@ simulate :: (delta_time: float64) {
 
         networking_send_packet(*player_moved);;
     }
+    update_buff_list(g_local_player);
 }
 
 
@@ -130,3 +133,4 @@ simulate :: (delta_time: float64) {
 #load "assets.jai";
 #load "stats_component.jai";
 #load "entity_defaults/entity_stats.jai";
+#load "buff_component.jai";
