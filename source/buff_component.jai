@@ -20,7 +20,6 @@ damage_over_time :: (owner_stat_component: *Stats_Component,buff_component: *Buf
 
     print("i just took % damage\n",buff_component.parameters[0]*damage_delta);
     owner_stat_component.current_health = owner_stat_component.current_health - buff_component.parameters[0]*damage_delta;
-    
 }
 
 add_damage_over_time :: (target: *Player, duration: float, damage_per_second: float) {
@@ -29,8 +28,17 @@ add_damage_over_time :: (target: *Player, duration: float, damage_per_second: fl
     array_add(*buff_component.parameters, damage_per_second); //0
 
     buff_component.duration = duration;
-
     buff_component.function = damage_over_time;
 
     array_add(*target.buff_list, buff_component);
+}
+
+test_buff_component :: () -> bool {
+    //test applying damage over time buff
+    {
+        add_damage_over_time(g_local_player,5,1000);
+        add_damage_over_time(g_local_player,10,6);
+        add_damage_over_time(g_local_player,3,4000000);
+    }
+    return true;
 }

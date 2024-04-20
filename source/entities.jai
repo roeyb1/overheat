@@ -64,6 +64,7 @@ init_remote_player :: (networking_id: u64, player_position: Vector2) -> *Player 
 
 update_buff_list :: (using player: *Player) {
     to_remove: [..] int;
+    
     for buff,i: buff_list {
         buff.function(*player.stats_component,*buff);
         if (buff.duration < 0){

@@ -59,9 +59,7 @@ main :: () {
     }
 
     main_view_camera.entity_to_track = g_local_player;
-
-    add_damage_over_time(g_local_player,5,10);
-
+    
     while true {
         FrameMark();
 
@@ -101,6 +99,9 @@ main :: () {
 }
 
 simulate :: (delta_time: float64) {
+    for :Player_It g_world {
+        update_buff_list(it);
+    }
     // update player position based on velocity:
     if update_player_controller() {
         g_local_player.position += g_local_player.velocity * cast(float32) delta_time;
@@ -111,7 +112,6 @@ simulate :: (delta_time: float64) {
 
         networking_send_packet(*player_moved);;
     }
-    update_buff_list(g_local_player);
 }
 
 
