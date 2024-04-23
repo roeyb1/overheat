@@ -25,7 +25,7 @@ VSOutput main(VSInput input) {
     VSOutput output = (VSOutput)0;
 
     float2 vertex_pos = input.vertex_pos;
-    float3 scaled_vertex_pos = float3(vertex_pos, 0.) * float3(input.instance_scale, 0);
+    float3 scaled_vertex_pos = float3(vertex_pos, 1.) * float3(input.instance_scale, 1);
     float3 worlspace_pos = input.instance_pos - g_pass_consts.camera_position;
 
     output.position = mul(g_pass_consts.view_projection_matrix, float4((scaled_vertex_pos + worlspace_pos).xy, 0, 1.));

@@ -4,7 +4,7 @@ SpriteSheet :: struct {
     texture: TextureHandle;
 
     /** Size of a single sprite in the sheet: (only supports square sprites for now) */
-    extent: s32;
+    extent: u32;
 
     /** distance between entries in the sprite sheet, if it is not packed. */
     x_offset: u32;
@@ -34,7 +34,7 @@ get_spritesheet :: (filename: string) -> *SpriteSheet {
     return result;
 }
 
-load_spritesheet :: (filename: string, extent: s32, x_offset: u32, y_offset: u32) -> *SpriteSheet {
+load_spritesheet :: (filename: string, extent: u32, x_offset: u32, y_offset: u32) -> *SpriteSheet {
     key := copy_string(filename);
     texture := load_texture(filename);
 

@@ -4,6 +4,7 @@ sprite_pipeline: RHIGraphicsPipeline;
 
 SpritePushConst :: struct {
     spritesheet_index: u32;
+    extent: u32;
     // #todo: pass to shader to save on instructions
     //spritesheet_width: float;
     //spritesheet_height: float;
@@ -82,7 +83,7 @@ init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bind
     ];
 
     static_samplers := RHIStaticSamplerDesc.[
-        rhi_static_anisotropic_repeat_sampler(0, 0, .PIXEL_BIT),
+        rhi_static_point_clamp_sampler(0, 0, .PIXEL_BIT),
     ];
 
     push_const_size: u32 = size_of(SpritePushConst);
@@ -241,6 +242,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
             for *bucket : pass_data.buckets {
                 push_const: SpritePushConst = .{
                     spritesheet_index = cast(u32) get_texture_view_handle(bucket.sprite_sheet.texture),
+                    extent = bucket.sprite_sheet.extent,
                 };
                 rhi_cmd_push_constants(cmd_list, *sprite_pipeline, .PIXEL_BIT, 0, size_of(SpritePushConst), *push_const);
                 rhi_cmd_draw_indexed(cmd_list, 6, xx bucket.count, 0, 0, xx bucket.start);
@@ -292,6 +294,7 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
             ground_sprite: Sprite;
             ground_sprite.sheet = g_dungeon_tiles;
             ground_sprite.z_order = 0;
+            ground_sprite.scale = .{1, 1};
 
             for x : -20..20 {
                 for y : -20..20 {
@@ -312,10 +315,11 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
     // sort the draws into buckets by spritesheet:
     {
         current_bucket: *SpriteDrawBucket = null;
+        one_draw_per_bucket :: true;
         for draw_cmd :  (<<out_draws) {
             // Since the draw commands are already sorted by spritesheet
             // we can assume that the moment we find a new spritesheet that doesn't match, we're starting a new bucket.
-            if current_bucket == null || draw_cmd.sheet != current_bucket.sprite_sheet {
+            if current_bucket == null || draw_cmd.sheet != current_bucket.sprite_sheet || one_draw_per_bucket {
                 // first time this runs, current will be null
                 if current_bucket != null {
                     current_bucket.count = cast(u64) it_index - current_bucket.count;
