@@ -59,6 +59,8 @@ main :: () {
     }
 
     main_view_camera.entity_to_track = g_local_player;
+
+    test_buff();
     
     while true {
         FrameMark();
@@ -133,4 +135,4 @@ simulate :: (delta_time: float64) {
 #load "assets.jai";
 #load "stats_component.jai";
 #load "entity_defaults/entity_stats.jai";
-#load "buff_component.jai";
+#load "buff.jai";

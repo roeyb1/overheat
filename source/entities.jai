@@ -24,7 +24,7 @@ Player :: struct {
 
     stats_component: Player_Stats_Component;
 
-    buff_list: [..] Buff_Component; 
+    buff_list: [..] buff; 
 }
 
 EntityCast :: (entity: *Entity, $type: Type) -> *type {
