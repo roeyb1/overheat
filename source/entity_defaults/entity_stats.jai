@@ -3,7 +3,7 @@ DEFAULT_PLAYER_STATS :: Player_Stats_Component .{
     maximum_health = 50,
     maximum_energy = 100,
 
-    movement_speed = 4,
+    movement_speed = 8,
 
     armour = 11
 };
