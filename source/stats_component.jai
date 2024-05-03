@@ -1,60 +1,55 @@
 Stats_Component :: struct {
     is_alive: bool;
+    
+    //strikes me as retarded
+    StatTypeIndex :: StatType;
 
-    maximum_health: float;
-    current_health: float;
-    maximum_energy: float;
-    current_energy: float;
+    stats: [StatTypeIndex.COUNT] Stat;
+}
 
-    movement_speed: float;
+Stat :: struct {
+    base: float = 0;
+    flat_added: float = 0;
+    increase: float = 1;
+    more: float = 1;
+    total: float = 0;
+}
+
+StatType :: enum u8{
+    MAXIMUM_HEALTH;
+    CURRENT_HEALTH;
+    MAXIMUM_ENERGY;
+    CURRENT_ENERGY;
+    MOVEMENT_SPEED;
+    ARMOUR;
+    AGGRO_RANGE;
+    COUNT;
+}
+
+stat_update_total :: (using stat: *Stat) -> float{
+    total = (base + flat_added) * increase * more;
+    return total;
 }
 
 //sets passed player stats component to be equal to given template
-init_player_stats :: (using player_stats: *Player_Stats_Component, stats_component_base: Player_Stats_Component){
-    player_stats.maximum_health = stats_component_base.maximum_health;
-    player_stats.current_health = player_stats.maximum_health;
-    player_stats.maximum_energy = stats_component_base.maximum_energy;
-    player_stats.current_energy = player_stats.maximum_energy;
-
-    player_stats.movement_speed = stats_component_base.movement_speed;
-
-    player_stats.armour = stats_component_base.armour;
-}
-
-init_monster_stats :: (monster_stats: *Monster_Stats_Component, stats_component_base: Monster_Stats_Component){
-    monster_stats.maximum_health = stats_component_base.maximum_health;
-    monster_stats.current_health = monster_stats.maximum_health;
-    monster_stats.maximum_energy = stats_component_base.maximum_energy;
-    monster_stats.current_energy = monster_stats.maximum_energy;
-
-    monster_stats.movement_speed = stats_component_base.movement_speed;
-
-    monster_stats.aggro_range = stats_component_base.aggro_range;
-}
-
-Player_Stats_Component :: struct {
-    using #as stats_component : Stats_Component;
-    
-    armour: float;
-}
-
-Monster_Stats_Component :: struct {
-    using #as stats_component : Stats_Component;
-  
-    aggro_range: float;
+init_stats :: (using stats_component: *Stats_Component, stats_component_base: Stats_Component){
+    for *stat,i: stats_component.stats {
+        <<stat = stats_component_base.stats[i];
+        stat_update_total(stat);
+    }
 }
 
 test_stats_component :: () -> bool {
     //test applying status component
     {
         
-        player_test: Player_Stats_Component;
-        goblin_test: Monster_Stats_Component;
-        init_player_stats(*player_test,DEFAULT_PLAYER_STATS);
-        assert(player_test.movement_speed == DEFAULT_PLAYER_STATS.movement_speed);
+        player_test: Stats_Component;
+        goblin_test: Stats_Component;
+        init_stats(*player_test,DEFAULT_PLAYER_STATS);
+        assert(player_test.stats[StatType.MOVEMENT_SPEED].base == DEFAULT_PLAYER_STATS.stats[StatType.MOVEMENT_SPEED].base);
 
-        init_monster_stats(*goblin_test,DEFAULT_GOBLIN_STATS);
-        assert(goblin_test.aggro_range == DEFAULT_GOBLIN_STATS.aggro_range);
+        init_stats(*goblin_test,DEFAULT_GOBLIN_STATS);
+        assert(goblin_test.stats[StatType.AGGRO_RANGE].base == DEFAULT_GOBLIN_STATS.stats[StatType.AGGRO_RANGE].base);
     }
     return true;
 }@UnitTest

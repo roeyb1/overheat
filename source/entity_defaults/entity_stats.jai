@@ -1,19 +1,24 @@
-DEFAULT_PLAYER_STATS :: Player_Stats_Component .{
 
-    maximum_health = 50,
-    maximum_energy = 100,
+DEFAULT_PLAYER_STATS :: Stats_Component .{
 
-    movement_speed = 4,
+    stats[StatTypeIndex.MAXIMUM_HEALTH].base = 100,
+    stats[StatTypeIndex.CURRENT_HEALTH].base = 100,
 
-    armour = 11
+    stats[StatTypeIndex.MAXIMUM_ENERGY].base = 100,
+    stats[StatTypeIndex.CURRENT_ENERGY].base = 100,
+
+    stats[StatTypeIndex.MOVEMENT_SPEED].base = 4,
+
+    stats[StatTypeIndex.ARMOUR].base = 11,
+    
 };
 
-DEFAULT_GOBLIN_STATS :: Monster_Stats_Component .{
+DEFAULT_GOBLIN_STATS :: Stats_Component .{
 
-    maximum_health = 50,
-    maximum_energy = 100,
+    stats[StatTypeIndex.MAXIMUM_HEALTH].base = 40,
+    stats[StatTypeIndex.MAXIMUM_ENERGY].base = 100,
 
-    movement_speed = 3,
+    stats[StatTypeIndex.MOVEMENT_SPEED].base = 3,
 
-    aggro_range = 5,
+    stats[StatTypeIndex.AGGRO_RANGE].base = 40,
 };

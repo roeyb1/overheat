@@ -102,7 +102,7 @@ main :: () {
 
 simulate :: (delta_time: float64) {
     for :Player_It g_world {
-        update_buff_list(it);
+        update_buff_component(it);
     }
     // update player position based on velocity:
     if update_player_controller() {
@@ -136,3 +136,4 @@ simulate :: (delta_time: float64) {
 #load "stats_component.jai";
 #load "entity_defaults/entity_stats.jai";
 #load "buff.jai";
+#load "entity_defaults/buff_templates.jai";

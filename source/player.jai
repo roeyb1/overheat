@@ -15,7 +15,7 @@ update_player_controller :: () -> bool {
         move_len = 1.;
     }
 
-    g_local_player.velocity = movement_input * g_local_player.stats_component.movement_speed;
+    g_local_player.velocity = movement_input * g_local_player.stats_component.stats[StatType.MOVEMENT_SPEED].total;
 
     movement_input = .{0, 0};
     

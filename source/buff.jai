@@ -1,38 +1,53 @@
-buff :: struct {
+
+
+Transitory_Stat_Modification_Per_Tick :: struct {
     duration: float;
-    parameters: Table(string,float);
-    function: #type (owner_stat_component: *Stats_Component, buff_instance: *buff);
+    change_per_second: float;
+    stat: StatType;
+    alteration_type: AlterationType;
 }
 
-
-damage_over_time :: (owner_stat_component: *Stats_Component, using buff_instance: *buff){
-    damage_delta: float;
-
-    duration = duration - g_delta_time;
-
-    if duration < 0 {
-        damage_delta = g_delta_time + duration;
-    }
-    else {
-        damage_delta = g_delta_time;
-    }
-
-    damage_per_second,found := table_find(*parameters,"damage_per_second");
-    if (found){
-        print("i just took % damage\n",damage_per_second*damage_delta);
-        owner_stat_component.current_health = owner_stat_component.current_health - damage_per_second*damage_delta;
-    }
+Transitory_Stat_Modification_Constant :: struct {
+    duration: float;
+    stat: StatType;
+    value: float;
+    alteration_type: AlterationType;
 }
 
-add_damage_over_time :: (target: *Player, duration: float, damage_per_second: float) {
-    new_buff: buff;
+AlterationType :: enum u8 {
+    INCREASED;            
+    MORE;                 
+    ADD;                                
+}
 
-    table_set(*new_buff.parameters,"damage_per_second",damage_per_second);
+BuffComponent :: struct {
+    transitory_stat_per_tick: [..] Transitory_Stat_Modification_Per_Tick;
+    transitory_stat_constant: [..] Transitory_Stat_Modification_Constant;
+}
 
-    new_buff.duration = duration;
-    new_buff.function = damage_over_time;
+add_transitory_stat_modification_per_tick :: (target: *Player, duration: float, stat: StatType, change_per_second: float, alteration_type: AlterationType = .ADD){
+    modification := Transitory_Stat_Modification_Per_Tick.{duration,change_per_second,stat,alteration_type};
 
-    array_add(*target.buff_list, new_buff);
+    array_add(*target.buff_component.transitory_stat_per_tick,modification);
+}
+
+add_transitory_stat_modification_constant :: (target: *Player, duration: float, stat: StatType, value: float, alteration_type: AlterationType) {
+    modification := Transitory_Stat_Modification_Constant.{duration, stat, value, alteration_type};
+
+    array_add(*target.buff_component.transitory_stat_constant,modification);
+}
+
+apply_stat_modification :: (stat_component: *Stats_Component, stat: StatType, value: float, alteration_type: AlterationType) {
+    if alteration_type == {
+        case .INCREASED;
+            stat_component.stats[stat].increase += value;
+        case .MORE;
+            stat_component.stats[stat].more += value;
+        case .ADD;
+            stat_component.stats[stat].flat_added += value;
+    }
+    total := stat_update_total(*stat_component.stats[stat]);
+    print("the stat % was changed by %, it is now %\n",stat,value,total);
 }
 
 test_buff :: () -> bool {
@@ -40,7 +55,8 @@ test_buff :: () -> bool {
     {
         add_damage_over_time(g_local_player,5,1000);
         add_damage_over_time(g_local_player,10,6);
-        add_damage_over_time(g_local_player,3,4000000);
+        add_damage_over_time(g_local_player,3,40000);
+        haste(g_local_player,10,0.50);
     }
     return true;
 }
