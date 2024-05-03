@@ -64,8 +64,7 @@ init_remote_player :: (networking_id: u64, player_position: Vector2) -> *Player 
 
 update_buff_component :: (using player: *Player) {
     
-    
-    //tick based buffs
+    //transitory tick based buffs
     {   
         to_remove: [..] int;
         for *buff,i: buff_component.transitory_stat_per_tick {
@@ -81,19 +80,19 @@ update_buff_component :: (using player: *Player) {
                 delta = g_delta_time;
             }
 
-            apply_stat_modification(*player.stats_component,stat,change_per_second*delta,alteration_type);
+            apply_buff(*player.stats_component, buff, delta);
             if (buff.duration < 0){
                 array_add(*to_remove,i);
             } 
         }
 
         for < index: to_remove {
-            array_ordered_remove_by_index(*buff_component.transitory_stat_per_tick,index);
+            array_ordered_remove_by_index(*buff_component.transitory_stat_per_tick, index);
         }
     }
 
     
-    //constant buffs
+    //transitory constant buffs
     {
         to_remove: [..] int;
         for *buff,i: buff_component.transitory_stat_constant {
@@ -112,14 +111,15 @@ update_buff_component :: (using player: *Player) {
             
             if (buff.duration < 0){
                 array_add(*to_remove,i);
-                apply_stat_modification(*player.stats_component,stat,-value,alteration_type);
+                remove_buff(*player.stats_component,buff);
             } 
         }
 
         for < index: to_remove {
-            array_ordered_remove_by_index(*buff_component.transitory_stat_constant,index);
+            array_ordered_remove_by_index(*buff_component.transitory_stat_constant, index);
         }
     }
+    
 }
 
 #load "math.jai";

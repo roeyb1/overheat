@@ -1,14 +1,11 @@
-
-
-Transitory_Stat_Modification_Per_Tick :: struct {
+Transitory_buff :: struct {
     duration: float;
-    change_per_second: float;
     stat: StatType;
+    value: float;
     alteration_type: AlterationType;
 }
 
-Transitory_Stat_Modification_Constant :: struct {
-    duration: float;
+Permanent_buff :: struct {
     stat: StatType;
     value: float;
     alteration_type: AlterationType;
@@ -21,33 +18,54 @@ AlterationType :: enum u8 {
 }
 
 BuffComponent :: struct {
-    transitory_stat_per_tick: [..] Transitory_Stat_Modification_Per_Tick;
-    transitory_stat_constant: [..] Transitory_Stat_Modification_Constant;
+    transitory_stat_per_tick: [..] Transitory_buff;
+    transitory_stat_constant: [..] Transitory_buff;
+    permanenent_stat_per_tick: [..] Permanent_buff;
+    permanenet_stat_constant: [..] Permanent_buff;
 }
 
-add_transitory_stat_modification_per_tick :: (target: *Player, duration: float, stat: StatType, change_per_second: float, alteration_type: AlterationType = .ADD){
-    modification := Transitory_Stat_Modification_Per_Tick.{duration,change_per_second,stat,alteration_type};
-
-    array_add(*target.buff_component.transitory_stat_per_tick,modification);
+add_transitory_buff_per_tick :: (target: *Player, buff: Transitory_buff){
+    array_add(*target.buff_component.transitory_stat_per_tick, buff);
 }
 
-add_transitory_stat_modification_constant :: (target: *Player, duration: float, stat: StatType, value: float, alteration_type: AlterationType) {
-    modification := Transitory_Stat_Modification_Constant.{duration, stat, value, alteration_type};
-
-    array_add(*target.buff_component.transitory_stat_constant,modification);
+add_transitory_buff_constant :: (target: *Player, buff: Transitory_buff) {
+    apply_buff(*target.stats_component, buff);
+    array_add(*target.buff_component.transitory_stat_constant, buff);
 }
 
-apply_stat_modification :: (stat_component: *Stats_Component, stat: StatType, value: float, alteration_type: AlterationType) {
+apply_buff :: (stat_component: *Stats_Component, using buff: Transitory_buff, delta: float = -1.0) {
+    modification_value: float;
+    if delta != -1 {
+        modification_value = value * delta;
+    }
+    else {
+        modification_value = value;
+    }
+    
     if alteration_type == {
         case .INCREASED;
-            stat_component.stats[stat].increase += value;
+            stat_component.stats[stat].increase += modification_value;
         case .MORE;
-            stat_component.stats[stat].more += value;
+            stat_component.stats[stat].more += modification_value;
         case .ADD;
-            stat_component.stats[stat].flat_added += value;
+            stat_component.stats[stat].flat_added += modification_value;
     }
     total := stat_update_total(*stat_component.stats[stat]);
-    print("the stat % was changed by %, it is now %\n",stat,value,total);
+    print("the stat % was changed by %, it is now %\n", stat, modification_value,total);
+}
+
+remove_buff :: (stat_component: *Stats_Component, using buff: Transitory_buff) {
+    inverse_value := value * -1.0;
+    if alteration_type == {
+        case .INCREASED;
+            stat_component.stats[stat].increase += inverse_value;
+        case .MORE;
+            stat_component.stats[stat].more += inverse_value;
+        case .ADD;
+            stat_component.stats[stat].flat_added += inverse_value;
+    }
+    total := stat_update_total(*stat_component.stats[stat]);
+    print("the stat % was changed by %, it is now %\n",stat, inverse_value, total);
 }
 
 test_buff :: () -> bool {
