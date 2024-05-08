@@ -12,7 +12,7 @@ Sprite :: struct {
     sheet: *SpriteSheet = null;
     scale: Vector2 = .{1, 1};
     index: u32 = 0;
-    z_order: s8 = 0;
+    z_order: u16 = 0;
 }
 
 
@@ -21,7 +21,7 @@ Sprite_Draw_Cmd :: struct {
     sheet: *SpriteSheet;
 
     sprite_index: u32;
-    z_order: s8;
+    z_order: u16;
 
     position: Vector2;
     scale: Vector2;

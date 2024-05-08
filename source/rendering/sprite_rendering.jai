@@ -16,7 +16,7 @@ SpriteVertex :: struct {
 }
 
 SpriteInstanceData :: struct {
-    instance_pos: Vector3;
+    instance_pos: Vector2;
     instance_scale: Vector2;
     sprite_index: u32;
 }
@@ -263,11 +263,13 @@ SpriteDrawData :: struct {
     sheet: *SpriteSheet;
     sprite_index: u32;
 
-    position: Vector3;
+    position: Vector2;
     scale: Vector2;
+
+    z_order: u16;
 }
 
-SpriteDrawBucket :: struct {
+SpriteDrawBucket :: struct { 
     start: u64;
     count: u64;
     sprite_sheet: *SpriteSheet;
@@ -278,10 +280,11 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
     // #todo: automatically register all sprites instead of doing this by specific entity types:
     add_sprite_draw :: (out_draws: *[..] SpriteDrawData, sprite: Sprite, position: Vector2) {
         draw := SpriteDrawData.{
-            position = .{position.x, position.y, sprite.z_order / 16.},
+            position = position,
             sheet = sprite.sheet,
             scale = sprite.scale,
             sprite_index = sprite.index,
+            z_order = sprite.z_order,
         };
 
         array_add(out_draws, draw);
@@ -312,14 +315,27 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
         }
     }
 
+    // First sort the draw calls by z-order
+    // then sort them by spritesheet so we can batch each call of a given sheet in the same instanced draw call:
+    {
+        sort_predicate :: (a: SpriteDrawData, b: SpriteDrawData) -> s64 {
+            if a.z_order == b.z_order {
+                return cast(s64) a.sheet - cast(s64) b.sheet;
+            }
+            return cast(s64) a.z_order - cast(s64) b.z_order;
+        }
+
+        quick_sort(<< out_draws, sort_predicate);
+    }
+
     // sort the draws into buckets by spritesheet:
     {
         current_bucket: *SpriteDrawBucket = null;
-        one_draw_per_bucket :: true;
+        current_z_order: u16 = 0;
         for draw_cmd :  (<<out_draws) {
             // Since the draw commands are already sorted by spritesheet
             // we can assume that the moment we find a new spritesheet that doesn't match, we're starting a new bucket.
-            if current_bucket == null || draw_cmd.sheet != current_bucket.sprite_sheet || one_draw_per_bucket {
+            if current_bucket == null || (draw_cmd.sheet != current_bucket.sprite_sheet) || (draw_cmd.z_order != current_z_order) {
                 // first time this runs, current will be null
                 if current_bucket != null {
                     current_bucket.count = cast(u64) it_index - current_bucket.count;
@@ -328,6 +344,7 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
                 current_bucket = array_add(out_buckets);
                 current_bucket.start = cast(u64) it_index;
                 current_bucket.sprite_sheet = draw_cmd.sheet;
+                current_z_order = draw_cmd.z_order;
             }
         }
 
