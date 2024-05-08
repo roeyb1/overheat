@@ -4,6 +4,34 @@ g_local_player: *Player;
 
 movement_input: Vector2;
 
+Player :: struct {
+    #as using entity: *Entity;
+
+    networking_id: u64;
+
+    sprite: Sprite;
+
+    stats: Stats_Component;
+}
+
+init_player :: (networking_id: u64, position: Vector2) -> *Player {
+    player := make_entity(*g_world, Player, tprint("Player_%",networking_id));
+    player.networking_id = networking_id;
+    player.position = position;
+
+    sprite := ifx g_client.local_client_id == networking_id {
+        g_local_player_sprite;
+    } else {
+        g_player_sprite;
+    }
+
+    player.sprite = Sprite.{sprite, .{1.5, 1.5}, 0, 1};
+
+    player.stats.data[Stats.SPEED] = 10.;
+
+    return player;
+}
+
 // Update the local player controller, returns true if the player has made an input this frame
 update_player_controller :: () -> bool {
     move_len := length(movement_input);
@@ -13,7 +41,7 @@ update_player_controller :: () -> bool {
         move_len = 1.;
     }
 
-    g_local_player.velocity = movement_input * g_local_player.stats_component.movement_speed;
+    g_local_player.velocity = movement_input * g_local_player.stats.data[Stats.SPEED];
 
     movement_input = .{0, 0};
     
