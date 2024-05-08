@@ -46,7 +46,7 @@ update_player_controller :: () -> bool {
         move_len = 1.;
     }
 
-    g_local_player.velocity = movement_input * get_current_attribute_value(.SPEED, g_local_player.attribs);
+    g_local_player.velocity = movement_input * get_current_attribute_value(.SPEED, *g_local_player.attribs);
 
     movement_input = .{0, 0};
     

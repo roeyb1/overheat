@@ -24,45 +24,64 @@ AttributeType :: enum {
  */
 Attribute_Component :: struct {
     base: [Attribute.NUM] float;
-    add_mods: [Attribute.NUM][..] float;
-    mul_mods: [Attribute.NUM][..] float;
+    add_mods: [Attribute.NUM] Bucket_Array(float, 32);
+    mul_mods: [Attribute.NUM] Bucket_Array(float, 32);
+
+    is_cached: [Attribute.NUM] bool; // #todo change to bit array to save memory
+    cached: [Attribute.NUM] float;
+}
+
+Attribute_Modifier :: struct {
+    type: AttributeType;
+    attrib: Attribute;
+    locator: Bucket_Locator;
 }
 
 /** Computes the current value of an attribute after all modifiers are applied. */
-get_current_attribute_value :: (attrib: Attribute, attrib_comp: Attribute_Component) -> float {
-    base: float = attrib_comp.base[attrib];
+get_current_attribute_value :: (attrib: Attribute, attrib_comp: *Attribute_Component) -> float {
+    if !attrib_comp.is_cached[attrib] {
+        base: float = attrib_comp.base[attrib];
 
-    for attrib_comp.add_mods[attrib] {
-        base += it;
+        for attrib_comp.add_mods[attrib] {
+            base += it;
+        }
+
+        multiplier := 1.;
+        for attrib_comp.mul_mods[attrib] {
+            multiplier *= it;
+        }
+
+        attrib_comp.cached[attrib] = base * multiplier;
+        attrib_comp.is_cached[attrib] = false;
     }
 
-    multiplier := 1.;
-    for attrib_comp.mul_mods[attrib] {
-        multiplier *= it;
-    }
-
-    return base * multiplier;
+    return attrib_comp.cached[attrib];
 }
 
 /** Adds a new attribute modifier for a specified attribute to an attribute component. */
-add_attribute_modifier :: (attrib: Attribute, val: float, type: AttributeType, attrib_comp: Attribute_Component) {
+add_attribute_modifier :: (attrib: Attribute, val: float, type: AttributeType, attrib_comp: *Attribute_Component) -> Attribute_Modifier {
+    locator: Bucket_Locator;
     if type == {
         case .ADDITIVE;
-            array_add(*attrib_comp.add_mods[attrib], val);
+            locator = bucket_array_add(*attrib_comp.add_mods[attrib], val);
         case .MULTIPLICATIVE;
-            array_add(*attrib_comp.mul_mods[attrib], val);
-    }
+            locator = bucket_array_add(*attrib_comp.mul_mods[attrib], val);
+        case;
+            assert(false);
+    };
+    attrib_comp.is_cached[attrib] = false;
+
+    return .{ type, attrib, locator };
 }
 
 
 /** Removes an attribute modifier for a from an attribute component that matches the exact passed values. */
-// #todo: maybe we can remove modifiers a better way?
-remove_attribute_modifier :: (attrib: Attribute, val: float, type: AttributeType, attrib_comp: Attribute_Component) {
-    if type == {
+remove_attribute_modifier :: (attrib_comp: *Attribute_Component, modifier: Attribute_Modifier) {
+    if modifier.type == {
         case .ADDITIVE;
-            array_unordered_remove_by_value(*attrib_comp.add_mods[attrib], val);
+            bucket_array_remove(*attrib_comp.add_mods[modifier.attrib], modifier.locator);
         case .MULTIPLICATIVE;
-            array_unordered_remove_by_value(*attrib_comp.mul_mods[attrib], val);
+            bucket_array_remove(*attrib_comp.mul_mods[modifier.attrib], modifier.locator);
     }
 }
 
@@ -71,10 +90,10 @@ test_attributes :: () -> bool {
     test: Attribute_Component;
     test.base[Attribute.MAX_HEALTH] = 100;
 
-    add_attribute_modifier(.MAX_HEALTH, 50, .ADDITIVE, test);
-    add_attribute_modifier(.MAX_HEALTH, 2, .MULTIPLICATIVE, test);
+    add_attribute_modifier(.MAX_HEALTH, 50, .ADDITIVE, *test);
+    add_attribute_modifier(.MAX_HEALTH, 2, .MULTIPLICATIVE, *test);
 
-    actual := get_current_attribute_value(.MAX_HEALTH, test);
+    actual := get_current_attribute_value(.MAX_HEALTH, *test);
 
     expected :: 300;
 
