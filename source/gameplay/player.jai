@@ -11,7 +11,8 @@ Player :: struct {
 
     sprite: Sprite;
 
-    stats: Stats_Component;
+    /** Stores all player attributes. Health, speed, etc. */
+    attribs: Attribute_Component;
 }
 
 init_player :: (networking_id: u64, position: Vector2) -> *Player {
@@ -27,7 +28,11 @@ init_player :: (networking_id: u64, position: Vector2) -> *Player {
 
     player.sprite = Sprite.{sprite, .{1.5, 1.5}, 0, 1};
 
-    player.stats.data[Stats.SPEED] = 10.;
+
+    // Initialize the default base player attributes:
+    player.attribs.base[Attribute.MAX_HEALTH] = 100.;
+    player.attribs.base[Attribute.HEALTH] = 100.;
+    player.attribs.base[Attribute.SPEED] = 10.;
 
     return player;
 }
@@ -41,7 +46,7 @@ update_player_controller :: () -> bool {
         move_len = 1.;
     }
 
-    g_local_player.velocity = movement_input * g_local_player.stats.data[Stats.SPEED];
+    g_local_player.velocity = movement_input * get_current_attribute_value(.SPEED, g_local_player.attribs);
 
     movement_input = .{0, 0};
     

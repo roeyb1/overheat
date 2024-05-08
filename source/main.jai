@@ -127,5 +127,5 @@ simulate :: (delta_time: float64) {
 #load "entity.jai";
 #load "camera.jai";
 #load "assets.jai";
-#load "gameplay/stats.jai";
 #load "gameplay/player.jai";
+#load "gameplay/attributes.jai";
