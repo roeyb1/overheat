@@ -557,22 +557,19 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             g_client.local_client_id = conn_established.networking_id;
             log("Local player was assigned id %", conn_established.networking_id);
 
-            g_local_player = init_local_player(conn_established.networking_id);
+            g_local_player = init_player(conn_established.networking_id, .{0, 0});
 
             for player_data : conn_established.existing_players {
-                player := init_remote_player(player_data.networking_id,player_data.position);
+                player := init_player(player_data.networking_id, player_data.position);
                 log("Existing player initialized %", player.networking_id);
             }
         case .PLAYER_JOINED;
             player_joined: PlayerJoined_Packet;
             byte_buffer_read(buffer, *player_joined);
-            
-            log("New player has joined the game: %", player_joined.networking_id);
 
-            player := make_entity(*g_world, Player, tprint("Player_%", player_joined.networking_id));
-            player.position = player_joined.position;
-            player.networking_id = player_joined.networking_id;
-            player.sprite = Sprite.{g_player_sprite, .{1.5, 1.5}, 0, 1};
+            init_player(player_joined.networking_id, player_joined.position);
+
+            log("New player has joined the game: %", player_joined.networking_id);
 
         case .PLAYER_MOVE;
             player_move: PlayerMove_Packet;

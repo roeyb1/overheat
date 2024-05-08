@@ -121,12 +121,11 @@ simulate :: (delta_time: float64) {
 #load "logging.jai";
 #load "networking.jai";
 #load "rendering/rendering.jai";
-#load "player.jai";
 #load "input.jai";
 #load "unit_test.jai";
 #load "world.jai";
-#load "entities.jai";
+#load "entity.jai";
 #load "camera.jai";
 #load "assets.jai";
-#load "stats_component.jai";
-#load "entity_defaults/entity_stats.jai";
+#load "gameplay/player.jai";
+#load "gameplay/attributes.jai";
