@@ -86,7 +86,7 @@ remove_attribute_modifier :: (attrib_comp: *Attribute_Component, modifier: Attri
 }
 
 
-test_attributes :: () -> bool {
+test_attributes :: (ctx: *TestContext) {
     test: Attribute_Component;
     test.base[Attribute.MAX_HEALTH] = 100;
 
@@ -95,7 +95,9 @@ test_attributes :: () -> bool {
 
     actual := get_current_attribute_value(.MAX_HEALTH, *test);
 
-    expected :: 300;
+    expected :: 300.;
 
-    return actual == expected;
+    test_expect_equals(expected, actual);
 } @UnitTest
+
+#import "Bucket_Array";
