@@ -309,9 +309,9 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
 
         // Draw players
         {
-            for :Player_It g_world {
-                add_sprite_draw(out_draws, it.sprite, it.position);
-            }
+            //for :Player_It g_world {
+            //    add_sprite_draw(out_draws, it.sprite, it.position);
+            //}
         }
     }
 

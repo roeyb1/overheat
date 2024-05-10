@@ -14,10 +14,10 @@ ExitGame :: (key_state: Key_Current_State) {
 main :: () {
     log_initialize();
 
-    if !execute_unit_tests() {
-        log_error("Unit tests failed! See log for more information.");
-    }
+    execute_unit_tests();
 
+
+/*
     // set the working direction to be the root of the project (should always two directories up from the executable)
     working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
     set_working_directory(working_dir);
@@ -31,7 +31,7 @@ main :: () {
     last_time := seconds_since_init();
 
     // Only update networking while we attempt to connect to the server and don't yet have a player:
-    while g_local_player == null {
+    while true {
         FrameMark();
 
         networking_update();
@@ -57,8 +57,6 @@ main :: () {
 
         g_frame_number += 1;
     }
-
-    main_view_camera.entity_to_track = g_local_player;
 
     while true {
         FrameMark();
@@ -96,19 +94,10 @@ main :: () {
     networking_shutdown();
     input_manager_shutdown();
     rendering_shutdown();
+    */
 }
 
 simulate :: (delta_time: float64) {
-    // update player position based on velocity:
-    if update_player_controller() {
-        g_local_player.position += g_local_player.velocity * cast(float32) delta_time;
-
-        player_moved: PlayerMove_Packet = ---;
-        player_moved.networking_id = g_local_player.networking_id;
-        player_moved.new_position = g_local_player.position;
-
-        networking_send_packet(*player_moved);;
-    }
 }
 
 
@@ -123,9 +112,8 @@ simulate :: (delta_time: float64) {
 #load "rendering/rendering.jai";
 #load "input.jai";
 #load "unit_test.jai";
-#load "world.jai";
-#load "entity.jai";
 #load "camera.jai";
 #load "assets.jai";
+#load "ecs/world.jai";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";

@@ -22,7 +22,8 @@ recompute_camera_projection :: (using self: *Camera) {
 update_camera_position :: (using self: *Camera, delta_time: float64) {
     assert(entity_to_track != null);
 
-    target_location := entity_to_track.position;
+    //target_location := entity_to_track.position;
+    target_location := Vector2.{};
     // Lookahead
     // target_location += unit_vector(entity_to_track.velocity) * LOOKAHEAD;
 
