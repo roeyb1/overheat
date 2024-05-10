@@ -395,6 +395,9 @@ message_loop :: (w: Workspace) {
                     if has_note(header, "RunWhenReady") {
                         array_add(*procedures_to_run, header);
                     }
+                    if has_note(header, "System") {
+                        array_add(*ecs_systems, header);
+                    }
                 }
                 
             case .PHASE;
@@ -416,6 +419,10 @@ message_loop :: (w: Workspace) {
                     if !generated_unit_test_actions {
                         generate_unit_test_actions(message.workspace);
                         generated_unit_test_actions = true;
+                    }
+                    if !generated_ecs_systems {
+                        generate_ecs_systems(message.workspace);
+                        generated_ecs_systems = true;
                     }
                 }
             }
@@ -502,18 +509,72 @@ generate_unit_test_actions :: (w: Workspace) {
     print_to_builder(*builder, "}\n");
 
     build_string := builder_to_string(*builder);
+    defer free(build_string);
+
+    add_build_string(build_string, w);
+}
+
+generate_ecs_systems :: (w: Workspace) {
+    builder: String_Builder;
+    defer free_buffers(*builder);
+
+    print_to_builder(*builder, "run_all_systems :: (world: *World) {\n");
+
+
+    for system : ecs_systems {
+        assert(system.arguments.count > 0, "Incorrect number of arguments for ECS system function: %", system.name);
+        assert(system.arguments[0].type_inst.result.type == .VARIANT && (cast(*Type_Info_Variant)system.arguments[0].type_inst.result).name == "Entity", "Systems should always have the entity as the first parameter: %", system.name);
+
+        component_types: [..] *Type_Info_Struct;
+        defer free(component_types.data);
+
+        for 1..system.arguments.count-1 {
+            param_ptr := system.arguments[it].type_inst.result;
+            assert(param_ptr.type == .POINTER, "Expected pointer to component");
+
+            param := (cast(*Type_Info_Pointer)param_ptr).pointer_to;
+
+            assert(param.type == .STRUCT, "Parameter % (%) is not a struct for system %", it, << param, system.name);
+            array_add(*component_types, cast(*Type_Info_Struct)param);
+        }
+        
+        print_to_builder(*builder, "\tfor e : world.entities {\n");
+
+        print_to_builder(*builder, "\t\thas_all := true");
+        for c : component_types {
+            print_to_builder(*builder, " && (get_component(world, e, %) != null)", c.name);
+        }
+        print_to_builder(*builder, ";\n");
+        print_to_builder(*builder, "\t\tif has_all == false then continue;\n");
+
+        print_to_builder(*builder, "\t\t%(e", system.name);
+
+        for c : component_types {
+            print_to_builder(*builder, ", get_component(world, e, %)", c.name);
+        }
+
+        print_to_builder(*builder, ");\n");
+        print_to_builder(*builder, "\t}\n");
+    }
+    print_to_builder(*builder, "}\n");
+
+    build_string := builder_to_string(*builder);
+    defer free(build_string);
+
     add_build_string(build_string, w);
 }
 
 key_mapped_actions: [..] *Code_Procedure_Header;
 generated_keymap_actions := false;
 
-
 unit_test_functions: [..] *Code_Procedure_Header;
 generated_unit_test_actions := false;
 
 procedures_to_run: [..] *Code_Procedure_Header;
 has_run_procedures := false;
+
+ecs_systems: [..] *Code_Procedure_Header;
+generated_ecs_systems := false;
 
 
 is_absolute_path :: (path: string) -> bool { // This routine is probably not as correct as we'd like. We'd like to put in a better one! But maybe we will stop doing the cwd thing, or do it differently; hard to say.
