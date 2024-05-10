@@ -1,0 +1,70 @@
+World :: struct {
+    entities: [..] Entity;
+    components: Table(s64, ComponentContainerBase);
+}
+
+spawn_entity :: (world: *World) -> Entity {
+    entity: Entity = next_entity_id;
+    next_entity_id += 1;
+
+    array_add(*world.entities, entity);
+
+    return entity;
+}
+
+add_component :: (world: *World, entity: Entity, $component: Type, val: component = component.{}) -> *component {
+    cc, newly_added := find_or_add(*world.components, #run component_type_id(component));
+
+    return add_component(cast(*ComponentContainer(component)) cc, entity, val);
+}
+
+remove_component :: (world: *World, entity: Entity, $component: Type) {
+    cc := table_find_pointer(*world.components, #run component_type_id(component));
+
+    if cc {
+        remove_component(cast(*ComponentContainer(component)) cc, entity);
+    }
+}
+
+get_component :: (world: *World, entity: Entity, $component: Type) -> *component {
+    cc := table_find_pointer(*world.components, #run component_type_id(component));
+
+    if cc == null then return null;
+
+    return get_component(cast(*ComponentContainer(component)) cc, entity);
+}
+
+
+test_entity_components :: (ctx: *TestContext) {
+    Test :: struct {
+        x: u32;
+    }
+    world: World;
+
+    e1 := spawn_entity(*world);
+    test_expect_not_equals(INVALID_EID, e1);
+    e2 := spawn_entity(*world);
+    e3 := spawn_entity(*world);
+
+    // try adding a component
+    c1 := add_component(*world, e1, Test);
+    // make sure that accessing the component returns the same pointer that we got when adding
+    test_expect_equals(c1, get_component(*world, e1, Test));
+
+    // do this again a few more times
+    c2 := add_component(*world, e2, Test);
+    test_expect_equals(c2, get_component(*world, e2, Test));
+    c3 := add_component(*world, e3, Test);
+    test_expect_equals(c3, get_component(*world, e3, Test));
+
+
+    remove_component(*world, e1, Test);
+
+    test_expect_equals(null, get_component(*world, e1, Test));
+
+    // now try some removing a component that doesn't exist. This should gracefully do nothing
+    remove_component(*world, e1, Test);
+} @UnitTest
+
+#load "component_storage.jai";
+#load "entity.jai";
