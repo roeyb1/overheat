@@ -56,3 +56,19 @@ test_expect_not_equals :: (expected: $Tx, actual: $Ty, loc := #caller_location) 
         `ctx.success = false;
     }
 }
+
+test_assert_equals :: (expected: $Tx, actual: $Ty, loc := #caller_location) #expand {
+    if expected != actual {
+        print("\t\t%:%:% failure. \n\t\tExpected %\n \t\tActual %\n", path_filename(loc.fully_pathed_filename), loc.line_number, loc.character_number, expected, actual);
+        `ctx.success = false;
+        `return;
+    }
+}
+
+test_assert_not_equals :: (expected: $Tx, actual: $Ty, loc := #caller_location) #expand {
+    if expected == actual {
+        print("\t\t%:%:% failure. \n\t\tExpected %\n \t\tActual %\n", path_filename(loc.fully_pathed_filename), loc.line_number, loc.character_number, expected, actual);
+        `ctx.success = false;
+        `return;
+    }
+}

@@ -22,6 +22,11 @@ test_system :: (entity: Entity, test: *Test) {
     execution_count += 1;
 } @System
 
+
+test_system2 :: (world: *World) {
+    
+}
+
 #scope_file
 
 test_ptr: *Test = null;
