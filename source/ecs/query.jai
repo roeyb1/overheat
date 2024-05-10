@@ -93,5 +93,4 @@ test_ecs_query :: (ctx: *TestContext) {
     }
 
     test_expect_equals(1, num_iters);
-
 } @UnitTest
