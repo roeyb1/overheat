@@ -407,7 +407,6 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
 
                 array_unordered_remove_by_index(*server.clients, client_index);
 
-                
                 player_left := PlayerLeft_Packet.{networking_id};
                 networking_broadcast(*player_left);
             } else {
@@ -592,16 +591,16 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_left: PlayerLeft_Packet;
             byte_buffer_read(buffer, *player_left);
 
-            //player_to_kill: *Player = null;
-            //for :Player_It g_world {
-            //    if it.networking_id == player_left.networking_id {
-            //        player_to_kill = it;
-            //        break;
-            //    }
-            //}
+            player_to_kill: Entity = INVALID_EID;
+            for Query(Player, Networking_ID).{world = *g_world} {
+                if it.networking_id.id == player_left.networking_id {
+                    player_to_kill = it_index;
+                    break;
+                }
+            }
 
-            //assert(player_to_kill != null);
-            //destroy_entity(*g_world, player_to_kill);
+            assert(player_to_kill != INVALID_EID);
+            destroy_entity(*g_world, player_to_kill);
         case;
     }
 }

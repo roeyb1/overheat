@@ -12,6 +12,11 @@ spawn_entity :: (world: *World) -> Entity {
     return entity;
 }
 
+destroy_entity :: (world:* World, entity: Entity) -> bool {
+    // #todo [roey]: currently this will not free any component data
+    return array_ordered_remove_by_value(*world.entities, entity);
+}
+
 add_component :: (world: *World, entity: Entity, $component: Type, val: component = component.{}) -> *component {
     cc, success := table_find(*world.components, #run component_type_id(component));
     if success == false {
