@@ -310,7 +310,6 @@ client_init :: (client: *Client) -> bool {
         return false;
     }
 
-    // Set the allocator for the packet queue to the global temp allocator. This will ensure it gets cleared every frame:
     return true;
 }
 
@@ -592,9 +591,11 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             byte_buffer_read(buffer, *player_left);
 
             player_to_kill: Entity = INVALID_EID;
-            for Query(Player, Networking_ID).{world = *g_world} {
+            for Query(Player, Networking_ID, Name).{world = *g_world} {
                 if it.networking_id.id == player_left.networking_id {
                     player_to_kill = it_index;
+
+                    log("% has left the game.", it.name.name);
                     break;
                 }
             }

@@ -53,13 +53,15 @@ update_player_controllers :: (world: *World) {
 
         movement_input = .{0, 0};
 
-        it.position.pos += it.velocity.vel * cast(float32) g_delta_time;
+        if move_len > 0 {
+            it.position.pos += it.velocity.vel * cast(float32) g_delta_time;
 
-        player_moved: PlayerMove_Packet = ---;
-        player_moved.networking_id = it.networking_id.id;
-        player_moved.new_position = it.position;
+            player_moved: PlayerMove_Packet = ---;
+            player_moved.networking_id = it.networking_id.id;
+            player_moved.new_position = it.position;
 
-        networking_send_packet(*player_moved);;
+            networking_send_packet(*player_moved);;
+        }
     }
 } @System
 
