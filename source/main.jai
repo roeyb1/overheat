@@ -7,6 +7,11 @@ g_should_exit: bool = false;
 
 g_frame_number: u64 = 0;
 
+g_world: World;
+
+g_local_player: Entity = INVALID_EID;
+main_view_camera: Entity = INVALID_EID;
+
 ExitGame :: (key_state: Key_Current_State) {
     g_should_exit = true;
 } @RegisterInputAction
@@ -14,13 +19,13 @@ ExitGame :: (key_state: Key_Current_State) {
 main :: () {
     log_initialize();
 
-    if !execute_unit_tests() {
-        log_error("Unit tests failed! See log for more information.");
-    }
+    execute_unit_tests();
 
     // set the working direction to be the root of the project (should always two directories up from the executable)
     working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
     set_working_directory(working_dir);
+
+    register_all_systems();
 
     rendering_init();
     input_manager_initialize();
@@ -30,8 +35,12 @@ main :: () {
 
     last_time := seconds_since_init();
 
+    main_view_camera = spawn_entity(*g_world);
+    add_component(*g_world, main_view_camera, Position);
+    add_component(*g_world, main_view_camera, Camera);
+
     // Only update networking while we attempt to connect to the server and don't yet have a player:
-    while g_local_player == null {
+    while g_client.local_client_id == INVALID_NETWORKING_ID {
         FrameMark();
 
         networking_update();
@@ -44,13 +53,10 @@ main :: () {
         }
 
         rendering_begin_frame();
-        render_scene(*main_view_camera);
 
-        {
-            //Simp.set_shader_for_text();
-            //text_width := Simp.prepare_text(g_large_font, "Connecting to server...");
-            //Simp.draw_prepared_text(g_large_font, (g_window_width - text_width) / 2, g_window_height / 2);
-        }
+        execute(*g_world, system_groups[System_Phase.INIT]);
+        execute(*g_world, system_groups[System_Phase.PRESENT]);
+        execute(*g_world, system_groups[System_Phase.CLEANUP]);
 
         rendering_end_frame();
         reset_temporary_storage();
@@ -58,7 +64,11 @@ main :: () {
         g_frame_number += 1;
     }
 
-    main_view_camera.entity_to_track = g_local_player;
+    {
+        camera := get_component(*g_world, main_view_camera, Camera);
+        camera.entity_to_track = g_local_player;
+    }
+    
 
     while true {
         FrameMark();
@@ -71,19 +81,18 @@ main :: () {
             break;
         }
 
-        rendering_begin_frame();
-
         now := seconds_since_init();
         g_delta_time = cast(float) (now - last_time);
         smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
         g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
         last_time = now;
 
-        simulate(g_delta_time);
+        rendering_begin_frame();
 
-        update_camera_position(*main_view_camera, g_delta_time);
-
-        render_scene(*main_view_camera);
+        execute(*g_world, system_groups[System_Phase.INIT]);
+        execute(*g_world, system_groups[System_Phase.SIMULATE]);
+        execute(*g_world, system_groups[System_Phase.PRESENT]);
+        execute(*g_world, system_groups[System_Phase.CLEANUP]);
 
         rendering_end_frame();
 
@@ -98,17 +107,38 @@ main :: () {
     rendering_shutdown();
 }
 
-simulate :: (delta_time: float64) {
-    // update player position based on velocity:
-    if update_player_controller() {
-        g_local_player.position += g_local_player.velocity * cast(float32) delta_time;
 
-        player_moved: PlayerMove_Packet = ---;
-        player_moved.networking_id = g_local_player.networking_id;
-        player_moved.new_position = g_local_player.position;
+// #todo [roey]: generate this function at compile time?
+register_all_systems :: () {
 
-        networking_send_packet(*player_moved);;
-    }
+    // SIMULATE phase systems:
+   
+    add_system(*system_groups[System_Phase.SIMULATE], .{update_player_controllers});
+    add_system(*system_groups[System_Phase.SIMULATE], .{update_camera_projections});
+    add_system(*system_groups[System_Phase.SIMULATE], .{update_camera_positions});
+
+    // Update positions from velocities
+    add_system(*system_groups[System_Phase.SIMULATE], .{(world: *World) {
+        for Query(Position, Velocity).{world = world} {
+            it.position.pos += it.velocity.vel * g_delta_time;
+        }
+    }});
+
+    add_system(*system_groups[System_Phase.SIMULATE], .{update_player_positions_on_network});
+
+
+    // PRESENT phase systems:
+
+    add_system(*system_groups[System_Phase.PRESENT], .{(world: *World) {
+        pos := get_component(world, main_view_camera, Position);
+        cam := get_component(world, main_view_camera, Camera);
+
+        render_scene(cam.projection, pos);
+    }});
+
+    // CLEANUP phase systems:
+
+    add_system(*system_groups[System_Phase.CLEANUP], .{cleanup_player_controllers});
 }
 
 
@@ -121,11 +151,13 @@ simulate :: (delta_time: float64) {
 #load "logging.jai";
 #load "networking.jai";
 #load "rendering/rendering.jai";
+#load "rendering/camera.jai";
 #load "input.jai";
 #load "unit_test.jai";
-#load "world.jai";
-#load "entity.jai";
-#load "camera.jai";
 #load "assets.jai";
+#load "ecs/world.jai";
+#load "ecs/query.jai";
+#load "ecs/system.jai";
+#load "gameplay/components.jai";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";

@@ -1,24 +1,31 @@
 #scope_export 
 
-g_local_player: *Player;
+Player :: struct {}
 
-movement_input: Vector2;
-
-Player :: struct {
-    #as using entity: *Entity;
-
-    networking_id: u64;
-
-    sprite: Sprite;
-
-    /** Stores all player attributes. Health, speed, etc. */
-    attribs: Attribute_Component;
+Player_Controller :: struct {
+    // Keep track of the velocity added due to user input
+    move_velocity: Vector2;
 }
 
-init_player :: (networking_id: u64, position: Vector2) -> *Player {
-    player := make_entity(*g_world, Player, tprint("Player_%",networking_id));
-    player.networking_id = networking_id;
-    player.position = position;
+Networking_ID :: struct {
+    id: u64;
+}
+
+init_player :: (networking_id: u64, position: Vector2) -> Entity {
+    entity := spawn_entity(*g_world);
+
+    add_component(*g_world, entity, Player);
+    add_component(*g_world, entity, Name, .{sprint("Player_%", networking_id)});
+    add_component(*g_world, entity, Position, .{position});
+    add_component(*g_world, entity, Velocity);
+    add_component(*g_world, entity, Networking_ID, .{networking_id});
+    add_component(*g_world, entity, Move_Speed, .{10});
+
+    // if this is a local player:
+    if g_client.local_client_id == networking_id {
+        add_component(*g_world, entity, Player_Controller);
+    }
+
 
     sprite := ifx g_client.local_client_id == networking_id {
         g_local_player_sprite;
@@ -26,32 +33,48 @@ init_player :: (networking_id: u64, position: Vector2) -> *Player {
         g_player_sprite;
     }
 
-    player.sprite = Sprite.{sprite, .{1.5, 1.5}, 0, 1};
+    add_component(*g_world, entity, Sprite, .{sprite, .{1.5, 1.5}, 0, 1});
 
-
-    // Initialize the default base player attributes:
-    player.attribs.base[Attribute.MAX_HEALTH] = 100.;
-    player.attribs.base[Attribute.HEALTH] = 100.;
-    player.attribs.base[Attribute.SPEED] = 10.;
-
-    return player;
+    return entity;
 }
 
-// Update the local player controller, returns true if the player has made an input this frame
-update_player_controller :: () -> bool {
-    move_len := length(movement_input);
-    // Normalize the input vector to prevent diagonal movement being faster than horizontal
-    if move_len > 1 {
-        movement_input = unit_vector(movement_input);
-        move_len = 1.;
+update_player_controllers :: (world: *World) {
+    for Query(Player_Controller, Position, Velocity, Move_Speed).{world = world} {
+        move_len := length(movement_input);
+        // Normalize the input vector to prevent diagonal movement being faster than horizontal
+        if move_len > 1 {
+            movement_input = unit_vector(movement_input);
+            move_len = 1.;
+        }
+
+        it.player_controller.move_velocity = movement_input * it.move_speed.speed;
+        it.velocity.vel += it.player_controller.move_velocity;
+
+        movement_input = .{0, 0};
     }
+} @System
 
-    g_local_player.velocity = movement_input * get_current_attribute_value(.SPEED, *g_local_player.attribs);
+update_player_positions_on_network :: (world: *World) {
+    for Query(Player_Controller, Position, Networking_ID).{world = world} {
+        if length(it.player_controller.move_velocity) > 0 {
+            player_moved: PlayerMove_Packet = ---;
+            player_moved.networking_id = it.networking_id.id;
+            player_moved.new_position = it.position;
 
-    movement_input = .{0, 0};
-    
-    return move_len != 0;
-}
+            networking_send_packet(*player_moved);;
+        }
+    }
+} @System
+
+cleanup_player_controllers :: (world: *World) {
+    for Query(Player_Controller, Velocity).{world = world} {
+        it.velocity.vel -= it.player_controller.move_velocity;
+        it.player_controller.move_velocity = .{0, 0};
+    }
+} @System
+
+
+movement_input: Vector2;
 
 MovePlayerUp :: (key_state: Key_Current_State) {
     movement_input.y += 1;

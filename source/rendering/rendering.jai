@@ -1,12 +1,9 @@
 #scope_export
 
-MEMORY_LEAK_CHECK :: false;
-
 game_window: Window_Type;
 g_window_width: u32 = 800;
 g_window_height: u32 = 600;
-
-main_view_camera: Camera;
+g_window_resized_this_frame := true;
 
 Sprite :: struct {
     sheet: *SpriteSheet = null;
@@ -14,7 +11,6 @@ Sprite :: struct {
     index: u32 = 0;
     z_order: u16 = 0;
 }
-
 
 // Copy over the sprite data required for rendering so we don't need to directly reference it
 Sprite_Draw_Cmd :: struct {
@@ -42,8 +38,6 @@ rendering_init :: () -> bool {
     init_texture_manager();
 
     init_rendering_resources();
-
-    recompute_camera_projection(*main_view_camera);
 
     log("Rendering systems initialized successfully");
     return true;
@@ -76,7 +70,7 @@ application_window_update :: () {
             g_window_height = xx it.height;
             rhi_swapchain_resize(g_window_width, g_window_height, acquire_image = true);
 
-            recompute_camera_projection(*main_view_camera);
+            g_window_resized_this_frame = true;
         }
     }
 
@@ -87,9 +81,10 @@ application_window_update :: () {
 
 rendering_begin_frame :: () {
     rhi_swapchain_image_index();
-}   
+}
 
 rendering_end_frame :: () {
+    g_window_resized_this_frame = false;
 }
 
 DrawBucket :: struct {
@@ -125,7 +120,7 @@ RenderViewData :: struct {
     index_buffer_allocator: *RHILinearGPUAllocator;
 }
 
-render_scene :: (camera: *Camera) {
+render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     rg := *g_render_graph;
     frame_number := rdg_next_frame(rg);
     resource_index := frame_number % RDG_NUM_FRAMES;
@@ -134,7 +129,7 @@ render_scene :: (camera: *Camera) {
     rhi_reset(*vertex_buffer_allocators[resource_index]);
     rhi_reset(*index_buffer_allocators[resource_index]);
 
-    view_data := init_view_data_for_frame(rg, camera, resource_index);
+    view_data := init_view_data_for_frame(rg, view_proj, view_pos, resource_index);
 
     texture_manager_flush_deletions();
 
@@ -216,7 +211,7 @@ render_scene :: (camera: *Camera) {
     rdg_swap_sets(*g_view_registry);
 }
 
-init_view_data_for_frame :: (rg: *RenderGraph, camera: *Camera, resource_index: u64) -> RenderViewData {
+init_view_data_for_frame :: (rg: *RenderGraph, view_proj: Matrix4, view_pos: Vector2, resource_index: u64) -> RenderViewData {
     view_data := RenderViewData.{
         bindless_set = *g_view_registry.descriptor_sets[g_view_registry.frame_index % RDG_NUM_FRAMES],
         offset_buffer_set = *offset_buffer_descriptor_sets[resource_index],
@@ -224,8 +219,8 @@ init_view_data_for_frame :: (rg: *RenderGraph, camera: *Camera, resource_index: 
         vertex_buffer_allocator = *vertex_buffer_allocators[resource_index],
         index_buffer_allocator = *index_buffer_allocators[resource_index],
 
-        camera_proj = camera.projection,
-        camera_position = make_vector3(camera.position, 1.),
+        camera_proj = view_proj,
+        camera_position = make_vector3(view_pos, 1.),
     };
 
     return view_data;

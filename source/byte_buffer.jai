@@ -123,7 +123,7 @@ copy_to_buffer :: (buffer: *ByteBuffer, data: [] u8) {
     buffer.cursor = data.count;
 }
 
-test_binary_serialization :: () -> bool {
+test_binary_serialization :: (ctx: *TestContext) {
     // Test big-endianness of the append/read-value functions
     {
         buffer: ByteBuffer;
@@ -143,7 +143,7 @@ test_binary_serialization :: () -> bool {
             first_byte_expected = (cast(*u8)*test_data)[3];
             assert(first_byte_expected == 0xAA);
         }
-        assert(first_byte_actual == first_byte_expected);
+        test_expect_equals(first_byte_expected, first_byte_actual);
 
 
         buffer.cursor = 0;
@@ -151,7 +151,7 @@ test_binary_serialization :: () -> bool {
         read_actual: u32;
         read_value(*buffer, cast (*u8) *read_actual, size_of(u32));
 
-        assert(read_actual == test_data);
+        test_expect_equals(test_data, read_actual);
     }
 
     BasicStruct :: struct {
@@ -182,10 +182,10 @@ test_binary_serialization :: () -> bool {
         read_actual: BasicStruct;
         byte_buffer_read(*buffer, *read_actual, type_info(BasicStruct));
 
-        assert(read_actual.x == test_data.x);
-        assert(read_actual.y == test_data.y);
-        assert(read_actual.z == test_data.z);
-        assert(read_actual.type == test_data.type);
+        test_expect_equals(test_data.x, read_actual.x);
+        test_expect_equals(test_data.y, read_actual.y);
+        test_expect_equals(test_data.z, read_actual.z);
+        test_expect_equals(test_data.type, read_actual.type);
     }
 
     // Test array serialization 
@@ -207,10 +207,10 @@ test_binary_serialization :: () -> bool {
         actual_data: [..] u32;
         byte_buffer_read(*buffer, *actual_data, type_info(type_of(actual_data)));
 
-        assert(actual_data.count == test_data.count);
-        assert(actual_data.allocated == actual_data.count);
+        test_expect_equals(test_data.count, actual_data.count);
+        test_expect_equals(actual_data.count, actual_data.allocated);
         for 0..test_data.count-1 {
-            assert(actual_data[it] == test_data[it]);
+            test_expect_equals(test_data[it], actual_data[it]);
         }
     }
 
@@ -236,9 +236,9 @@ test_binary_serialization :: () -> bool {
         actual_data: ComplexStruct;
         byte_buffer_read(*buffer, *actual_data, type_info(type_of(actual_data)));
 
-        assert(actual_data.arr.count == test_data.arr.count);
+        test_expect_equals(test_data.arr.count, actual_data.arr.count);
         for 0..test_data.arr.count-1 {
-            assert(actual_data.arr[it] == test_data.arr[it]);
+            test_expect_equals(test_data.arr[it], actual_data.arr[it]);
         }
     }
 
@@ -274,17 +274,15 @@ test_binary_serialization :: () -> bool {
         actual_data.buff.cursor = 0;
         byte_buffer_read(*actual_data.buff, *actual_nested_data, type_info(type_of(actual_nested_data)));
 
-        assert(actual_data.a  == test_data.a);
+        test_expect_equals(test_data.a, actual_data.a);
         
         assert(actual_nested_data.arr.count == test_nested_data.arr.count);
         for 0..test_nested_data.arr.count-1 {
-            assert(actual_nested_data.arr[it] == test_nested_data.arr[it]);
+            test_expect_equals(test_nested_data.arr[it], actual_nested_data.arr[it]);
         }
 
-        assert(actual_nested_data.data.x == test_nested_data.data.x);
+        test_expect_equals(test_nested_data.data.x, actual_nested_data.data.x);
     }
-
-    return true;
 } @UnitTest
 
 #scope_file

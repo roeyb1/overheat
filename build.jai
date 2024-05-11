@@ -345,6 +345,7 @@ build :: () {
     copy_module_libraries_to_target(options);
 
     // compile shaders in the build step
+    if false
     {
         shader_dir := "assets/shaders";
         if !compile_shaders(shader_dir, debug_symbols=true) {
@@ -488,7 +489,7 @@ generate_keymap_actions :: (w: Workspace) {
 }
 
 UNIT_TEST_INSERT :: #string DONE
-    array_add(*g_unit_test_functions, %1);
+    array_add(*g_unit_tests, .{"%1", %2});
 DONE
 generate_unit_test_actions :: (w: Workspace) {
     builder: String_Builder;
@@ -496,17 +497,18 @@ generate_unit_test_actions :: (w: Workspace) {
 
     print_to_builder(*builder, "register_unit_tests :: () {\n");
     for unit_test_functions {
-        print_to_builder(*builder, UNIT_TEST_INSERT, it.name);
+        print_to_builder(*builder, UNIT_TEST_INSERT, it.name, it.name);
     }
     print_to_builder(*builder, "}\n");
 
     build_string := builder_to_string(*builder);
+    defer free(build_string);
+
     add_build_string(build_string, w);
 }
 
 key_mapped_actions: [..] *Code_Procedure_Header;
 generated_keymap_actions := false;
-
 
 unit_test_functions: [..] *Code_Procedure_Header;
 generated_unit_test_actions := false;
