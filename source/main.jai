@@ -112,6 +112,13 @@ register_all_systems :: () {
     add_system(*system_groups[System_Phase.SIMULATE], .{update_camera_projections});
     add_system(*system_groups[System_Phase.SIMULATE], .{update_camera_positions});
 
+    // Update positions from velocities
+    add_system(*system_groups[System_Phase.SIMULATE], .{(world: *World) {
+        for Query(Position, Velocity).{world = world} {
+            it.position.pos += it.velocity.vel * g_delta_time;
+        }
+    }});
+
     add_system(*system_groups[System_Phase.PRESENT], .{(world: *World) {
         pos := get_component(world, main_view_camera, Position);
         cam := get_component(world, main_view_camera, Camera);

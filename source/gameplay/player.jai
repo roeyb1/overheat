@@ -41,7 +41,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 }
 
 update_player_controllers :: (world: *World) {
-    for Query(LocalPlayer, Position, Velocity, Networking_ID).{world = world} {
+    for Query(LocalPlayer, Position, Networking_ID).{world = world} {
         move_len := length(movement_input);
         // Normalize the input vector to prevent diagonal movement being faster than horizontal
         if move_len > 1 {
@@ -49,12 +49,12 @@ update_player_controllers :: (world: *World) {
             move_len = 1.;
         }
 
-        it.velocity.vel = movement_input * 10;
+        move_velocity := movement_input * 10;
 
         movement_input = .{0, 0};
 
         if move_len > 0 {
-            it.position.pos += it.velocity.vel * cast(float32) g_delta_time;
+            it.position.pos += move_velocity * cast(float32) g_delta_time;
 
             player_moved: PlayerMove_Packet = ---;
             player_moved.networking_id = it.networking_id.id;
@@ -64,23 +64,6 @@ update_player_controllers :: (world: *World) {
         }
     }
 } @System
-
-// Update the local player controller, returns true if the player has made an input this frame
-update_player_controller :: () -> bool {
-    move_len := length(movement_input);
-    // Normalize the input vector to prevent diagonal movement being faster than horizontal
-    if move_len > 1 {
-        movement_input = unit_vector(movement_input);
-        move_len = 1.;
-    }
-
-    velocity := get_component(*g_world, g_local_player, Velocity);
-    velocity.vel = movement_input * 10;
-
-    movement_input = .{0, 0};
-    
-    return move_len != 0;
-}
 
 movement_input: Vector2;
 
