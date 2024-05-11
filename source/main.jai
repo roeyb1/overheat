@@ -56,6 +56,7 @@ main :: () {
 
         execute(*g_world, system_groups[System_Phase.INIT]);
         execute(*g_world, system_groups[System_Phase.PRESENT]);
+        execute(*g_world, system_groups[System_Phase.CLEANUP]);
 
         rendering_end_frame();
         reset_temporary_storage();
@@ -91,6 +92,7 @@ main :: () {
         execute(*g_world, system_groups[System_Phase.INIT]);
         execute(*g_world, system_groups[System_Phase.SIMULATE]);
         execute(*g_world, system_groups[System_Phase.PRESENT]);
+        execute(*g_world, system_groups[System_Phase.CLEANUP]);
 
         rendering_end_frame();
 
@@ -108,6 +110,9 @@ main :: () {
 
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
+
+    // SIMULATE phase systems:
+   
     add_system(*system_groups[System_Phase.SIMULATE], .{update_player_controllers});
     add_system(*system_groups[System_Phase.SIMULATE], .{update_camera_projections});
     add_system(*system_groups[System_Phase.SIMULATE], .{update_camera_positions});
@@ -119,12 +124,21 @@ register_all_systems :: () {
         }
     }});
 
+    add_system(*system_groups[System_Phase.SIMULATE], .{update_player_positions_on_network});
+
+
+    // PRESENT phase systems:
+
     add_system(*system_groups[System_Phase.PRESENT], .{(world: *World) {
         pos := get_component(world, main_view_camera, Position);
         cam := get_component(world, main_view_camera, Camera);
 
         render_scene(cam.projection, pos);
     }});
+
+    // CLEANUP phase systems:
+
+    add_system(*system_groups[System_Phase.CLEANUP], .{cleanup_player_controllers});
 }
 
 

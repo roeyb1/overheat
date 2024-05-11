@@ -14,6 +14,7 @@ System_Phase :: enum u32{
     INIT;
     SIMULATE;
     PRESENT;
+    CLEANUP;
     NUM;
 }
 
