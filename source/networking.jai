@@ -1,12 +1,14 @@
 #scope_export
 
+INVALID_NETWORKING_ID :: 0;
+
 Client :: struct {
     endpoint: IPAddr;
     connection: NetConnection;
 
     should_disconnect: bool = false;
 
-    local_client_id: u64;
+    local_client_id: u64 = INVALID_NETWORKING_ID;
 }
 
 Server :: struct {
@@ -21,7 +23,7 @@ Server :: struct {
     }
     clients: [..] ClientConnection;
 
-    next_valid_networking_id: u64 = 0;
+    next_valid_networking_id: u64 = 1;
 
     should_shutdown: bool = false;
 }
@@ -436,6 +438,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             }
 
             new_networking_id := server.next_valid_networking_id;
+            assert(new_networking_id != INVALID_NETWORKING_ID);
 
             // validate this player id is not currently in use:
             {
@@ -456,11 +459,11 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.networking_id = new_networking_id;
 
-                //for :Player_It g_world {
-                //    player_data := array_add(*conn_established.existing_players);
-                //    player_data.networking_id = it.networking_id;
-                //    player_data.position = it.position;
-                //}
+                for Query(Player, Networking_ID, Position).{world = *g_world} {
+                    player_data := array_add(*conn_established.existing_players);
+                    player_data.networking_id = it.networking_id.id;
+                    player_data.position = it.position;
+                }
 
                 networking_send_packet(*new_client, *conn_established);
             }
@@ -554,20 +557,22 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             byte_buffer_read(buffer, *conn_established);
 
+            assert(conn_established.networking_id != INVALID_NETWORKING_ID);
+
             g_client.local_client_id = conn_established.networking_id;
             log("Local player was assigned id %", conn_established.networking_id);
 
-            //g_local_player = init_player(conn_established.networking_id, .{0, 0});
+            g_local_player = init_player(conn_established.networking_id, .{0, 0});
 
-            //for player_data : conn_established.existing_players {
-            //    player := init_player(player_data.networking_id, player_data.position);
-            //    log("Existing player initialized %", player.networking_id);
-            //}
+            for player_data : conn_established.existing_players {
+                player := init_player(player_data.networking_id, player_data.position);
+                log("Existing player initialized %", get_component(*g_world, player, Name).name);
+            }
         case .PLAYER_JOINED;
             player_joined: PlayerJoined_Packet;
             byte_buffer_read(buffer, *player_joined);
 
-            //init_player(player_joined.networking_id, player_joined.position);
+            init_player(player_joined.networking_id, player_joined.position);
 
             log("New player has joined the game: %", player_joined.networking_id);
 
@@ -575,14 +580,14 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_move: PlayerMove_Packet;
             byte_buffer_read(buffer, *player_move);
 
-            //assert(player_move.networking_id != g_local_player.networking_id, 
-            //    "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
+            assert(player_move.networking_id != g_client.local_client_id, 
+                "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
 
-            //for :Player_It g_world {
-            //    if it.networking_id == player_move.networking_id {
-            //        it.position = player_move.new_position;
-            //    }
-            //}
+            for Query(Networking_ID, Player, Position).{world = *g_world} {
+                if it.networking_id.id == player_move.networking_id {
+                    it.position.pos = player_move.new_position;
+                }
+            }
         case .PLAYER_LEFT;
             player_left: PlayerLeft_Packet;
             byte_buffer_read(buffer, *player_left);

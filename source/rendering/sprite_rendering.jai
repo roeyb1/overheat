@@ -307,11 +307,11 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
             }
         }
 
-        // Draw players
+        // Draw sprites
         {
-            //for :Player_It g_world {
-            //    add_sprite_draw(out_draws, it.sprite, it.position);
-            //}
+            for Query(Sprite, Position).{world = *g_world} {
+                add_sprite_draw(out_draws, it.sprite, it.position);
+            }
         }
     }
 

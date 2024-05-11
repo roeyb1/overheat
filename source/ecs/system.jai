@@ -10,11 +10,20 @@ System_Scheduler :: struct {
     systems: [..] System;
 }
 
+System_Phase :: enum u32{
+    INIT;
+    SIMULATE;
+    PRESENT;
+    NUM;
+}
+
+system_groups: [System_Phase.NUM] System_Scheduler;
+
 add_system :: (scheduler: *System_Scheduler, system: System) {
     array_add(*scheduler.systems, system);
 }
 
-execute :: (scheduler: *System_Scheduler, world: *World) {
+execute :: (world: *World, scheduler: System_Scheduler) {
     // #todo: more intelligent scheduling
     for scheduler.systems {
         it.func(world);
@@ -50,7 +59,7 @@ test_ecs_systems :: (ctx: *TestContext) {
     c2 := add_component(*world, e2, Test);
     c2.x = 101;
 
-    execute(*scheduler, *world);
+    execute(*world, scheduler);
 
     test_expect_equals(2, execution_count);
 

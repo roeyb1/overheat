@@ -1,6 +1,6 @@
 World :: struct {
     entities: [..] Entity;
-    components: Table(s64, ComponentContainerBase);
+    components: Table(s64, *ComponentContainerBase);
 }
 
 spawn_entity :: (world: *World) -> Entity {
@@ -13,23 +13,27 @@ spawn_entity :: (world: *World) -> Entity {
 }
 
 add_component :: (world: *World, entity: Entity, $component: Type, val: component = component.{}) -> *component {
-    cc, newly_added := find_or_add(*world.components, #run component_type_id(component));
+    cc, success := table_find(*world.components, #run component_type_id(component));
+    if success == false {
+        cc = New(ComponentContainer(component));
+        table_add(*world.components, #run component_type_id(component), cc);
+    }
 
     return add_component(cast(*ComponentContainer(component)) cc, entity, val);
 }
 
 remove_component :: (world: *World, entity: Entity, $component: Type) {
-    cc := table_find_pointer(*world.components, #run component_type_id(component));
+    cc, success := table_find(*world.components, #run component_type_id(component));
 
-    if cc {
+    if success {
         remove_component(cast(*ComponentContainer(component)) cc, entity);
     }
 }
 
 get_component :: (world: *World, entity: Entity, $component: Type) -> *component {
-    cc := table_find_pointer(*world.components, #run component_type_id(component));
+    cc, success := table_find(*world.components, #run component_type_id(component));
 
-    if cc == null then return null;
+    if success == false then return null;
 
     return get_component(cast(*ComponentContainer(component)) cc, entity);
 }
