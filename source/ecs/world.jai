@@ -3,11 +3,21 @@ World :: struct {
     components: Table(s64, *ComponentContainerBase);
 }
 
-spawn_entity :: (world: *World) -> Entity {
+spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
     entity: Entity = next_entity_id;
     next_entity_id += 1;
 
     array_add(*world.entities, entity);
+
+    #insert #run () -> string {
+        builder: String_Builder;
+
+        for 0..initial_component_types.count-1 {
+            print_to_builder(*builder, "add_component(world, entity, initial_component_types[%]);\n", it);
+        }
+
+        return builder_to_string(*builder);
+    }();
 
     return entity;
 }
@@ -53,6 +63,9 @@ test_entity_components :: (ctx: *TestContext) {
     Test :: struct {
         x: u32;
     }
+    Test2 :: struct {
+        x: u32;
+    }
     world: World;
 
     e1 := spawn_entity(*world);
@@ -78,7 +91,14 @@ test_entity_components :: (ctx: *TestContext) {
 
     // now try some removing a component that doesn't exist. This should gracefully do nothing
     remove_component(*world, e1, Test);
+
+    e4 := spawn_entity(*world, Test, Test2);
+    test_expect_not_equals(null, get_component(*world, e4, Test));
+    test_expect_not_equals(null, get_component(*world, e4, Test2));
 } @UnitTest
 
 #load "component_storage.jai";
 #load "entity.jai";
+
+#import "Compiler";
+#import "Program_Print";

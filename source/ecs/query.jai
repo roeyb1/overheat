@@ -7,9 +7,9 @@ Query :: struct ($component_types: ..Type) {
 generate_query_members :: ($component_types: ..Type) -> string #compile_time {
     builder: String_Builder;
     defer free_buffers(*builder);
-    for component_types {
-        ti := cast(*Type_Info_Struct)it;
-        print_to_builder(*builder, "%: *% = null;\n", to_lower_copy_new(ti.name), ti.name);
+    for 0..component_types.count-1 {
+        ti := cast(*Type_Info_Struct)component_types[it];
+        print_to_builder(*builder, "%: *component_types[%] = null;\n", to_lower_copy_new(ti.name), it);
     }
     return builder_to_string(*builder);
 }
@@ -26,9 +26,8 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
             defer free_buffers(*builder);
             
             print_to_builder(*builder, "matches_query := true");
-            for query.component_types {
-                ti := cast(*Type_Info_Struct)it;
-                print_to_builder(*builder, " && get_component(query.world, entity, %)", ti.name);
+            for 0..query.component_types.count-1 {
+                print_to_builder(*builder, " && get_component(query.world, entity, query.component_types[%])", it);
             }
             print_to_builder(*builder, ";\n");
             return builder_to_string(*builder);
@@ -42,9 +41,9 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
             builder: String_Builder;
             defer free_buffers(*builder);
             
-            for query.component_types {
-                ti := cast(*Type_Info_Struct)it;
-                print_to_builder(*builder, "query.% = get_component(query.world, entity, %);\n", to_lower_copy_new(ti.name), ti.name);
+            for 0..query.component_types.count-1 {
+                ti := cast(*Type_Info_Struct)query.component_types[it];
+                print_to_builder(*builder, "query.% = get_component(query.world, entity, query.component_types[%]);\n", to_lower_copy_new(ti.name), it);
             }
             return builder_to_string(*builder);
         }();
@@ -58,17 +57,17 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
 
 #scope_file
 
-Test :: struct {
-    x: u32;
-}
-
-Test2 :: struct {
-    x: u32;
-}
-
 #scope_export
 
 test_ecs_query :: (ctx: *TestContext) {
+    Test :: struct {
+        x: u32;
+    }
+
+    Test2 :: struct {
+        x: u32;
+    }
+
     world: World;
 
     e1 := spawn_entity(*world);
