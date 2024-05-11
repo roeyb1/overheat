@@ -1,5 +1,6 @@
 ComponentContainerBase :: struct {
     indirection: Table(Entity, s64);
+    free_slots: [..] s64;
     type: Type;
 }
 
@@ -18,40 +19,33 @@ component_type_id :: ($c: Type) -> s64 {
 add_component :: (cc: *ComponentContainer, entity: Entity, val: cc.T = cc.T.{}) -> *cc.T {
     assert(!table_contains(*cc.indirection, entity));
 
-    new_index := cc.data.count;
-    table_add(*cc.indirection, entity, new_index);
-    ptr := array_add(*cc.data);
+    new_index := ifx cc.free_slots.count > 0 {
+        pop(*cc.free_slots);
+    } else {
+        ptr := array_add(*cc.data);
+        cc.data.count-1;
+    }
 
-    assert(cc.indirection.count == cc.data.count);
+    table_add(*cc.indirection, entity, new_index);
+
+    assert(cc.data.data != null && cc.data.count > 0);
+    ptr := cc.data.data + new_index;
+
+    assert(ptr != null);
+
+    assert(cc.data.count == (cc.indirection.count + cc.free_slots.count));
 
     << ptr = val;
 
     return ptr;
 }
 
-remove_component :: (cc: *ComponentContainer, entity: Entity) -> bool {
-    success, index_to_remove := table_remove(*cc.indirection, entity);
+remove_component :: (cc: *ComponentContainerBase, entity: Entity) -> bool {
+    success, removed_index := table_remove(*cc.indirection, entity);
 
     if !success then return false;
 
-    last_index := cc.data.count - 1;
-
-    last_data := pop(*cc.data);
-    // swap the last element into the position of the removed element if there is more than one component.
-    // if there's only one component, last_data is the data to remove so we're good.
-    if cc.data.count > 0 {
-        cc.data[index_to_remove] = last_data;
-
-        for *cc.indirection {
-            key, value := it_index, it;
-            if (<< value) == last_index {
-                << value = index_to_remove;
-                break;
-            }
-        }
-    }
-
-    assert(cc.indirection.count == cc.data.count);
+    array_add(*cc.free_slots, removed_index);
 
     return true;
 }

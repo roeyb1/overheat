@@ -13,7 +13,12 @@ spawn_entity :: (world: *World) -> Entity {
 }
 
 destroy_entity :: (world:* World, entity: Entity) -> bool {
-    // #todo [roey]: currently this will not free any component data
+    // #todo [roey]: we should be able to accelerate this by storing bitset for each entity to determine what components it has
+    for world.components {
+        key, value := it_index, it;
+        remove_component(value, entity);
+    }
+
     return array_ordered_remove_by_value(*world.entities, entity);
 }
 
