@@ -26,3 +26,6 @@ remove_item :: (inventory : *Inventory, item : Item){
     inventory.equipment[item.type] = .{item.type, .{.DEFAULT, "default"}};
 }
 
+OpenInventory :: (key_state: Key_Current_State){
+    log("ATTENTION: I have opened the inventory");
+} @RegisterInputAction

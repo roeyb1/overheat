@@ -22,6 +22,10 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     add_component(*g_world, entity, Move_Speed, .{10});
     add_component(*g_world, entity, Point_Light, .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.});
 
+    inventory := add_component(*g_world, entity, Inventory);
+    // #todo: at some point we should load the player's saved inventory off the disk.
+    populate_inventory(inventory);
+
     // if this is a local player:
     if g_client.local_client_id == networking_id {
         add_component(*g_world, entity, Local_Player);

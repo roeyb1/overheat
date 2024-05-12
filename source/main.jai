@@ -208,3 +208,6 @@ using Random :: #import "Random";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
 
+
+#load "gameplay/item.jai";
+#load "gameplay/inventory.jai";
