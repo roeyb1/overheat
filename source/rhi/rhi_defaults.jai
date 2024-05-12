@@ -111,3 +111,28 @@ rhi_static_linear_clamp_sampler :: (binding: u32, space: u32, stage_flags: RHISh
 
     return desc;
 }
+
+rhi_static_linear_repeat_sampler :: (binding: u32, space: u32, stage_flags: RHIShaderStageFlags) -> RHIStaticSamplerDesc {
+    desc := RHIStaticSamplerDesc.{
+        binding = binding,
+        space = space,
+        stage_flags = stage_flags,
+        mag_filter = .LINEAR,
+        min_filter = .LINEAR,
+        mipmap_mode = .LINEAR,
+        address_mode_u = .REPEAT,
+        address_mode_v = .REPEAT,
+        address_mode_w = .REPEAT,
+        mip_lod_bias = 0.,
+        anisotropy_enable = false,
+        max_anisotropy = 1.,
+        compare_enable = false,
+        compare_op = .ALWAYS,
+        min_lod = 0.,
+        max_lod = FLOAT32_MAX,
+        border_color = .FLOAT_OPAQUE_BLACK,
+        unnormalized_coordinates = false,
+    };
+
+    return desc;
+}

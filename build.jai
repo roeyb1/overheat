@@ -345,7 +345,6 @@ build :: () {
     copy_module_libraries_to_target(options);
 
     // compile shaders in the build step
-    if false
     {
         shader_dir := "assets/shaders";
         if !compile_shaders(shader_dir, debug_symbols=true) {

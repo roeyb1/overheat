@@ -27,6 +27,11 @@ main :: () {
 
     register_all_systems();
 
+    ImGui.CreateContext();
+    {
+        ImGui.StyleColorsDark();
+    }
+
     rendering_init();
     input_manager_initialize();
     networking_init();
@@ -52,10 +57,16 @@ main :: () {
             break;
         }
 
+        ImGui.NewFrame();
+
         rendering_begin_frame();
 
         execute(*g_world, system_groups[System_Phase.INIT]);
+
+        ImGui.Render();
+
         execute(*g_world, system_groups[System_Phase.PRESENT]);
+
         execute(*g_world, system_groups[System_Phase.CLEANUP]);
 
         rendering_end_frame();
@@ -81,6 +92,8 @@ main :: () {
             break;
         }
 
+        ImGui.NewFrame();
+
         now := seconds_since_init();
         g_delta_time = cast(float) (now - last_time);
         smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
@@ -89,8 +102,13 @@ main :: () {
 
         rendering_begin_frame();
 
+        ImGui.ShowDemoWindow();
+
         execute(*g_world, system_groups[System_Phase.INIT]);
         execute(*g_world, system_groups[System_Phase.SIMULATE]);
+
+        ImGui.Render();
+
         execute(*g_world, system_groups[System_Phase.PRESENT]);
         execute(*g_world, system_groups[System_Phase.CLEANUP]);
 
