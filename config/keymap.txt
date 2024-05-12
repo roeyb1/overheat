@@ -7,7 +7,5 @@ A   MovePlayerLeft
 S   MovePlayerDown
 D   MovePlayerRight
 
-F ToggleSprint
-
 # Other keys
 S-Esc ExitGame
