@@ -28,7 +28,6 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
     for entity : query.world.entities {
         #insert #run () -> string {
             builder: String_Builder;
-            defer free_buffers(*builder);
             
             print_to_builder(*builder, "matches_query := true");
             for 0..query.component_types.count-1 {
@@ -69,7 +68,16 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
         `it := query;
         `it_index := entity;
 
+        // Additional validation for debug builds:
+        // Store a copy of the query struct before the body of the loop executes so we can check if the user modified any structs.
+        // This can catch potential bugs where the user meant to make a query by-reference but forgot to add the pointer.
+        #if DEBUG {
+            query_before := it;
+        }
         #insert body;
+        #if DEBUG {
+            assert(bits_equal(*query_before, *it), "Query was modified during system execution! This is probably a bug due to a missing by-reference component. Before %, after %", query_before, it);
+        }
     }
 }
 
@@ -111,3 +119,5 @@ test_ecs_query :: (ctx: *TestContext) {
 
     test_expect_equals(1, num_iters);
 } @UnitTest
+
+#import "Bit_Operations";
