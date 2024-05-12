@@ -2,11 +2,15 @@
 System_Func :: #type (world: *World);
 
 System :: struct {
-    func: #type (world: *World);
+    func: System_Func;
+
+    debug_name: string;
+
+    run_before: [..] System_Func;
+    run_after: [..] System_Func;
 }
 
 System_Scheduler :: struct {
-    // #todo: phase-based execution
     systems: [..] System;
 }
 
@@ -20,14 +24,99 @@ System_Phase :: enum u32{
 
 system_groups: [System_Phase.NUM] System_Scheduler;
 
-add_system :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[]) {
-    array_add(*scheduler.systems, .{func});
+add_system :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[], debug_name: string = "", $call := #caller_code) {
+    system := array_add(*scheduler.systems);
+    system.func = func;
+    system.debug_name = #run -> string {
+        nodes := compiler_get_nodes(call);
+
+        assert(nodes.kind == .PROCEDURE_CALL);
+
+        proc_call := cast(*Code_Procedure_Call) nodes;
+
+        if proc_call.arguments_sorted[1].kind != .IDENT {
+            return "";
+        }
+
+        ident := cast(*Code_Ident) proc_call.arguments_sorted[1];
+
+        return ident.name;
+    };
+
+    log("Registered system: %", system.debug_name);
+
+    array_copy(*system.run_before, run_before);
+    array_copy(*system.run_after, run_after);
 }
 
 execute :: (world: *World, scheduler: System_Scheduler) {
-    // #todo: more intelligent scheduling
+    find_system :: (systems: [] System, func: System_Func) -> bool, s64 {
+        for systems if it.func == func then return true, it_index;
+        return false, -1;
+    }
+
+    // Maps system index to indicies of systems which depend on it to complete
+    dependencies: [..][..] s64;
+    dependencies.allocator = temp;
+    array_resize(*dependencies, scheduler.systems.count);
+    // Each system maps to a number indicating how many more systems that it depend on have not yet completed
+    wait_count: [..] s64;
+    wait_count.allocator = temp;
+    array_resize(*wait_count, scheduler.systems.count);
+
+    // build dependency map:
     for scheduler.systems {
-        it.func(world);
+        system_index := it_index;
+
+        for dependee : it.run_after {
+            found, index := find_system(scheduler.systems, dependee);
+            if found {
+                array_add(*dependencies[index], system_index);
+                wait_count[system_index] += 1;
+            }
+        }
+
+        for dependent : it.run_before {
+            found, index := find_system(scheduler.systems, dependent);
+            if found {
+                array_add(*dependencies[system_index], index);
+                wait_count[index] += 1;
+            }
+        }
+    }
+
+    found_one := false;
+
+    systems_to_run: [..] s64;
+    systems_to_run.allocator = temp;
+    array_resize(*systems_to_run, scheduler.systems.count);
+    for 0..scheduler.systems.count-1 {
+        systems_to_run[it] = it;
+    }
+
+    while systems_to_run.count > 0 {
+        found_one = false;
+
+        for systems_to_run {
+            system_index := it;
+
+            // if the system is runnable now:
+            if wait_count[system_index] == 0 {
+                scheduler.systems[system_index].func(world);
+
+                // signal to dependents that we finished:
+                for dependent : dependencies[system_index] {
+                    assert(wait_count[dependent] > 0);
+                    wait_count[dependent] -= 1;
+                }
+
+                found_one = true;
+
+                remove it;
+            }
+        }
+
+        assert(found_one || systems_to_run.count == 0);
     }
 }
 

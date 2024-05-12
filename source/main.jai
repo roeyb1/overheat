@@ -118,15 +118,15 @@ register_all_systems :: () {
 
     // SIMULATE phase systems:
 
-    add_system(*system_groups[System_Phase.SIMULATE], update_player_controllers, run_before =.[update_positions]);
+    add_system(*system_groups[System_Phase.SIMULATE], update_player_controllers, run_before =.[update_positions], debug_name = "update_player_controllers");
 
-    add_system(*system_groups[System_Phase.SIMULATE], update_camera_projections);
-    add_system(*system_groups[System_Phase.SIMULATE], update_camera_positions);
+    add_system(*system_groups[System_Phase.SIMULATE], update_camera_projections, debug_name = "update_camera_projections");
+    add_system(*system_groups[System_Phase.SIMULATE], update_camera_positions, debug_name = "update_camera_positions");
 
     // Update positions from velocities
-    add_system(*system_groups[System_Phase.SIMULATE], update_positions);
+    add_system(*system_groups[System_Phase.SIMULATE], update_positions, debug_name = "update_positions");
 
-    add_system(*system_groups[System_Phase.SIMULATE], update_player_positions_on_network, run_after = .[update_positions]);
+    add_system(*system_groups[System_Phase.SIMULATE], update_player_positions_on_network, run_after = .[update_positions], debug_name = "update_player_positions_on_network");
 
     // PRESENT phase systems:
 
