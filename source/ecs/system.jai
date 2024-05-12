@@ -20,8 +20,8 @@ System_Phase :: enum u32{
 
 system_groups: [System_Phase.NUM] System_Scheduler;
 
-add_system :: (scheduler: *System_Scheduler, system: System) {
-    array_add(*scheduler.systems, system);
+add_system :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[]) {
+    array_add(*scheduler.systems, .{func});
 }
 
 execute :: (world: *World, scheduler: System_Scheduler) {
@@ -39,7 +39,7 @@ test_ecs_systems :: (ctx: *TestContext) {
     }
 
     test_system2 :: (world: *World) {
-        for Query(Test).{world = world} {
+        for Query(*Test).{world = world} {
             entity := it_index;
 
             it.test.x = 102;
@@ -49,8 +49,8 @@ test_ecs_systems :: (ctx: *TestContext) {
     }
 
     scheduler: System_Scheduler;
-    add_system(*scheduler, System.{test_system});
-    add_system(*scheduler, System.{test_system2});
+    add_system(*scheduler, test_system);
+    add_system(*scheduler, test_system2);
 
     world: World;
 

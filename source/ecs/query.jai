@@ -7,9 +7,14 @@ Query :: struct ($component_types: ..Type) {
 generate_query_members :: ($component_types: ..Type) -> string #compile_time {
     builder: String_Builder;
     defer free_buffers(*builder);
-    for component_types {
-        ti := cast(*Type_Info_Struct)it;
-        print_to_builder(*builder, "%: *% = null;\n", to_lower_copy_new(ti.name), ti.name);
+    for 0..component_types.count-1 {
+        ti: *Type_Info_Struct = null;
+        if (cast(*Type_Info) component_types[it]).type == .POINTER {
+            ti = cast(*Type_Info_Struct) (cast(*Type_Info_Pointer) component_types[it]).pointer_to;
+        } else {
+            ti = cast(*Type_Info_Struct) component_types[it];
+        }
+        print_to_builder(*builder, "%: component_types[%];\n", to_lower_copy_new(ti.name), it);
     }
     return builder_to_string(*builder);
 }
@@ -23,12 +28,14 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
     for entity : query.world.entities {
         #insert #run () -> string {
             builder: String_Builder;
-            defer free_buffers(*builder);
             
             print_to_builder(*builder, "matches_query := true");
-            for query.component_types {
-                ti := cast(*Type_Info_Struct)it;
-                print_to_builder(*builder, " && get_component(query.world, entity, %)", ti.name);
+            for 0..query.component_types.count-1 {
+                if (cast(*Type_Info) query.component_types[it]).type == .POINTER {
+                    print_to_builder(*builder, " && get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)type_info(query.component_types[%])).pointer_to))", it);
+                } else {
+                    print_to_builder(*builder, " && get_component(query.world, entity, query.component_types[%])", it);
+                }
             }
             print_to_builder(*builder, ";\n");
             return builder_to_string(*builder);
@@ -41,10 +48,19 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
         #insert #run () -> string {
             builder: String_Builder;
             defer free_buffers(*builder);
-            
-            for query.component_types {
-                ti := cast(*Type_Info_Struct)it;
-                print_to_builder(*builder, "query.% = get_component(query.world, entity, %);\n", to_lower_copy_new(ti.name), ti.name);
+
+            types: [query.component_types.count] Type;
+
+            for 0..query.component_types.count-1 {
+                ti: *Type_Info_Struct = null;
+
+                if (cast(*Type_Info) query.component_types[it]).type == .POINTER {
+                    ti = cast(*Type_Info_Struct) (cast(*Type_Info_Pointer) query.component_types[it]).pointer_to;
+                    print_to_builder(*builder, "query.% = get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)query.component_types[%]).pointer_to));\n", to_lower_copy_new(ti.name), it);
+                } else {
+                    ti = cast(*Type_Info_Struct) query.component_types[it];
+                    print_to_builder(*builder, "query.% = get_component(query.world, entity, query.component_types[%]);\n", to_lower_copy_new(ti.name), it);
+                }
             }
             return builder_to_string(*builder);
         }();
@@ -52,23 +68,32 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
         `it := query;
         `it_index := entity;
 
+        // Additional validation for debug builds:
+        // Store a copy of the query struct before the body of the loop executes so we can check if the user modified any structs.
+        // This can catch potential bugs where the user meant to make a query by-reference but forgot to add the pointer.
+        #if DEBUG {
+            query_before := it;
+        }
         #insert body;
+        #if DEBUG {
+            assert(bits_equal(*query_before, *it), "Query was modified during system execution! This is probably a bug due to a missing by-reference component. Before %, after %", query_before, it);
+        }
     }
 }
 
 #scope_file
 
-Test :: struct {
-    x: u32;
-}
-
-Test2 :: struct {
-    x: u32;
-}
-
 #scope_export
 
 test_ecs_query :: (ctx: *TestContext) {
+    Test :: struct {
+        x: u32;
+    }
+
+    Test2 :: struct {
+        x: u32;
+    }
+
     world: World;
 
     e1 := spawn_entity(*world);
@@ -81,7 +106,7 @@ test_ecs_query :: (ctx: *TestContext) {
     add_component(*world, e2, Test);
 
     num_iters := 0;
-    for Query(Test, Test2).{world = *world} {
+    for Query(*Test, *Test2).{world = *world} {
         entity := it_index;
 
         test_assert_not_equals(null, it.test);
@@ -94,3 +119,5 @@ test_ecs_query :: (ctx: *TestContext) {
 
     test_expect_equals(1, num_iters);
 } @UnitTest
+
+#import "Bit_Operations";

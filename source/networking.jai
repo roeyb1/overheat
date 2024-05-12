@@ -581,7 +581,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             assert(player_move.networking_id != g_client.local_client_id, 
                 "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
 
-            for Query(Networking_ID, Player, Position).{world = *g_world} {
+            for Query(Networking_ID, Player, *Position).{world = *g_world} {
                 if it.networking_id.id == player_move.networking_id {
                     it.position.pos = player_move.new_position;
                 }

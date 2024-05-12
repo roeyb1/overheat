@@ -107,38 +107,39 @@ main :: () {
     rendering_shutdown();
 }
 
+update_positions :: (world: *World) {
+    for Query(*Position, *Velocity).{world = world} {
+        it.position.pos += it.velocity.vel * g_delta_time;
+    }
+}
 
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
 
     // SIMULATE phase systems:
-   
-    add_system(*system_groups[System_Phase.SIMULATE], .{update_player_controllers});
-    add_system(*system_groups[System_Phase.SIMULATE], .{update_camera_projections});
-    add_system(*system_groups[System_Phase.SIMULATE], .{update_camera_positions});
+
+    add_system(*system_groups[System_Phase.SIMULATE], update_player_controllers, run_before =.[update_positions]);
+
+    add_system(*system_groups[System_Phase.SIMULATE], update_camera_projections);
+    add_system(*system_groups[System_Phase.SIMULATE], update_camera_positions);
 
     // Update positions from velocities
-    add_system(*system_groups[System_Phase.SIMULATE], .{(world: *World) {
-        for Query(Position, Velocity).{world = world} {
-            it.position.pos += it.velocity.vel * g_delta_time;
-        }
-    }});
+    add_system(*system_groups[System_Phase.SIMULATE], update_positions);
 
-    add_system(*system_groups[System_Phase.SIMULATE], .{update_player_positions_on_network});
-
+    add_system(*system_groups[System_Phase.SIMULATE], update_player_positions_on_network, run_after = .[update_positions]);
 
     // PRESENT phase systems:
 
-    add_system(*system_groups[System_Phase.PRESENT], .{(world: *World) {
+    add_system(*system_groups[System_Phase.PRESENT], (world: *World) {
         pos := get_component(world, main_view_camera, Position);
         cam := get_component(world, main_view_camera, Camera);
 
         render_scene(cam.projection, pos);
-    }});
+    });
 
     // CLEANUP phase systems:
 
-    add_system(*system_groups[System_Phase.CLEANUP], .{cleanup_player_controllers});
+    add_system(*system_groups[System_Phase.CLEANUP], cleanup_player_controllers);
 }
 
 

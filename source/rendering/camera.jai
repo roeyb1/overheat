@@ -18,7 +18,7 @@ compute_screen_projection :: () -> Matrix4 {
 }
 
 update_camera_projections :: (world: *World) {
-    for Query(Camera).{world = world} {
+    for Query(*Camera).{world = world} {
         it.camera.projection = compute_screen_projection();
     }
 }
@@ -26,7 +26,7 @@ update_camera_projections :: (world: *World) {
 update_camera_positions :: (world: *World) {
     SMOOTH_SPEED :: 15.;
 
-    for Query(Position, Camera).{world = world} {
+    for Query(*Position, Camera).{world = world} {
         assert(it.camera.entity_to_track != INVALID_EID);
 
         target_location := get_component(*g_world, it.camera.entity_to_track, Position);
