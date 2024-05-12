@@ -202,6 +202,8 @@ using Random :: #import "Random";
 #load "gameplay/components.jai";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";
+#load "item.jai";
+#load "inventory.jai";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";

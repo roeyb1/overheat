@@ -6,6 +6,7 @@ W   MovePlayerUp
 A   MovePlayerLeft
 S   MovePlayerDown
 D   MovePlayerRight
+I   OpenInventory
 
 # Other keys
 S-Esc ExitGame
