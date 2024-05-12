@@ -39,7 +39,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 }
 
 update_player_controllers :: (world: *World) {
-    for Query(Player_Controller, Position, Velocity, Move_Speed).{world = world} {
+    for Query(*Player_Controller, *Velocity, Move_Speed).{world = world} {
         move_len := length(movement_input);
         // Normalize the input vector to prevent diagonal movement being faster than horizontal
         if move_len > 1 {
@@ -67,7 +67,7 @@ update_player_positions_on_network :: (world: *World) {
 } @System
 
 cleanup_player_controllers :: (world: *World) {
-    for Query(Player_Controller, Velocity).{world = world} {
+    for Query(*Player_Controller, *Velocity).{world = world} {
         it.velocity.vel -= it.player_controller.move_velocity;
         it.player_controller.move_velocity = .{0, 0};
     }

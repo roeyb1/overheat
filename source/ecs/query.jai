@@ -8,8 +8,13 @@ generate_query_members :: ($component_types: ..Type) -> string #compile_time {
     builder: String_Builder;
     defer free_buffers(*builder);
     for 0..component_types.count-1 {
-        ti := cast(*Type_Info_Struct)component_types[it];
-        print_to_builder(*builder, "%: *component_types[%] = null;\n", to_lower_copy_new(ti.name), it);
+        ti: *Type_Info_Struct = null;
+        if (cast(*Type_Info) component_types[it]).type == .POINTER {
+            ti = cast(*Type_Info_Struct) (cast(*Type_Info_Pointer) component_types[it]).pointer_to;
+        } else {
+            ti = cast(*Type_Info_Struct) component_types[it];
+        }
+        print_to_builder(*builder, "%: component_types[%];\n", to_lower_copy_new(ti.name), it);
     }
     return builder_to_string(*builder);
 }
@@ -27,7 +32,11 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
             
             print_to_builder(*builder, "matches_query := true");
             for 0..query.component_types.count-1 {
-                print_to_builder(*builder, " && get_component(query.world, entity, query.component_types[%])", it);
+                if (cast(*Type_Info) query.component_types[it]).type == .POINTER {
+                    print_to_builder(*builder, " && get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)type_info(query.component_types[%])).pointer_to))", it);
+                } else {
+                    print_to_builder(*builder, " && get_component(query.world, entity, query.component_types[%])", it);
+                }
             }
             print_to_builder(*builder, ";\n");
             return builder_to_string(*builder);
@@ -40,10 +49,19 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
         #insert #run () -> string {
             builder: String_Builder;
             defer free_buffers(*builder);
-            
+
+            types: [query.component_types.count] Type;
+
             for 0..query.component_types.count-1 {
-                ti := cast(*Type_Info_Struct)query.component_types[it];
-                print_to_builder(*builder, "query.% = get_component(query.world, entity, query.component_types[%]);\n", to_lower_copy_new(ti.name), it);
+                ti: *Type_Info_Struct = null;
+
+                if (cast(*Type_Info) query.component_types[it]).type == .POINTER {
+                    ti = cast(*Type_Info_Struct) (cast(*Type_Info_Pointer) query.component_types[it]).pointer_to;
+                    print_to_builder(*builder, "query.% = get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)query.component_types[%]).pointer_to));\n", to_lower_copy_new(ti.name), it);
+                } else {
+                    ti = cast(*Type_Info_Struct) query.component_types[it];
+                    print_to_builder(*builder, "query.% = get_component(query.world, entity, query.component_types[%]);\n", to_lower_copy_new(ti.name), it);
+                }
             }
             return builder_to_string(*builder);
         }();
@@ -80,7 +98,7 @@ test_ecs_query :: (ctx: *TestContext) {
     add_component(*world, e2, Test);
 
     num_iters := 0;
-    for Query(Test, Test2).{world = *world} {
+    for Query(*Test, *Test2).{world = *world} {
         entity := it_index;
 
         test_assert_not_equals(null, it.test);

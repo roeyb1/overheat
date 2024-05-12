@@ -119,7 +119,7 @@ register_all_systems :: () {
 
     // Update positions from velocities
     add_system(*system_groups[System_Phase.SIMULATE], .{(world: *World) {
-        for Query(Position, Velocity).{world = world} {
+        for Query(*Position, *Velocity).{world = world} {
             it.position.pos += it.velocity.vel * g_delta_time;
         }
     }});

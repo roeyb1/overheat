@@ -39,7 +39,7 @@ test_ecs_systems :: (ctx: *TestContext) {
     }
 
     test_system2 :: (world: *World) {
-        for Query(Test).{world = world} {
+        for Query(*Test).{world = world} {
             entity := it_index;
 
             it.test.x = 102;
