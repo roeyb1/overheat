@@ -24,7 +24,7 @@ System_Phase :: enum u32{
 
 system_groups: [System_Phase.NUM] System_Scheduler;
 
-add_system :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[], debug_name: string = "", $call := #caller_code) {
+add_system :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[], $call := #caller_code) {
     system := array_add(*scheduler.systems);
     system.func = func;
     system.debug_name = #run -> string {
