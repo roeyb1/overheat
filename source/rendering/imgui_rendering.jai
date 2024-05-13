@@ -71,12 +71,12 @@ render_imgui_pass :: (rg: *RenderGraph, view_data: *RenderViewData, rt_handle: R
         index_dst, index_buffer_offset := rhi_allocate(view_data.index_buffer_allocator, size_of(ImGui.ImDrawIdx), size_of(ImGui.ImDrawIdx) * draw_data.TotalIdxCount);
 
         for 0..draw_data.CmdListsCount-1 {
-            cmd_list := draw_data.CmdLists.Data[it];
+            ig_cmd_list: *ImGui.ImDrawList = draw_data.CmdLists.Data[it];
 
-            memcpy(vertex_dst, cmd_list.VtxBuffer.Data, size_of(ImGui.ImDrawVert) * cmd_list.VtxBuffer.Size);
-            memcpy(index_dst, cmd_list.IdxBuffer.Data, size_of(ImGui.ImDrawIdx) * cmd_list.IdxBuffer.Size);
-            vertex_dst += cmd_list.VtxBuffer.Size;
-            index_dst += cmd_list.IdxBuffer.Size;
+            memcpy(vertex_dst, ig_cmd_list.VtxBuffer.Data, size_of(ImGui.ImDrawVert) * ig_cmd_list.VtxBuffer.Size);
+            memcpy(index_dst, ig_cmd_list.IdxBuffer.Data, size_of(ImGui.ImDrawIdx) * ig_cmd_list.IdxBuffer.Size);
+            vertex_dst += ig_cmd_list.VtxBuffer.Size * size_of(ImGui.ImDrawVert);
+            index_dst += ig_cmd_list.IdxBuffer.Size * size_of(ImGui.ImDrawIdx);
         }
 
         color_attach_desc := RHIColorAttachmentDesc.{
@@ -94,7 +94,7 @@ render_imgui_pass :: (rg: *RenderGraph, view_data: *RenderViewData, rt_handle: R
                 rhi_cmd_bind_descriptor_sets(cmd_list, imgui_pipeline, 0, .[ view_data.bindless_set ], .[]);
 
                 rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset]);
-                rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT16);
+                rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, ifx size_of(ImGui.ImDrawIdx) == 2 then .UINT16 else .UINT32);
 
                 viewport := RHIViewport.{ 0., 0., cast(float)framebuffer_width, cast(float)framebuffer_height, 0., 1. };
 
@@ -124,7 +124,7 @@ render_imgui_pass :: (rg: *RenderGraph, view_data: *RenderViewData, rt_handle: R
                     cmd := *ig_cmd_list.CmdBuffer.Data[cmd_index];
 
                     if cmd.UserCallback != null {
-                        //assert(cmd.UserCallback != ImGui.ImDrawCallback_ResetRenderState);
+                        assert(false);
                         cmd.UserCallback(ig_cmd_list, cmd);
                     } else {
                         clip_rect: ImGui.ImVec4 = ---;

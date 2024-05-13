@@ -49,6 +49,12 @@ main :: () {
     while g_client.local_client_id == INVALID_NETWORKING_ID {
         FrameMark();
 
+        now := seconds_since_init();
+        g_delta_time = cast(float) (now - last_time);
+        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
+        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
+        last_time = now;
+
         window_system_update();
 
         if g_should_exit {
@@ -87,6 +93,12 @@ main :: () {
     while true {
         FrameMark();
 
+        now := seconds_since_init();
+        g_delta_time = cast(float) (now - last_time);
+        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
+        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
+        last_time = now;
+
         window_system_update();
 
         if g_should_exit {
@@ -97,12 +109,6 @@ main :: () {
         input_manager_update();
 
         ImGui.NewFrame();
-
-        now := seconds_since_init();
-        g_delta_time = cast(float) (now - last_time);
-        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
-        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
-        last_time = now;
 
         rendering_begin_frame();
 
