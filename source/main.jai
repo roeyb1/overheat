@@ -32,6 +32,7 @@ main :: () {
         ImGui.StyleColorsDark();
     }
 
+    window_system_init();
     rendering_init();
     input_manager_initialize();
     networking_init();
@@ -48,20 +49,22 @@ main :: () {
     while g_client.local_client_id == INVALID_NETWORKING_ID {
         FrameMark();
 
-        networking_update();
-        input_manager_update();
-
-        application_window_update();
+        window_system_update();
 
         if g_should_exit {
             break;
         }
+
+        networking_update();
+        input_manager_update();
 
         ImGui.NewFrame();
 
         rendering_begin_frame();
 
         execute(*g_world, system_groups[System_Phase.INIT]);
+
+        window_system_prerender();
 
         ImGui.Render();
 
@@ -84,13 +87,14 @@ main :: () {
     while true {
         FrameMark();
 
-        networking_update();
-        input_manager_update();
-        application_window_update();
+        window_system_update();
 
         if g_should_exit {
             break;
         }
+
+        networking_update();
+        input_manager_update();
 
         ImGui.NewFrame();
 
@@ -106,6 +110,8 @@ main :: () {
 
         execute(*g_world, system_groups[System_Phase.INIT]);
         execute(*g_world, system_groups[System_Phase.SIMULATE]);
+
+        window_system_prerender();
 
         ImGui.Render();
 
@@ -168,6 +174,7 @@ register_all_systems :: () {
 #load "utils.jai";
 #load "logging.jai";
 #load "networking.jai";
+#load "window.jai";
 #load "rendering/rendering.jai";
 #load "rendering/camera.jai";
 #load "input.jai";

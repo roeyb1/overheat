@@ -1,10 +1,5 @@
 #scope_export
 
-game_window: Window_Type;
-g_window_width: u32 = 800;
-g_window_height: u32 = 600;
-g_window_resized_this_frame := true;
-
 Sprite :: struct {
     sheet: *SpriteSheet = null;
     scale: Vector2 = .{1, 1};
@@ -26,12 +21,10 @@ Sprite_Draw_Cmd :: struct {
 rendering_init :: () -> bool {
     log("Initialized rendering systems...");
 
-    game_window = create_window(g_window_width, g_window_height, "Overheat");
-
     init_rhi();
     init_surface();
     init_device();
-    rhi_swapchain_init(g_window_width, g_window_height);
+    rhi_swapchain_init(xx g_window_width, xx g_window_height);
 
     rdg_initialize(*g_render_graph);
     rdg_init_view_registry(*g_view_registry);
@@ -61,32 +54,11 @@ rendering_shutdown :: () {
     log("Rendering systems shutdown successfully");
 }
 
-application_window_update :: () {
-    update_window_events();
-
-    for get_window_resizes() {
-        if it.window == game_window {
-            g_window_width = xx it.width;
-            g_window_height = xx it.height;
-            rhi_swapchain_resize(g_window_width, g_window_height, acquire_image = true);
-
-            g_window_resized_this_frame = true;
-        }
-    }
-
-    // #todo: move imgui stuff into it's own place
-    {
-        io := ImGui.GetIO();
-        io.DisplaySize = ImGui.ImVec2.{cast(float) g_window_width, cast(float) g_window_height};
-        io.DisplayFramebufferScale = ImGui.ImVec2.{1., 1.};
-    }
-
-    for events_this_frame {
-        if it.type == .QUIT then g_should_exit = true;
-    }
-}
-
 rendering_begin_frame :: () {
+    if g_window_resized_this_frame {
+        rhi_swapchain_resize(xx g_window_width, xx g_window_height, acquire_image = true);
+    }
+
     rhi_swapchain_image_index();
 }
 
@@ -448,8 +420,6 @@ destroy_rendering_resources :: () {
 
     texture_loader_destroy();
 }
-
-#import "Window_Creation";
 
 #scope_file
 

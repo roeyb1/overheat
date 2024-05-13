@@ -94,7 +94,7 @@ render_imgui_pass :: (rg: *RenderGraph, view_data: *RenderViewData, rt_handle: R
                 rhi_cmd_bind_descriptor_sets(cmd_list, imgui_pipeline, 0, .[ view_data.bindless_set ], .[]);
 
                 rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset]);
-                rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, ifx size_of(ImGui.ImDrawIdx) == 2 then .UINT16 else .UINT32);
+                rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT16);
 
                 viewport := RHIViewport.{ 0., 0., cast(float)framebuffer_width, cast(float)framebuffer_height, 0., 1. };
 
@@ -117,7 +117,7 @@ render_imgui_pass :: (rg: *RenderGraph, view_data: *RenderViewData, rt_handle: R
 
             vtx_offset: s32 = 0;
             idx_offset: s32 = 0;
-            for list_index : 0..draw_data.CmdListsCount-1 {
+            for list_index : 0..draw_data.CmdLists.Size-1 {
                 ig_cmd_list := draw_data.CmdLists.Data[list_index];
 
                 for cmd_index : 0..ig_cmd_list.CmdBuffer.Size-1 {
@@ -158,6 +158,7 @@ render_imgui_pass :: (rg: *RenderGraph, view_data: *RenderViewData, rt_handle: R
                 vtx_offset += ig_cmd_list.VtxBuffer.Size;
                 idx_offset += ig_cmd_list.IdxBuffer.Size;
             }
+
         }
         rhi_cmd_end_renderpass(cmd_list);
     });

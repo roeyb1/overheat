@@ -22,14 +22,6 @@ g_VboHandle: GLuint = 0;
 g_VaoHandle: GLuint = 0;
 g_ElementsHandle: GLuint = 0;
 
-cursor_arrow: *SDL_Cursor;
-cursor_text_input: *SDL_Cursor;
-cursor_move: *SDL_Cursor;
-cursor_resize_ns: *SDL_Cursor;
-cursor_resize_ew: *SDL_Cursor;
-cursor_resize_nesw: *SDL_Cursor;
-cursor_resize_nwse: *SDL_Cursor;
-
 
 // This is the main rendering function that you have to implement and provide to ImGui (via setting up 'RenderDrawListsFn' in the ImGuiIO structure)
 // Note that this implementation is little overcomplicated because we are saving/setting up/restoring every OpenGL state explicitly, in order to be able to run within any OpenGL engine that doesn't do so.
