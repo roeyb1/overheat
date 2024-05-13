@@ -27,10 +27,7 @@ main :: () {
 
     register_all_systems();
 
-    ImGui.CreateContext();
-    {
-        ImGui.StyleColorsDark();
-    }
+    imgui_init();
 
     window_system_init();
     rendering_init();
@@ -181,6 +178,7 @@ register_all_systems :: () {
 #load "logging.jai";
 #load "networking.jai";
 #load "window.jai";
+#load "imgui.jai";
 #load "rendering/rendering.jai";
 #load "rendering/camera.jai";
 #load "input.jai";

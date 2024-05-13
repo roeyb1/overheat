@@ -92,6 +92,10 @@ ImGui_ImplSdl_Init :: (window: *SDL_Window) -> bool {
     io.GetClipboardTextFn = ImGui_ImplSdl_GetClipboardText;
     io.ClipboardUserData = null;
 
+    io.BackendFlags_ |= .HasMouseCursors;
+    io.BackendFlags_ |= .HasSetMousePos;
+    io.BackendFlags_ |= .RendererHasVtxOffset;
+
     wmInfo: SDL_SysWMinfo ;
     SDL_VERSION(*wmInfo.version);
     SDL_GetWindowWMInfo(window, *wmInfo);
