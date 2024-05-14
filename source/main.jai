@@ -27,9 +27,9 @@ main :: () {
 
     register_all_systems();
 
+    window_system_init();
     imgui_init();
 
-    window_system_init();
     rendering_init();
     input_map_init();
     networking_init();
@@ -67,13 +67,7 @@ main :: () {
         rendering_begin_frame();
 
         execute(*g_world, system_groups[System_Phase.INIT]);
-
-        window_system_prerender();
-
-        ImGui.Render();
-
         execute(*g_world, system_groups[System_Phase.PRESENT]);
-
         execute(*g_world, system_groups[System_Phase.CLEANUP]);
 
         rendering_end_frame();
@@ -111,15 +105,8 @@ main :: () {
 
         rendering_begin_frame();
 
-        ImGui.ShowDemoWindow();
-
         execute(*g_world, system_groups[System_Phase.INIT]);
         execute(*g_world, system_groups[System_Phase.SIMULATE]);
-
-        window_system_prerender();
-
-        ImGui.Render();
-
         execute(*g_world, system_groups[System_Phase.PRESENT]);
         execute(*g_world, system_groups[System_Phase.CLEANUP]);
 
@@ -142,6 +129,17 @@ update_positions :: (world: *World) {
     }
 } @System
 
+render_imgui :: (world: *World) {
+    ImGui.Render();
+}@System
+
+render_scene :: (world: *World) {
+    pos := get_component(world, main_view_camera, Position);
+    cam := get_component(world, main_view_camera, Camera);
+
+    render_scene(cam.projection, pos);
+}@System
+
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
 
@@ -156,14 +154,14 @@ register_all_systems :: () {
 
     add_system(*system_groups[System_Phase.SIMULATE], update_player_positions_on_network, run_after = .[update_positions]);
 
-    // PRESENT phase systems:
-
-    add_system(*system_groups[System_Phase.PRESENT], (world: *World) {
-        pos := get_component(world, main_view_camera, Position);
-        cam := get_component(world, main_view_camera, Camera);
-
-        render_scene(cam.projection, pos);
+    add_system(*system_groups[System_Phase.SIMULATE], (world: *World) {
+        ImGui.ShowDemoWindow();
     });
+
+    // PRESENT phase systems:
+    add_system(*system_groups[System_Phase.PRESENT], render_imgui, run_before = .[render_scene]);
+
+    add_system(*system_groups[System_Phase.PRESENT], render_scene);
 
     // CLEANUP phase systems:
 

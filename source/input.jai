@@ -99,12 +99,6 @@ input_system_update :: () {
         }
         array_reset(*events_this_frame);
 
-        // If ImGui took focus from our application, release all keys 
-        io := ImGui.GetIO();
-        if io.WantCaptureKeyboard {
-            release_all_keys();
-        }
-
         // Remove all the .START flags that were added this frame
         mask     := ~Key_Current_State.START;
 
