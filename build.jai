@@ -537,7 +537,7 @@ is_absolute_path :: (path: string) -> bool { // This routine is probably not as 
 #import "File_Utilities";
 #import "Metaprogram_Plugins";
 
-#load "source/shader_compilation.jai";
+#load "source/rendering/shader_compilation.jai";
 
 
 verbose  := false;
