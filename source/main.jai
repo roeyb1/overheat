@@ -2,6 +2,7 @@ DEBUG :: true;
 
 g_delta_time: float = 0.013;
 g_smooth_delta_time: float = 0.013;
+last_time: float64;
 
 g_should_exit: bool = false;
 
@@ -36,7 +37,7 @@ main :: () {
 
     load_all_assets();
 
-    last_time := seconds_since_init();
+    last_time = seconds_since_init();
 
     main_view_camera = spawn_entity(*g_world);
     add_component(*g_world, main_view_camera, Position);
@@ -45,12 +46,6 @@ main :: () {
     // Only update networking while we attempt to connect to the server and don't yet have a player:
     while g_client.local_client_id == INVALID_NETWORKING_ID {
         FrameMark();
-
-        now := seconds_since_init();
-        g_delta_time = cast(float) (now - last_time);
-        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
-        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
-        last_time = now;
 
         input_system_update();
         window_system_update();
@@ -61,8 +56,6 @@ main :: () {
 
         networking_update();
         input_map_update();
-
-        ImGui.NewFrame();
 
         rendering_begin_frame();
 
@@ -85,12 +78,6 @@ main :: () {
     while true {
         FrameMark();
 
-        now := seconds_since_init();
-        g_delta_time = cast(float) (now - last_time);
-        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
-        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
-        last_time = now;
-
         input_system_update();
         window_system_update();
 
@@ -100,8 +87,6 @@ main :: () {
 
         networking_update();
         input_map_update();
-
-        ImGui.NewFrame();
 
         rendering_begin_frame();
 
@@ -142,6 +127,22 @@ render_scene :: (world: *World) {
 
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
+
+    // INIT phase systems:
+
+    // update time:
+    add_system(*system_groups[System_Phase.INIT], (world: *World) {
+        now := seconds_since_init();
+        g_delta_time = cast(float) (now - last_time);
+        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
+        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
+        last_time = now;
+    });
+
+    add_system(*system_groups[System_Phase.INIT], (world: *World) {
+        ImGui.NewFrame();
+    });
+
 
     // SIMULATE phase systems:
 
