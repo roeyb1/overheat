@@ -232,6 +232,10 @@ rhi_device_wait_idle :: () {
     vkDeviceWaitIdle(device);
 }
 
+rhi_queue_wait_idle :: (queue: *RHIQueue) {
+    vkQueueWaitIdle(queue.handle);
+}
+
 rhi_is_dynamic_rendering_ext_supported :: () -> bool {
     // #todo: support non-dynamic rendering ext path.
     return true;

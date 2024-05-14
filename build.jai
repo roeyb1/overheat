@@ -345,7 +345,6 @@ build :: () {
     copy_module_libraries_to_target(options);
 
     // compile shaders in the build step
-    if false
     {
         shader_dir := "assets/shaders";
         if !compile_shaders(shader_dir, debug_symbols=true) {
@@ -538,7 +537,7 @@ is_absolute_path :: (path: string) -> bool { // This routine is probably not as 
 #import "File_Utilities";
 #import "Metaprogram_Plugins";
 
-#load "source/shader_compilation.jai";
+#load "source/rendering/shader_compilation.jai";
 
 
 verbose  := false;

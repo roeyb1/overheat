@@ -57,4 +57,14 @@ rhi_cmd_list_end :: (cmd_list: *RHICmdList) {
     vkEndCommandBuffer(cmd_list.handle);
 }
 
+rhi_submit_single_time_commands :: (queue: *RHIQueue, cmd_list: *RHICmdList) {
+    cmd_lists := *RHICmdList.[cmd_list];
+    submit_info := RHISubmitInfo.{
+        command_lists = cmd_lists,
+    };
+    rhi_queue_submit(queue, .[*submit_info]);
+    rhi_queue_wait_idle(queue);
+}
+
+
 #load "vk_cmds.jai";

@@ -210,12 +210,12 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
             store_op = .STORE,
         };
 
-        render_rect := RHIRect.{ .{0, 0}, .{g_window_width, g_window_height}};
+        render_rect := RHIRect.{ .{0, 0}, .{xx g_window_width, xx g_window_height}};
 
         rhi_cmd_begin_renderpass(cmd_list, .[color_buffer_desc], *depth_buffer_desc, render_rect, true);
         {
             viewport := RHIViewport.{ 0, 0, cast(float) g_window_width, cast(float) g_window_height, 0., 1.};
-            scissor := RHIRect.{.{0, 0}, .{g_window_width, g_window_height}};
+            scissor := RHIRect.{.{0, 0}, .{xx g_window_width, xx g_window_height}};
 
             rhi_cmd_set_viewport(cmd_list, 0, .[viewport]);
             rhi_cmd_set_scissor(cmd_list, 0, .[scissor]);

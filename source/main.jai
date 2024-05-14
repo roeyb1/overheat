@@ -2,6 +2,7 @@ DEBUG :: true;
 
 g_delta_time: float = 0.013;
 g_smooth_delta_time: float = 0.013;
+last_time: float64;
 
 g_should_exit: bool = false;
 
@@ -27,13 +28,16 @@ main :: () {
 
     register_all_systems();
 
+    window_system_init();
+    imgui_init();
+
     rendering_init();
-    input_manager_initialize();
+    input_map_init();
     networking_init();
 
     load_all_assets();
 
-    last_time := seconds_since_init();
+    last_time = seconds_since_init();
 
     main_view_camera = spawn_entity(*g_world);
     add_component(*g_world, main_view_camera, Position);
@@ -43,14 +47,15 @@ main :: () {
     while g_client.local_client_id == INVALID_NETWORKING_ID {
         FrameMark();
 
-        networking_update();
-        input_manager_update();
-
-        application_window_update();
+        input_system_update();
+        window_system_update();
 
         if g_should_exit {
             break;
         }
+
+        networking_update();
+        input_map_update();
 
         rendering_begin_frame();
 
@@ -73,19 +78,15 @@ main :: () {
     while true {
         FrameMark();
 
-        networking_update();
-        input_manager_update();
-        application_window_update();
+        input_system_update();
+        window_system_update();
 
         if g_should_exit {
             break;
         }
 
-        now := seconds_since_init();
-        g_delta_time = cast(float) (now - last_time);
-        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
-        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
-        last_time = now;
+        networking_update();
+        input_map_update();
 
         rendering_begin_frame();
 
@@ -103,7 +104,7 @@ main :: () {
     }
 
     networking_shutdown();
-    input_manager_shutdown();
+    input_map_shutdown();
     rendering_shutdown();
 }
 
@@ -113,8 +114,35 @@ update_positions :: (world: *World) {
     }
 } @System
 
+render_imgui :: (world: *World) {
+    ImGui.Render();
+}@System
+
+render_scene :: (world: *World) {
+    pos := get_component(world, main_view_camera, Position);
+    cam := get_component(world, main_view_camera, Camera);
+
+    render_scene(cam.projection, pos);
+}@System
+
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
+
+    // INIT phase systems:
+
+    // update time:
+    add_system(*system_groups[System_Phase.INIT], (world: *World) {
+        now := seconds_since_init();
+        g_delta_time = cast(float) (now - last_time);
+        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
+        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
+        last_time = now;
+    });
+
+    add_system(*system_groups[System_Phase.INIT], (world: *World) {
+        ImGui.NewFrame();
+    });
+
 
     // SIMULATE phase systems:
 
@@ -127,14 +155,14 @@ register_all_systems :: () {
 
     add_system(*system_groups[System_Phase.SIMULATE], update_player_positions_on_network, run_after = .[update_positions]);
 
-    // PRESENT phase systems:
-
-    add_system(*system_groups[System_Phase.PRESENT], (world: *World) {
-        pos := get_component(world, main_view_camera, Position);
-        cam := get_component(world, main_view_camera, Camera);
-
-        render_scene(cam.projection, pos);
+    add_system(*system_groups[System_Phase.SIMULATE], (world: *World) {
+        ImGui.ShowDemoWindow();
     });
+
+    // PRESENT phase systems:
+    add_system(*system_groups[System_Phase.PRESENT], render_imgui, run_before = .[render_scene]);
+
+    add_system(*system_groups[System_Phase.PRESENT], render_scene);
 
     // CLEANUP phase systems:
 
@@ -144,15 +172,17 @@ register_all_systems :: () {
 
 
 #import "Basic";
-#import "Input";
 #import "tracy"(IMPORT_MODE = .CLIENT);
 
 #load "utils.jai";
 #load "logging.jai";
 #load "networking.jai";
+#load "window.jai";
+#load "imgui.jai";
 #load "rendering/rendering.jai";
 #load "rendering/camera.jai";
 #load "input.jai";
+#load "input_mapping.jai";
 #load "unit_test.jai";
 #load "assets.jai";
 #load "ecs/world.jai";

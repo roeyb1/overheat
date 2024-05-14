@@ -1,10 +1,5 @@
 #scope_export
 
-game_window: Window_Type;
-g_window_width: u32 = 800;
-g_window_height: u32 = 600;
-g_window_resized_this_frame := true;
-
 Sprite :: struct {
     sheet: *SpriteSheet = null;
     scale: Vector2 = .{1, 1};
@@ -26,12 +21,10 @@ Sprite_Draw_Cmd :: struct {
 rendering_init :: () -> bool {
     log("Initialized rendering systems...");
 
-    game_window = create_window(g_window_width, g_window_height, "Overheat");
-
     init_rhi();
     init_surface();
     init_device();
-    rhi_swapchain_init(g_window_width, g_window_height);
+    rhi_swapchain_init(xx g_window_width, xx g_window_height);
 
     rdg_initialize(*g_render_graph);
     rdg_init_view_registry(*g_view_registry);
@@ -61,25 +54,11 @@ rendering_shutdown :: () {
     log("Rendering systems shutdown successfully");
 }
 
-application_window_update :: () {
-    update_window_events();
-
-    for get_window_resizes() {
-        if it.window == game_window {
-            g_window_width = xx it.width;
-            g_window_height = xx it.height;
-            rhi_swapchain_resize(g_window_width, g_window_height, acquire_image = true);
-
-            g_window_resized_this_frame = true;
-        }
-    }
-
-    for events_this_frame {
-        if it.type == .QUIT then g_should_exit = true;
-    }
-}
-
 rendering_begin_frame :: () {
+    if g_window_resized_this_frame {
+        rhi_swapchain_resize(xx g_window_width, xx g_window_height, acquire_image = true);
+    }
+
     rhi_swapchain_image_index();
 }
 
@@ -95,6 +74,11 @@ DrawBucket :: struct {
 
 
 // generic rendering resources:
+
+// global command pool/list to submit one time commands. Must be reset before use!
+g_single_use_cmd_pool: RHICmdPool;
+g_single_use_cmd_list: RHICmdList;
+
 constant_buffers: [RDG_NUM_FRAMES] *RHIBuffer;
 constant_buff_linear_allocs: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
 
@@ -107,6 +91,10 @@ index_buffer_allocators: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
 offset_buffer_descriptor_set_layout: RHIDescriptorSetLayout;
 offset_buffer_descriptor_pool: RHIDescriptorPool;
 offset_buffer_descriptor_sets: [RDG_NUM_FRAMES] RHIDescriptorSet;
+
+imgui_font_texture: *RHIImage;
+imgui_font_texture_view: *RHIImageView;
+imgui_font_texture_view_handle: RDGTextureViewHandle;
 
 RenderViewData :: struct {
     camera_proj: Matrix4;
@@ -150,6 +138,8 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
 
     // render post process
     tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view);
+
+    render_imgui_pass(rg, *view_data, tonemap_result_image_view);
 
     // present to swapchain:
     {
@@ -227,6 +217,12 @@ init_view_data_for_frame :: (rg: *RenderGraph, view_proj: Matrix4, view_pos: Vec
 }
 
 init_rendering_resources :: () {
+    // single time command buffers:
+    {
+        g_single_use_cmd_pool = rhi_cmd_pool_create(rhi_queues[RHIQueueType.GRAPHICS]);
+        g_single_use_cmd_list = rhi_cmd_list_allocate(g_single_use_cmd_pool);
+    }
+
     // constant buffers:
     {
         create_info := RHIBufferCreateInfo.{
@@ -302,15 +298,112 @@ init_rendering_resources :: () {
         index_buffer_allocators[1] = rhi_linear_allocator_init(index_buffers[1]);
     }
 
+    // imgui foint texture
+    {
+        io := ImGui.GetIO();
+
+        pixels: *u8 = null;
+        width: s32;
+        height: s32;
+
+        io.Fonts.GetTexDataAsRGBA32(io.Fonts, *pixels, *width, *height);
+        upload_size: u64 = cast(u64)(width * height * 4);
+
+        staging_create_info := RHIBufferCreateInfo.{
+            size = upload_size,
+            usage_flags = .TRANSFER_SRC_BIT,
+        };
+        staging_buffer := rhi_buffer_create(staging_create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, 0, false);
+
+        image_create_info := RHIImageCreateInfo.{
+            extent = .{ xx width, xx height },
+            depth = 1,
+            levels = 1,
+            layers = 1,
+            samples = ._1,
+            image_type = ._2D,
+            format = .R8G8B8A8_UNORM,
+            usage_flags = .TRANSFER_DST_BIT | .TEXTURE_BIT,
+        };
+        imgui_font_texture = rhi_image_create(image_create_info, .DEVICE_LOCAL_BIT, 0, false);
+        rhi_debug_set_object_name(imgui_font_texture, "ImGui Font Texture");
+
+        imgui_font_texture_view = rhi_image_view_create(imgui_font_texture);
+
+        imgui_font_texture_view_handle = rdg_create_texture_view_handle(*g_view_registry, imgui_font_texture_view);
+
+        mapped_ptr := rhi_buffer_map(staging_buffer);
+        {
+            memcpy(mapped_ptr, pixels, cast(s64) upload_size);
+        }
+        rhi_buffer_unmap(staging_buffer);
+
+        rhi_cmd_pool_reset(g_single_use_cmd_pool);
+        cmd_list := *g_single_use_cmd_list;
+        rhi_cmd_list_begin(cmd_list);
+        {
+            barrier := RHIBarrier.{
+                image = imgui_font_texture,
+                stages_before = .HOST_BIT,
+                stages_after = .TRANSFER_BIT,
+                state_before = .UNDEFINED,
+                state_after = .WRITE_TRANSFER,
+                image_subresource_range = .{0, 1, 0, 1},
+            };
+
+            rhi_cmd_barrier(cmd_list, .[barrier]);
+
+
+            buffer_copy := RHIBufferImageCopy.{
+                buffer_offset = 0,
+                buffer_row_length = 0,
+                buffer_image_height = 0,
+                image_mip_level = 0,
+                image_base_layer = 0,
+                image_layer_count = 1,
+                offset = .{0, 0, 0},
+                extent = .{xx width, xx height, 1},
+            };
+            
+            rhi_cmd_copy_buffer_to_image(cmd_list, staging_buffer, imgui_font_texture, .[buffer_copy]);
+
+            barrier = RHIBarrier.{
+                image = imgui_font_texture,
+                stages_before = .TRANSFER_BIT,
+                stages_after = .PIXEL_SHADER_BIT,
+                state_before = .WRITE_TRANSFER,
+                state_after = .READ_RESOURCE,
+                image_subresource_range = .{0, 1, 0, 1},
+            };
+
+            rhi_cmd_barrier(cmd_list, .[barrier]);
+        }
+
+        rhi_cmd_list_end(cmd_list);
+        rhi_submit_single_time_commands(*rhi_queues[RHIQueueType.GRAPHICS], cmd_list);
+
+        rhi_buffer_destroy(staging_buffer);
+
+        io.Fonts.TexID = cast(ImGui.ImTextureID)imgui_font_texture_view_handle;
+    }
+
+
     init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
     init_post_process_pipelines(*g_view_registry.descriptor_set_layout);
+    init_imgui_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
 }
 
 destroy_rendering_resources :: () {
+    rhi_image_view_destroy(imgui_font_texture_view);
+    rhi_image_destroy(imgui_font_texture);
+
+    rhi_cmd_pool_destroy(g_single_use_cmd_pool);
+
     rhi_descriptor_pool_reset(*offset_buffer_descriptor_pool);
     rhi_descriptor_pool_destroy(offset_buffer_descriptor_pool);
     rhi_descriptor_set_layout_destroy(offset_buffer_descriptor_set_layout);
 
+    destroy_imgui_pipeline();
     destroy_post_process_pipelines();
     destroy_sprite_pipeline();
 
@@ -328,8 +421,6 @@ destroy_rendering_resources :: () {
     texture_loader_destroy();
 }
 
-#import "Window_Creation";
-
 #scope_file
 
 #load "../rhi/rhi.jai";
@@ -338,6 +429,7 @@ destroy_rendering_resources :: () {
 #load "texture_manager.jai";
 #load "sprite_rendering.jai";
 #load "post_process.jai";
+#load "imgui_rendering.jai";
 
 #import "Sort";
 #import "File";
