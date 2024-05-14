@@ -31,7 +31,7 @@ main :: () {
 
     window_system_init();
     rendering_init();
-    input_manager_initialize();
+    input_map_init();
     networking_init();
 
     load_all_assets();
@@ -52,6 +52,7 @@ main :: () {
         g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
         last_time = now;
 
+        input_system_update();
         window_system_update();
 
         if g_should_exit {
@@ -59,7 +60,7 @@ main :: () {
         }
 
         networking_update();
-        input_manager_update();
+        input_map_update();
 
         ImGui.NewFrame();
 
@@ -96,6 +97,7 @@ main :: () {
         g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
         last_time = now;
 
+        input_system_update();
         window_system_update();
 
         if g_should_exit {
@@ -103,7 +105,7 @@ main :: () {
         }
 
         networking_update();
-        input_manager_update();
+        input_map_update();
 
         ImGui.NewFrame();
 
@@ -130,7 +132,7 @@ main :: () {
     }
 
     networking_shutdown();
-    input_manager_shutdown();
+    input_map_shutdown();
     rendering_shutdown();
 }
 
@@ -171,7 +173,6 @@ register_all_systems :: () {
 
 
 #import "Basic";
-#import "Input";
 #import "tracy"(IMPORT_MODE = .CLIENT);
 
 #load "utils.jai";
@@ -182,6 +183,7 @@ register_all_systems :: () {
 #load "rendering/rendering.jai";
 #load "rendering/camera.jai";
 #load "input.jai";
+#load "input_mapping.jai";
 #load "unit_test.jai";
 #load "assets.jai";
 #load "ecs/world.jai";

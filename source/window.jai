@@ -11,19 +11,22 @@ window_system_init :: () {
     assert(g_window != null);
 
     ImGui_ImplSdl_Init(g_window);
-
-    ImGui.GetIO().Fonts.AddFontFromFileTTF(ImGui.GetIO().Fonts, "assets/Roboto-Regular.ttf", 18);
 }
 
 window_system_update :: () {
     event: SDL_Event;
     while SDL_PollEvent(*event) {
-        ImGui_ImplSdl_ProcessEvent(*event);
+        consumed := ImGui_ImplSdl_ProcessEvent(*event);
+        if !consumed {
+            handle_window_input_event(*event);
+        }
         if event.type == SDL_QUIT then g_should_exit = true;
         if event.type == SDL_WINDOWEVENT && event.window.windowID == SDL_GetWindowID(g_window) {
+
             if event.window.event == SDL_WINDOWEVENT_CLOSE {
                 g_should_exit = true;
             }
+
             if event.window.event == SDL_WINDOWEVENT_RESIZED {
                 g_window_width = xx event.window.data1;
                 g_window_height = xx event.window.data2;
@@ -120,21 +123,22 @@ ImGui_ImplSdl_SetClipboardText :: (data: *void, text: *u8) #c_call {
     SDL_SetClipboardText(text);
 }
 
+/** Process an SDL event for ImGui. This function returns true if it consumes the event (should not be forwarded to the program) */
 ImGui_ImplSdl_ProcessEvent :: (event: *SDL_Event) -> bool {
     io := ImGui.GetIO();
     if event.type == {
         case SDL_MOUSEWHEEL;
             if event.wheel.y > 0 g_MouseWheel = 1;
             if event.wheel.y < 0 g_MouseWheel = -1;
-            return true;
+            return io.WantCaptureMouse;
         case SDL_MOUSEBUTTONDOWN;
             if event.button.button == SDL_BUTTON_LEFT   g_MousePressed[0] = true;
             if event.button.button == SDL_BUTTON_RIGHT  g_MousePressed[1] = true;
             if event.button.button == SDL_BUTTON_MIDDLE g_MousePressed[2] = true;
-            return true;
+            return io.WantCaptureMouse;
         case SDL_TEXTINPUT;
             io.AddInputCharactersUTF8(io, xx event.text.text.data);
-            return true;
+            return io.WantCaptureKeyboard;
         case SDL_KEYDOWN; #through;
         case SDL_KEYUP;
             //@@key := event.key.keysym.sym & ~SDLK_SCANCODE_MASK;
@@ -145,7 +149,7 @@ ImGui_ImplSdl_ProcessEvent :: (event: *SDL_Event) -> bool {
             io.KeyCtrl = ((kmod & KMOD_CTRL) != 0);
             io.KeyAlt = ((kmod & KMOD_ALT) != 0);
             io.KeySuper = ((kmod & KMOD_GUI) != 0);
-            return true;
+            return io.WantCaptureKeyboard;
     }
     return false;
 }

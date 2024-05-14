@@ -2,7 +2,9 @@ imgui_init :: () {
     ImGui.CreateContext();
     ImGui.StyleColorsDark();
 
-    style :: ImGui.GetStyle();
+    ImGui.GetIO().Fonts.AddFontFromFileTTF(ImGui.GetIO().Fonts, "assets/Roboto-Regular.ttf", 18);
+
+    style := ImGui.GetStyle();
 
     {
         style.Colors[ImGui.Col.WindowBg] = style_color_surface;
