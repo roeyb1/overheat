@@ -59,9 +59,9 @@ main :: () {
 
         rendering_begin_frame();
 
-        execute(*g_world, system_groups[System_Phase.INIT]);
-        execute(*g_world, system_groups[System_Phase.PRESENT]);
-        execute(*g_world, system_groups[System_Phase.CLEANUP]);
+        execute(*g_world, *system_groups[System_Phase.INIT]);
+        execute(*g_world, *system_groups[System_Phase.PRESENT]);
+        execute(*g_world, *system_groups[System_Phase.CLEANUP]);
 
         rendering_end_frame();
         reset_temporary_storage();
@@ -90,10 +90,10 @@ main :: () {
 
         rendering_begin_frame();
 
-        execute(*g_world, system_groups[System_Phase.INIT]);
-        execute(*g_world, system_groups[System_Phase.SIMULATE]);
-        execute(*g_world, system_groups[System_Phase.PRESENT]);
-        execute(*g_world, system_groups[System_Phase.CLEANUP]);
+        execute(*g_world, *system_groups[System_Phase.INIT]);
+        execute(*g_world, *system_groups[System_Phase.SIMULATE]);
+        execute(*g_world, *system_groups[System_Phase.PRESENT]);
+        execute(*g_world, *system_groups[System_Phase.CLEANUP]);
 
         rendering_end_frame();
 
