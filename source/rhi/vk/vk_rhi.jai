@@ -29,18 +29,18 @@ init_rhi :: () {
 
     instance_extensions: [..] *u8;
     instance_extensions.allocator = temp;
+
+    sdl_extension_count: u32 = 0;
+    SDL_Vulkan_GetInstanceExtensions(g_window, *sdl_extension_count, null);
+    array_resize(*instance_extensions, sdl_extension_count);
+    SDL_Vulkan_GetInstanceExtensions(g_window, *sdl_extension_count, instance_extensions.data);
+
     #if RHI_VALIDATION {
         array_add(*instance_extensions, VK_EXT_DEBUG_REPORT_EXTENSION_NAME.data);
     }
     #if VULKAN_DEBUG {
         array_add(*instance_extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME.data);
     }
-
-    sdl_extension_count: u32 = 0;
-    SDL_Vulkan_GetInstanceExtensions(g_window, *sdl_extension_count, null);
-    ext_data: **u8 = instance_extensions.data + instance_extensions.count;
-    array_resize(*instance_extensions, instance_extensions.count + sdl_extension_count);
-    SDL_Vulkan_GetInstanceExtensions(g_window, *sdl_extension_count, ext_data); 
 
     create_info.enabledExtensionCount = xx instance_extensions.count;
     create_info.ppEnabledExtensionNames = instance_extensions.data;
