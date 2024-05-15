@@ -2,6 +2,8 @@
 
 Player :: struct {}
 
+Local_Player :: struct {}
+
 Player_Controller :: struct {
     // Keep track of the velocity added due to user input
     move_velocity: Vector2;
@@ -23,6 +25,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 
     // if this is a local player:
     if g_client.local_client_id == networking_id {
+        add_component(*g_world, entity, Local_Player);
         add_component(*g_world, entity, Player_Controller);
     }
 
@@ -39,7 +42,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 }
 
 update_player_controllers :: (world: *World) {
-    for Query(*Player_Controller, *Velocity, Move_Speed).{world = world} {
+    for Query(Local_Player, *Player_Controller, *Velocity, Move_Speed).{world = world} {
         move_len := length(movement_input);
         // Normalize the input vector to prevent diagonal movement being faster than horizontal
         if move_len > 1 {
@@ -55,7 +58,7 @@ update_player_controllers :: (world: *World) {
 } @System
 
 update_player_positions_on_network :: (world: *World) {
-    for Query(Player_Controller, Position, Networking_ID).{world = world} {
+    for Query(Local_Player, Player_Controller, Position, Networking_ID).{world = world} {
         if length(it.player_controller.move_velocity) > 0 {
             player_moved: PlayerMove_Packet = ---;
             player_moved.networking_id = it.networking_id.id;
