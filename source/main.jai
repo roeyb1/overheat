@@ -59,9 +59,21 @@ main :: () {
 
         rendering_begin_frame();
 
-        execute(*g_world, *system_groups[System_Phase.INIT]);
-        execute(*g_world, *system_groups[System_Phase.PRESENT]);
-        execute(*g_world, *system_groups[System_Phase.CLEANUP]);
+        execute(*g_world, .Init);
+        execute(*g_world, .OnLoad);
+        execute(*g_world, .PostLoad);
+
+        // show connecting popup modal
+        if !ImGui.IsPopupOpen("Connecting...") {
+            ImGui.OpenPopup("Connecting...");
+        }
+        if ImGui.BeginPopupModal("Connecting...", null, .AlwaysAutoResize | .NoMove) {
+            ImGui.Text("Connecting to server...");
+            ImGui.EndPopup();
+        }
+
+        execute(*g_world, .PreRender);
+        execute(*g_world, .OnRender);
 
         rendering_end_frame();
         reset_temporary_storage();
@@ -90,10 +102,16 @@ main :: () {
 
         rendering_begin_frame();
 
-        execute(*g_world, *system_groups[System_Phase.INIT]);
-        execute(*g_world, *system_groups[System_Phase.SIMULATE]);
-        execute(*g_world, *system_groups[System_Phase.PRESENT]);
-        execute(*g_world, *system_groups[System_Phase.CLEANUP]);
+        execute(*g_world, .Init);
+        execute(*g_world, .OnLoad);
+        execute(*g_world, .PostLoad);
+        execute(*g_world, .PreUpdate);
+        execute(*g_world, .OnUpdate);
+        execute(*g_world, .OnValidate);
+        execute(*g_world, .PostUpdate);
+        execute(*g_world, .PreRender);
+        execute(*g_world, .OnRender);
+
 
         rendering_end_frame();
 
@@ -128,10 +146,11 @@ render_scene :: (world: *World) {
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
 
-    // INIT phase systems:
+    add_system(System_Phase.Init, (world: *World) {
+        ImGui.NewFrame();
+    });
 
-    // update time:
-    add_system(*system_groups[System_Phase.INIT], (world: *World) {
+    add_system(System_Phase.OnLoad, (world: *World) {
         now := seconds_since_init();
         g_delta_time = cast(float) (now - last_time);
         smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
@@ -139,34 +158,21 @@ register_all_systems :: () {
         last_time = now;
     });
 
-    add_system(*system_groups[System_Phase.INIT], (world: *World) {
-        ImGui.NewFrame();
-    });
+    add_system(System_Phase.PreUpdate, update_player_controllers);
 
-
-    // SIMULATE phase systems:
-
-    add_system(*system_groups[System_Phase.SIMULATE], update_player_controllers, run_before =.[update_positions]);
-
-    add_system(*system_groups[System_Phase.SIMULATE], update_camera_projections);
-    add_system(*system_groups[System_Phase.SIMULATE], update_camera_positions);
-
-    add_system(*system_groups[System_Phase.SIMULATE], update_positions);
-
-    add_system(*system_groups[System_Phase.SIMULATE], update_player_positions_on_network, run_after = .[update_positions]);
-
-    add_system(*system_groups[System_Phase.SIMULATE], (world: *World) {
+    add_system(System_Phase.OnUpdate, update_camera_projections);
+    add_system(System_Phase.OnUpdate, update_camera_positions);
+    add_system(System_Phase.OnUpdate, update_positions);
+    add_system(System_Phase.OnUpdate, (world: *World) {
         ImGui.ShowDemoWindow();
     });
 
-    // PRESENT phase systems:
-    add_system(*system_groups[System_Phase.PRESENT], render_imgui, run_before = .[render_scene]);
+    add_system(System_Phase.PostUpdate, update_player_positions_on_network);
+    add_system(System_Phase.PostUpdate, cleanup_player_controllers);
 
-    add_system(*system_groups[System_Phase.PRESENT], render_scene);
+    add_system(System_Phase.PreRender, render_imgui);
 
-    // CLEANUP phase systems:
-
-    add_system(*system_groups[System_Phase.CLEANUP], cleanup_player_controllers);
+    add_system(System_Phase.OnRender, render_scene);
 }
 
 

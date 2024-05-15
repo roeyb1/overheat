@@ -22,20 +22,73 @@ System_Scheduler :: struct {
     built := false;
 }
 
+/**
+ * Every system must be placed into a specific phase to ensure that systems that 
+ * need to be executed before others have a convenient way to do so. 
+ * More fine-grained control is possible through explicit run_before/run_after dependencies but as much as possible it is best to avoid that.
+ */
 System_Phase :: enum u32{
-    INIT;
-    SIMULATE;
-    PRESENT;
-    CLEANUP;
-    NUM;
+    /**
+     * Init is the earliest execution point in the system pipeline.
+     * Useful for things that initialize data that must be available before all other phases.
+     */
+    Init;
+
+    /**
+     * OnLoad loads external data into the ECS.
+     * Useful for initializing system time, user input, etc.
+     */
+    OnLoad;
+
+    /**
+     * PostLoad runs after we load data and allows processing that imported data. 
+     * Translating key presses into input events is an example of a system that should go in this phase.
+     */
+    PostLoad;
+
+    /**
+     * Once all our external data is loaded an processed, we can run any cleanup/processing that has to happen before game logic runs.
+     */
+    PreUpdate;
+
+    /**
+     * The majority of game logic should go here!
+     */
+    OnUpdate;
+
+    /**
+     * OnValidate allows systems to validate the current state of the game after game logic runs.
+     * This is where collision detection will occur
+     */
+    OnValidate;
+
+    /**
+     * 
+     * Examples: 
+     * - Collision resolution will occur here.
+     * - Characters with 0 health will be destroyed here
+     * - Projectiles/particles that have expended their lifetimes will also die here.
+     */
+    PostUpdate;
+
+    /**
+     * Prepare and build any required data for rendering.
+     */
+    PreRender;
+
+    /**
+     * Rendering happens here!
+     */
+    OnRender;
 }
 
-system_groups: [System_Phase.NUM] System_Scheduler;
+NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
 
-add_system :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[], $call := #caller_code) {
-    system := array_add(*scheduler.systems);
-    system.func = func;
-    system.debug_name = #run -> string {
+system_groups: [NUM_SYSTEM_PHASES] System_Scheduler;
+
+add_system :: (phase: System_Phase, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[], $call := #caller_code) {
+    scheduler := *system_groups[phase];
+    debug_name := #run -> string {
         nodes := compiler_get_nodes(call);
 
         assert(nodes.kind == .PROCEDURE_CALL);
@@ -50,16 +103,17 @@ add_system :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] Sy
 
         return ident.name;
     };
-
-    log("Registered system: %", system.debug_name);
-
-    array_copy(*system.run_before, run_before);
-    array_copy(*system.run_after, run_after);
-
-    scheduler.built = false;
+    add_system_(scheduler, func, run_after, run_before, debug_name);
 }
 
-execute :: (world: *World, scheduler: *System_Scheduler) {
+execute :: (world: *World, phase: System_Phase) {
+    scheduler := *system_groups[phase];
+    execute_(world, scheduler);
+}
+
+#scope_file
+
+execute_ :: (world: *World, scheduler: *System_Scheduler) {
     if scheduler.built == false {
         build_dependency_graph(scheduler);
     }
@@ -103,7 +157,18 @@ execute :: (world: *World, scheduler: *System_Scheduler) {
     }
 }
 
-#scope_file
+add_system_ :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[], debug_name: string = "") {
+    system := array_add(*scheduler.systems);
+    system.func = func;
+    system.debug_name = debug_name;
+
+    log("Registered system: %", system.debug_name);
+
+    array_copy(*system.run_before, run_before);
+    array_copy(*system.run_after, run_after);
+
+    scheduler.built = false;
+}
 
 build_dependency_graph :: (scheduler: *System_Scheduler) {
     find_system :: (systems: [] System, func: System_Func) -> bool, s64 {
@@ -165,8 +230,8 @@ test_ecs_systems :: (ctx: *TestContext) {
     }
 
     scheduler: System_Scheduler;
-    add_system(*scheduler, test_system);
-    add_system(*scheduler, test_system2);
+    add_system_(*scheduler, test_system);
+    add_system_(*scheduler, test_system2);
 
     world: World;
 
@@ -176,7 +241,7 @@ test_ecs_systems :: (ctx: *TestContext) {
     c2 := add_component(*world, e2, Test);
     c2.x = 101;
 
-    execute(*world, *scheduler);
+    execute_(*world, *scheduler);
 
     test_expect_equals(2, execution_count);
 
