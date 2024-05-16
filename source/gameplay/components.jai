@@ -1,9 +1,9 @@
 Position :: struct {
-    #as using pos: Vector2;
+    using #as value: Vector2;
 }
 
 Velocity :: struct {
-    #as using vel: Vector2;
+    using #as value: Vector2;
 }
 
 Name :: struct {

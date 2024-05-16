@@ -583,7 +583,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             for Query(Networking_ID, Player, *Position).{world = *g_world} {
                 if it.networking_id.id == player_move.networking_id {
-                    it.position.pos = player_move.new_position;
+                    it.position.value = player_move.new_position;
                 }
             }
         case .PLAYER_LEFT;

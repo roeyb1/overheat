@@ -39,8 +39,8 @@ Key_Code :: enum u32 #specified {
 Key_Current_State :: enum_flags {
     NONE    :: 0x0;
     DOWN    :: 0x1;
-    START   :: 0x4;
-    END     :: 0x8;
+    START   :: 0x2;
+    END     :: 0x4;
 }
 
 Event_Type :: enum u32 {
@@ -90,34 +90,32 @@ NUM_BUTTON_STATES :: #run enum_highest_value(Key_Code) + 1;
 
 input_system_update :: () {
     // clear any input events that were created this frame and reset delta states
-    {
-        for events_this_frame {
-            for file: it.files {
-                free(file);
-            }
-            array_free(it.files);
+    for events_this_frame {
+        for file: it.files {
+            free(file);
         }
-        array_reset(*events_this_frame);
-
-        // Remove all the .START flags that were added this frame
-        mask     := ~Key_Current_State.START;
-
-        // Remove all flags from any Key up events
-        end_mask := ~(Key_Current_State.END | .DOWN | .START);
-
-        // @Speed: Could just keep a list of who is not currently set.
-        for * input_button_states {
-            if (<<it & .END) {
-                <<it &= end_mask;
-            } else {
-                <<it &= mask;
-            }
-        }
-
-        mouse_delta_x = 0;
-        mouse_delta_y = 0;
-        mouse_delta_z = 0;
+        array_free(it.files);
     }
+    array_reset(*events_this_frame);
+
+    // Remove all the .START flags that were added this frame
+    mask     := ~Key_Current_State.START;
+
+    // Remove all flags from any Key up events
+    end_mask := ~(Key_Current_State.END | .DOWN | .START);
+
+    // @Speed: Could just keep a list of who is not currently set.
+    for * input_button_states {
+        if (<<it & .END) {
+            <<it &= end_mask;
+        } else {
+            <<it &= mask;
+        }
+    }
+
+    mouse_delta_x = 0;
+    mouse_delta_y = 0;
+    mouse_delta_z = 0;
 }
 
 handle_window_input_event :: (sdl_event: *SDL_Event) {
@@ -129,6 +127,7 @@ handle_window_input_event :: (sdl_event: *SDL_Event) {
             if sdl_event.window.event == SDL_WINDOWEVENT_FOCUS_LOST {
                 release_all_keys();
             }
+            return;
         case SDL_MOUSEWHEEL;
             event.type = .MOUSE_WHEEL;
 

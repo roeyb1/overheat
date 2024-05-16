@@ -51,7 +51,7 @@ update_player_controllers :: (world: *World) {
         }
 
         it.player_controller.move_velocity = movement_input * it.move_speed.speed;
-        it.velocity.vel += it.player_controller.move_velocity;
+        it.velocity.value += it.player_controller.move_velocity;
 
         movement_input = .{0, 0};
     }
@@ -71,7 +71,7 @@ update_player_positions_on_network :: (world: *World) {
 
 cleanup_player_controllers :: (world: *World) {
     for Query(*Player_Controller, *Velocity).{world = world} {
-        it.velocity.vel -= it.player_controller.move_velocity;
+        it.velocity.value -= it.player_controller.move_velocity;
         it.player_controller.move_velocity = .{0, 0};
     }
 } @System

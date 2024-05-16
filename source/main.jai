@@ -128,7 +128,7 @@ main :: () {
 
 update_positions :: (world: *World) {
     for Query(*Position, Velocity).{world = world} {
-        it.position.pos += it.velocity.vel * g_delta_time;
+        it.position.value += it.velocity.value * g_delta_time;
     }
 } @System
 

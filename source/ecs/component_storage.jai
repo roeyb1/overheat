@@ -16,7 +16,7 @@ component_type_id :: ($c: Type) -> s64 {
     return get_hash(type_info(c).name);
 }
 
-add_component :: (cc: *ComponentContainer, entity: Entity, val: cc.T = cc.T.{}) -> *cc.T {
+add_component :: (cc: *ComponentContainer, entity: Entity) -> *cc.T {
     assert(!table_contains(*cc.indirection, entity));
 
     new_index := ifx cc.free_slots.count > 0 {
@@ -35,8 +35,12 @@ add_component :: (cc: *ComponentContainer, entity: Entity, val: cc.T = cc.T.{}) 
 
     assert(cc.data.count == (cc.indirection.count + cc.free_slots.count));
 
-    << ptr = val;
+    return ptr;
+}
 
+add_component :: (cc: *ComponentContainer, entity: Entity, val: cc.T) -> *cc.T {
+    ptr := add_component(cc, entity);
+    << ptr = val;
     return ptr;
 }
 

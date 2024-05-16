@@ -32,14 +32,20 @@ destroy_entity :: (world:* World, entity: Entity) -> bool {
     return array_ordered_remove_by_value(*world.entities, entity);
 }
 
-add_component :: (world: *World, entity: Entity, $component: Type, val: component = component.{}) -> *component {
+add_component :: (world: *World, entity: Entity, $component: Type, val: component) -> *component {
+    ptr := add_component(world, entity, component);
+    << ptr = val;
+    return ptr;
+}
+
+add_component :: (world: *World, entity: Entity, $component: Type) -> *component {
     cc, success := table_find(*world.components, #run component_type_id(component));
     if success == false {
         cc = New(ComponentContainer(component));
         table_add(*world.components, #run component_type_id(component), cc);
     }
 
-    return add_component(cast(*ComponentContainer(component)) cc, entity, val);
+    return add_component(cast(*ComponentContainer(component)) cc, entity);
 }
 
 remove_component :: (world: *World, entity: Entity, $component: Type) {
