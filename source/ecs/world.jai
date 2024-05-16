@@ -1,6 +1,6 @@
 World :: struct {
     entities: [..] Entity;
-    components: Table(s64, *ComponentContainerBase);
+    components: Table(s64, ComponentContainer);
 }
 
 spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
@@ -24,7 +24,7 @@ spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
 
 destroy_entity :: (world:* World, entity: Entity) -> bool {
     // #todo [roey]: we should be able to accelerate this by storing bitset for each entity to determine what components it has
-    for world.components {
+    for * world.components {
         key, value := it_index, it;
         remove_component(value, entity);
     }
@@ -39,29 +39,28 @@ add_component :: (world: *World, entity: Entity, $component: Type, val: componen
 }
 
 add_component :: (world: *World, entity: Entity, $component: Type) -> *component {
-    cc, success := table_find(*world.components, #run component_type_id(component));
-    if success == false {
-        cc = New(ComponentContainer(component));
-        table_add(*world.components, #run component_type_id(component), cc);
+    cc := table_find_pointer(*world.components, #run component_type_id(component));
+    if cc == null {
+        cc = table_add(*world.components, #run component_type_id(component), .{type = type_info(component)});
     }
 
-    return add_component(cast(*ComponentContainer(component)) cc, entity);
+    return cast(*component) add_component(cc, entity);
 }
 
 remove_component :: (world: *World, entity: Entity, $component: Type) {
-    cc, success := table_find(*world.components, #run component_type_id(component));
+    cc := table_find_pointer(*world.components, #run component_type_id(component));
 
-    if success {
-        remove_component(cast(*ComponentContainer(component)) cc, entity);
+    if cc != null {
+        remove_component(cc, entity);
     }
 }
 
 get_component :: (world: *World, entity: Entity, $component: Type) -> *component {
-    cc, success := table_find(*world.components, #run component_type_id(component));
+    cc := table_find_pointer(*world.components, #run component_type_id(component));
 
-    if success == false then return null;
+    if cc == null then return null;
 
-    return get_component(cast(*ComponentContainer(component)) cc, entity);
+    return cast(*component) get_component(cc, entity);
 }
 
 
@@ -106,5 +105,8 @@ test_entity_components :: (ctx: *TestContext) {
 #load "component_storage.jai";
 #load "entity.jai";
 
+#scope_file
+
 #import "Compiler";
 #import "Program_Print";
+#import "Hash_Table";
