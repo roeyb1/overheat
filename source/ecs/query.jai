@@ -25,6 +25,9 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
 
     assert(query.world != null);
 
+    removed_entities: [..] Entity;
+    removed_entities.allocator = temp;
+
     for entity : query.world.entities {
         #insert #run () -> string {
             builder: String_Builder;
@@ -74,12 +77,16 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
         #if DEBUG {
             query_before := it;
         }
-        #insert body;
+        #insert (remove={ array_add(*removed_entities, entity); }) body;
         #if DEBUG {
             assert(bits_equal(*query_before, *it), "Query was modified during system execution! This is probably a bug due to a missing by-reference component. Before %, after %", query_before, it);
         }
     }
+    for removed_entities {
+        destroy_entity(query.world, it);
+    }
 }
+
 
 #scope_file
 

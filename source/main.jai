@@ -158,21 +158,21 @@ register_all_systems :: () {
         last_time = now;
     });
 
-    add_system(System_Phase.PreUpdate, update_player_controllers);
+    add_system(.PreUpdate, update_player_controllers);
 
-    add_system(System_Phase.OnUpdate, update_camera_projections);
-    add_system(System_Phase.OnUpdate, update_camera_positions);
-    add_system(System_Phase.OnUpdate, update_positions);
-    add_system(System_Phase.OnUpdate, (world: *World) {
+    add_system(.OnUpdate, update_camera_projections);
+    add_system(.OnUpdate, update_camera_positions);
+    add_system(.OnUpdate, update_positions);
+    add_system(.OnUpdate, (world: *World) {
         ImGui.ShowDemoWindow();
     });
 
-    add_system(System_Phase.PostUpdate, update_player_positions_on_network);
-    add_system(System_Phase.PostUpdate, cleanup_player_controllers);
+    add_system(.PostUpdate, update_player_positions_on_network);
+    add_system(.PostUpdate, cleanup_player_controllers);
 
-    add_system(System_Phase.PreRender, render_imgui);
+    add_system(.PreRender, render_imgui);
 
-    add_system(System_Phase.OnRender, render_scene);
+    add_system(.OnRender, render_scene);
 }
 
 

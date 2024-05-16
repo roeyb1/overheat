@@ -172,6 +172,14 @@ handle_window_input_event :: (sdl_event: *SDL_Event) {
     array_add(*events_this_frame, event);
 }
 
+release_all_keys :: () {
+    for * input_button_states {
+        << it = Key_Current_State.NONE;
+    }
+}
+
+#scope_file
+
 sdl_sym_to_key_code :: (sdl_sym: SDL_Keycode) -> Key_Code {
     if sdl_sym > 32 && sdl_sym < 127 {
         return cast(Key_Code)sdl_sym;
@@ -236,11 +244,5 @@ update_modifier_keys :: inline (mods: Modifier_Flags) {
         input_button_states[Key_Code.SUPER] = .START | .DOWN;
     } else if !mods.super_pressed && (input_button_states[Key_Code.SUPER] & .DOWN) {
         input_button_states[Key_Code.SUPER] |= .END;
-    }
-}
-
-release_all_keys :: () {
-    for * input_button_states {
-        << it = Key_Current_State.NONE;
     }
 }
