@@ -206,3 +206,5 @@ using Random :: #import "Random";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
 
+#load "gameplay/animation_state_machine.jai";
+#load "gameplay/animation_states.jai";

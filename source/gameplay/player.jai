@@ -20,6 +20,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     add_component(*g_world, entity, Position, .{position});
     add_component(*g_world, entity, Networking_ID, .{networking_id});
     add_component(*g_world, entity, Move_Speed, .{10});
+    add_component(*g_world, entity, Anim_State);
     add_component(*g_world, entity, Point_Light, .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.});
 
     // if this is a local player:
