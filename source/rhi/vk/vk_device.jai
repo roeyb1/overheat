@@ -115,7 +115,8 @@ init_device :: () {
         // We found all the queues we need and we support dynamic rendering, device is good enough
         if supports_dynamic_rendering && graphics_family_index != U32_MAX {
             physical_device = device_to_check;
-            log("Selected physical device: % (Vendor %)", cast(string) device_properties.deviceName, device_properties.vendorID);
+            device_name := to_string(device_properties.deviceName.data);
+            log("Selected physical device: % (Vendor %)", device_name, device_properties.vendorID);
             break;
         }
 
