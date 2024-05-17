@@ -12,7 +12,7 @@ World :: struct {
     components: Table(s64, ComponentContainer);
 
     /** Cached results of queries over component types. Significantly accelerates entity iteration for systems. */
-    cached_queries: Table([..] s64, Query_Cache, given_compare_function=compare_query_types);
+    cached_queries: Table([] s64, Query_Cache, given_compare_function=compare_query_types);
 
     /** Debug flag that is set when systems are iterating over the entities. We use this to track if the user tried to add or remove entities while iterating */
     currently_iterating: bool;
@@ -205,7 +205,7 @@ test_entity_components :: (ctx: *TestContext) {
 
 #scope_file
 
-compare_query_types :: (a: [..] s64, b: [..] s64) -> bool {
+compare_query_types :: (a: [] s64, b: [] s64) -> bool {
     if a.count != b.count then return false;
     // query type arrays are always sorted, so we can simply check each element with it's pair
     for 0..a.count-1 {

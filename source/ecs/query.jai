@@ -11,20 +11,21 @@ Query_Cache :: struct {
     dirty: bool = true;
 }
 
-get_component_types_for_query :: (query: Query) -> [..] s64 {
-    result: [..] s64;
-    // @Speed this isn't actually generating the array of types at compile time, we should simply generate an array literal or something instead of allocating and sorting
+/** Returns a compile-time generated (sorted by id) view of a static array of component type ids for this query */
+get_component_types_for_query :: (query: Query) -> [] s64 {
     #insert #run () -> string {
         builder: String_Builder;
         
+        print_to_builder(*builder, "result :: s64.[");
         for 0..query.component_types.count-1 {
             if (cast(*Type_Info) query.component_types[it]).type == .POINTER {
-                print_to_builder(*builder, "array_add(*result, #run component_type_id(#run get_type((cast(*Type_Info_Pointer)type_info(query.component_types[%])).pointer_to)));\n", it);
+                print_to_builder(*builder, "#run component_type_id(#run get_type((cast(*Type_Info_Pointer)type_info(query.component_types[%])).pointer_to)), ", it);
             } else {
-                print_to_builder(*builder, "array_add(*result, #run component_type_id(query.component_types[%]));\n", it);
+                print_to_builder(*builder, "#run component_type_id(query.component_types[%]), ", it);
             }
         }
-        print_to_builder(*builder, "quick_sort(result, (x) => x);\n");
+        print_to_builder(*builder, "];\n");
+        print_to_builder(*builder, "#run quick_sort(result, (x) => x);\n");
         return builder_to_string(*builder);
     }();
     return result;
