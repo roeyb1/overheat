@@ -1,26 +1,4 @@
-
 System_Func :: #type (world: *World);
-
-System :: struct {
-    func: System_Func;
-
-    debug_name: string;
-
-    run_before: [..] System_Func;
-    run_after: [..] System_Func;
-}
-
-System_Scheduler :: struct {
-    systems: [..] System;
-
-    /** Maps system index to indicies of systems which depend on it to complete */
-    dependencies: [..][..] s64;
-    /** Each system maps to a number indicating how many more systems that it depend on have not yet completed. */
-    wait_count_template: [..] s64;
-
-    /** Has the dependency graph been built for this scheduler? */
-    built := false;
-}
 
 /**
  * Every system must be placed into a specific phase to ensure that systems that 
@@ -82,7 +60,20 @@ System_Phase :: enum u32{
     OnRender;
 }
 
-NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
+System_Scheduler :: struct {
+    systems: [..] System;
+
+    /** Maps system index to indicies of systems which depend on it to complete */
+    dependencies: [..][..] s64;
+    /**
+     * Each system maps to a number indicating how many more systems that it depend on have not yet completed.
+     * This array is used as a template that can be copied every time this graph executes to avoid having to recompute the values each time.
+     */
+    wait_count_template: [..] s64;
+
+    /** Has the dependency graph been built for this scheduler? */
+    built := false;
+}
 
 system_groups: [NUM_SYSTEM_PHASES] System_Scheduler;
 
@@ -112,6 +103,17 @@ execute :: (world: *World, phase: System_Phase) {
 }
 
 #scope_file
+
+NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
+
+System :: struct {
+    func: System_Func;
+
+    debug_name: string;
+
+    run_before: [..] System_Func;
+    run_after: [..] System_Func;
+}
 
 execute_ :: (world: *World, scheduler: *System_Scheduler) {
     if scheduler.built == false {

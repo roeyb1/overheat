@@ -1,11 +1,30 @@
+/**
+ * A world is a container of entities and associated component data storage.
+ * A game may create multiple worlds, if needed, but there should only be one global game world which represents the main game state.
+ */
 World :: struct {
+    /** A list of all currently alive entities */
     entities: [..] Entity;
 
+    /** Storage for all component types. */
     components: Table(s64, ComponentContainer);
 
+    /** Cached results of queries over component types. Significantly accelerates entity iteration for systems. */
     cached_queries: Table([..] s64, Query_Cache, given_compare_function=compare_query_types);
 }
 
+
+/**
+ * Spawn a new entity in ther world. Optionally, you can provide a list of types that this entity should have when it spawns.
+ *
+ * IMPORTANT: This function should never be called while systems are iterating over queries!
+ * 
+ * Example:
+ * new_entity := spawn_entity(world); // Creates a new entity with no components attached
+ *
+ * Example 2: 
+ * new_entity := spawn_entity(world, Position, Velocity); // Creates a new entity with a default initialized Position and Velocity component
+ */
 spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
     entity: Entity = next_entity_id;
     next_entity_id += 1;
@@ -25,7 +44,12 @@ spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
     return entity;
 }
 
-destroy_entity :: (world:* World, entity: Entity) -> bool {
+/**
+ * Destroy and entity in the world. Returns true if that entity was successfully removed.
+ *
+ * IMPORTANT: This function should never be called while systems are iterating over queries!
+ */
+destroy_entity :: (world: *World, entity: Entity) -> bool {
     // #todo [roey]: we should be able to accelerate this by storing bitset for each entity to determine what components it has
     for * world.components {
         key, value := it_index, it;
@@ -37,11 +61,16 @@ destroy_entity :: (world:* World, entity: Entity) -> bool {
     return array_ordered_remove_by_value(*world.entities, entity);
 }
 
-add_component :: (world: *World, entity: Entity, $component: Type, val: component) -> *component {
-    ptr := add_component(world, entity, component, false);
-    << ptr = val;
-    return ptr;
-}
+/**
+ * Attach a new instance of $component type to the entity.
+ *
+ * Example:
+ * new_entity := spawn_entity(world);
+ * position := add_component(world, new_entity, Position); // adds a new Position component to the entity and returns a pointer to it
+ *
+ * Example 2:
+ * position := add_component(world, new_entity, Position, .{10, 10}); // adds a new Position component and gives it the initial value of {10, 10}
+ */
 
 add_component :: (world: *World, entity: Entity, $component: Type, $initialize := true) -> *component {
     type_id :: #run component_type_id(component);
@@ -55,8 +84,20 @@ add_component :: (world: *World, entity: Entity, $component: Type, $initialize :
 
     return cast(*component) add_component(cc, entity, initialize);
 }
+/** Same as the other add_component but you can provide an optional default value */
+add_component :: (world: *World, entity: Entity, $component: Type, val: component) -> *component {
+    ptr := add_component(world, entity, component, false);
+    << ptr = val;
+    return ptr;
+}
 
-remove_component :: (world: *World, entity: Entity, $component: Type) {
+/**
+ * Removes the component of the passed type from the entity, if it had that component. 
+ *
+ * Example:
+ * remove_component(world, my_entity, Position); // Removes the Position component from my_entity, if it had it.
+ */
+remove_component :: (world: *World, entity: Entity, $component: Type) -> bool {
     type_id :: #run component_type_id(component);
 
     cc := table_find_pointer(*world.components, type_id);
@@ -64,10 +105,17 @@ remove_component :: (world: *World, entity: Entity, $component: Type) {
     invalidate_caches_for_type(world, type_id);
 
     if cc != null {
-        remove_component(cc, entity);
+        return remove_component(cc, entity);
     }
+    return false;
 }
 
+/**
+ * Retrieves the component of a specified type for a given entity, if it has one. Returns a pointer to the component or null if the entity does not have the component.
+ *
+ * Example:
+ * position := get_component(world, my_entity, Position);
+ */
 get_component :: (world: *World, entity: Entity, $component: Type) -> *component {
     cc := table_find_pointer(*world.components, #run component_type_id(component));
 
@@ -117,6 +165,7 @@ test_entity_components :: (ctx: *TestContext) {
 
 #load "component_storage.jai";
 #load "entity.jai";
+#load "query.jai";
 
 #scope_file
 

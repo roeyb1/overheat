@@ -180,7 +180,7 @@ register_all_systems :: () {
 #import "Basic";
 #import "tracy"(IMPORT_MODE = .CLIENT);
 
-#load "utils.jai";
+#load "utils/utils.jai";
 #load "logging.jai";
 #load "networking.jai";
 #load "window.jai";
@@ -192,7 +192,6 @@ register_all_systems :: () {
 #load "unit_test.jai";
 #load "assets.jai";
 #load "ecs/world.jai";
-#load "ecs/query.jai";
 #load "ecs/system.jai";
 #load "gameplay/components.jai";
 #load "gameplay/player.jai";
