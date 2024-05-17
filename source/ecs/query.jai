@@ -45,6 +45,7 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
         cached_query.cached_entities.count = 0;
     }
 
+    query.world.currently_iterating = true;
     for entity : entities_to_iterate {
         // if the query was dirty, rebuilt it as we iterate
         if cached_query.dirty {
@@ -114,6 +115,7 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
             assert(bits_equal(*query_before, *it), "Query was modified during system execution! This is probably a bug due to a missing by-reference component. Before %, after %", query_before, it);
         }
     }
+    query.world.currently_iterating = false;
 
     cached_query.dirty = false;
     #if DISABLE_QUERY_CACHE { cached_query.dirty = true; }

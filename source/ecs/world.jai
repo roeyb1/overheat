@@ -13,6 +13,9 @@ World :: struct {
 
     /** Cached results of queries over component types. Significantly accelerates entity iteration for systems. */
     cached_queries: Table([..] s64, Query_Cache, given_compare_function=compare_query_types);
+
+    /** Debug flag that is set when systems are iterating over the entities. We use this to track if the user tried to add or remove entities while iterating */
+    currently_iterating: bool;
 }
 
 
@@ -28,6 +31,8 @@ World :: struct {
  * new_entity := spawn_entity(world, Position, Velocity); // Creates a new entity with a default initialized Position and Velocity component
  */
 spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
+    assert(!world.currently_iterating, "Spawning an entity while iterating in a Query is not permitted!");
+
     if world.free_entity_indices.count > 0 {
         index := pop(*world.free_entity_indices);
         world.entities[index].generation += 1;
@@ -59,6 +64,8 @@ spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
  * IMPORTANT: This function should never be called while systems are iterating over queries!
  */
 destroy_entity :: (world: *World, entity: Entity) {
+    assert(!world.currently_iterating, "Destroying an entity while iterating in a Query is not permitted!");
+
     // #todo [roey]: we should be able to accelerate this by storing bitset for each entity to determine what components it has
     for * world.components {
         key, value := it_index, it;
