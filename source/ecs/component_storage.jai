@@ -25,7 +25,7 @@ component_type_id :: ($c: Type) -> s64 {
     return get_hash(type_info(c).name);
 }
 
-add_component :: (cc: *ComponentContainer, entity: Entity) -> *void {
+add_component :: (cc: *ComponentContainer, entity: Entity, $initialize := true) -> *void {
     assert(!table_contains(*cc.indirection, entity), "Attempted to add a component to an entity that already has one of that type");
 
     new_index := -1;
@@ -61,6 +61,11 @@ add_component :: (cc: *ComponentContainer, entity: Entity) -> *void {
 
     assert(cc.data != null && cc.count > 0);
     ptr := cc.data + new_index * cc.type.runtime_size;
+
+    #if initialize {
+        if cc.type.initializer then cc.type.initializer(ptr);
+        else memset(ptr, 0, cc.type.runtime_size);
+    }
 
     assert(ptr != null);
 

@@ -1,6 +1,9 @@
 World :: struct {
     entities: [..] Entity;
+
     components: Table(s64, ComponentContainer);
+
+    cached_queries: Table([..] s64, Query_Cache, given_compare_function=compare_query_types);
 }
 
 spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
@@ -29,26 +32,36 @@ destroy_entity :: (world:* World, entity: Entity) -> bool {
         remove_component(value, entity);
     }
 
+    invalidate_caches_for_entity(world, entity);
+
     return array_ordered_remove_by_value(*world.entities, entity);
 }
 
 add_component :: (world: *World, entity: Entity, $component: Type, val: component) -> *component {
-    ptr := add_component(world, entity, component);
+    ptr := add_component(world, entity, component, false);
     << ptr = val;
     return ptr;
 }
 
-add_component :: (world: *World, entity: Entity, $component: Type) -> *component {
-    cc := table_find_pointer(*world.components, #run component_type_id(component));
+add_component :: (world: *World, entity: Entity, $component: Type, $initialize := true) -> *component {
+    type_id :: #run component_type_id(component);
+
+    cc := table_find_pointer(*world.components, type_id);
     if cc == null {
-        cc = table_add(*world.components, #run component_type_id(component), .{type = type_info(component)});
+        cc = table_add(*world.components, type_id, .{type = type_info(component)});
     }
 
-    return cast(*component) add_component(cc, entity);
+    invalidate_caches_for_type(world, type_id);
+
+    return cast(*component) add_component(cc, entity, initialize);
 }
 
 remove_component :: (world: *World, entity: Entity, $component: Type) {
-    cc := table_find_pointer(*world.components, #run component_type_id(component));
+    type_id :: #run component_type_id(component);
+
+    cc := table_find_pointer(*world.components, type_id);
+
+    invalidate_caches_for_type(world, type_id);
 
     if cc != null {
         remove_component(cc, entity);
@@ -106,6 +119,31 @@ test_entity_components :: (ctx: *TestContext) {
 #load "entity.jai";
 
 #scope_file
+
+compare_query_types :: (a: [..] s64, b: [..] s64) -> bool {
+    if a.count != b.count then return false;
+    for a_val : a {
+        found, index := array_find(b, a_val);
+        if !found then return false;
+    }
+    return true;
+}
+
+invalidate_caches_for_type :: (world: *World, type: s64) {
+    for * world.cached_queries {
+        key, value := it_index, it;
+        found := array_find(key, type);
+        if found then value.dirty = true;
+    }
+}
+
+invalidate_caches_for_entity :: (world: *World, entity: Entity) {
+    for * world.cached_queries {
+        key, value := it_index, it;
+        found := array_find(value.cached_entities, entity);
+        if found then value.dirty = true;
+    }
+}
 
 #import "Compiler";
 #import "Program_Print";
