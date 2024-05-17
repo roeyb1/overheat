@@ -12,11 +12,11 @@ Query_Cache :: struct {
 }
 
 /** Returns a compile-time generated (sorted by id) view of a static array of component type ids for this query */
-get_component_types_for_query :: (query: Query) -> [] s64 {
+get_component_types_for_query :: (query: Query) -> [] Component_Type_ID {
     #insert #run () -> string {
         builder: String_Builder;
         
-        print_to_builder(*builder, "result :: s64.[");
+        print_to_builder(*builder, "result :: Component_Type_ID.[");
         for 0..query.component_types.count-1 {
             if (cast(*Type_Info) query.component_types[it]).type == .POINTER {
                 print_to_builder(*builder, "#run component_type_id(#run get_type((cast(*Type_Info_Pointer)type_info(query.component_types[%])).pointer_to)), ", it);
@@ -25,7 +25,7 @@ get_component_types_for_query :: (query: Query) -> [] s64 {
             }
         }
         print_to_builder(*builder, "];\n");
-        print_to_builder(*builder, "#run quick_sort(result, (x) => x);\n");
+        print_to_builder(*builder, "#run quick_sort(result, (x) => x.hash);\n");
         return builder_to_string(*builder);
     }();
     return result;

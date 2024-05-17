@@ -9,10 +9,10 @@ World :: struct {
     free_entity_indices: [..] s32;
 
     /** Storage for all component types. */
-    components: Table(s64, ComponentContainer);
+    components: Table(Component_Type_ID, ComponentContainer, given_hash_function=hash_component_id);
 
     /** Cached results of queries over component types. Significantly accelerates entity iteration for systems. */
-    cached_queries: Table([] s64, Query_Cache, given_compare_function=compare_query_types);
+    cached_queries: Table([] Component_Type_ID, Query_Cache, given_compare_function=compare_query_types);
 
     /** Debug flag that is set when systems are iterating over the entities. We use this to track if the user tried to add or remove entities while iterating */
     currently_iterating: bool;
@@ -205,7 +205,7 @@ test_entity_components :: (ctx: *TestContext) {
 
 #scope_file
 
-compare_query_types :: (a: [] s64, b: [] s64) -> bool {
+compare_query_types :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
     if a.count != b.count then return false;
     // query type arrays are always sorted, so we can simply check each element with it's pair
     for 0..a.count-1 {
@@ -214,10 +214,16 @@ compare_query_types :: (a: [] s64, b: [] s64) -> bool {
     return true;
 }
 
-invalidate_caches_for_type :: (world: *World, type: s64) {
+invalidate_caches_for_type :: (world: *World, type: Component_Type_ID) {
     for * world.cached_queries {
         key, value := it_index, it;
-        found := array_find(key, type);
+        found := false;
+        for type : key {
+            if value == it { 
+                found = true;
+                break;
+            }
+        }
         if found then value.dirty = true;
     }
 }
@@ -225,11 +231,16 @@ invalidate_caches_for_type :: (world: *World, type: s64) {
 invalidate_caches_for_entity :: (world: *World, entity: Entity) {
     for * world.cached_queries {
         key, value := it_index, it;
-        found := array_find(value.cached_entities, entity);
+        found := false;
+        for value.cached_entities {
+            if entity == it {
+                found = true;
+                break;
+            }
+        }
         if found then value.dirty = true;
     }
 }
 
 #import "Compiler";
 #import "Program_Print";
-#import "Hash_Table";

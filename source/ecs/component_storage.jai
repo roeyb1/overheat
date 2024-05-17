@@ -19,10 +19,25 @@ ComponentContainer :: struct {
     type: *Type_Info_Struct;
 }
 
-/** get the type id of a component. Just hash the component type name. Should ideally only be called at compile time to avoid runtime hashing. */
-component_type_id :: ($c: Type) -> s64 {
+Component_Type_ID :: struct {
+    hash: u32;
+    debug_name: string;
+}
+
+operator== :: (a: Component_Type_ID, b: Component_Type_ID) -> bool {
+    return a.hash == b.hash;
+}
+
+/** Get the type id of a component. Just hash the component type name. */
+component_type_id :: ($c: Type) -> Component_Type_ID {
     assert(type_info(c).type == .STRUCT, "Only struct types are supported as component types!");
-    return get_hash(type_info(c).name);
+    name :: #insert #run sprint("\"%\";", type_info(c).name);
+
+    return .{#run get_hash(type_info(c).name), name};
+}
+
+hash_component_id :: (a: Component_Type_ID) -> u32 {
+    return a.hash;
 }
 
 add_component :: (cc: *ComponentContainer, entity: Entity, $initialize := true) -> *void {
@@ -142,4 +157,6 @@ test_component_container :: (ctx: *TestContext) {
 #scope_file
 
 #import "Hash";
-#import "Hash_Table";
+using Hash_Table :: #import "Hash_Table";
+
+#poke_name Hash_Table operator==;
