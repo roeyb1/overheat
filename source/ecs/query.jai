@@ -23,6 +23,7 @@ get_component_types_for_query :: (query: Query) -> [..] s64 {
                 print_to_builder(*builder, "array_add(*result, #run component_type_id(query.component_types[%]));\n", it);
             }
         }
+        print_to_builder(*builder, "quick_sort(result, (x) => x);\n");
         return builder_to_string(*builder);
     }();
     return result;
@@ -39,6 +40,7 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
 
     query_types := get_component_types_for_query(query);
     cached_query: *Query_Cache = find_or_add(*query.world.cached_queries, query_types);
+    assert(cached_query != null);
 
     entities_to_iterate: [] Entity = ifx cached_query.dirty then query.world.entities else cached_query.cached_entities;
     if cached_query.dirty {

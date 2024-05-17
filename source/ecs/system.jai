@@ -41,7 +41,8 @@ System_Phase :: enum u32{
     OnValidate;
 
     /**
-     * 
+     * PostUpdate occurs after we've validated the frame. We can respond to any changes in game logic or anything that is output from the Validate stage
+     *
      * Examples: 
      * - Collision resolution will occur here.
      * - Characters with 0 health will be destroyed here

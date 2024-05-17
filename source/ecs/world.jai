@@ -207,9 +207,9 @@ test_entity_components :: (ctx: *TestContext) {
 
 compare_query_types :: (a: [..] s64, b: [..] s64) -> bool {
     if a.count != b.count then return false;
-    for a_val : a {
-        found, index := array_find(b, a_val);
-        if !found then return false;
+    // query type arrays are always sorted, so we can simply check each element with it's pair
+    for 0..a.count-1 {
+        if a[it] != b[it] then return false;
     }
     return true;
 }
