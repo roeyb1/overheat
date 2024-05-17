@@ -14,12 +14,10 @@ Networking_ID :: struct {
 }
 
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
-    entity := spawn_entity(*g_world);
+    entity := spawn_entity(*g_world, Player, Velocity);
 
-    add_component(*g_world, entity, Player);
     add_component(*g_world, entity, Name, .{sprint("Player_%", networking_id)});
     add_component(*g_world, entity, Position, .{position});
-    add_component(*g_world, entity, Velocity);
     add_component(*g_world, entity, Networking_ID, .{networking_id});
     add_component(*g_world, entity, Move_Speed, .{10});
 
@@ -36,7 +34,10 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         g_player_sprite;
     }
 
-    add_component(*g_world, entity, Sprite, .{sprite, .{1.5, 1.5}, 0, 1});
+    PLAYER_SIZE :: Vector2.{1.5, 1.5};
+
+    add_component(*g_world, entity, Sprite, .{sprite, PLAYER_SIZE, 0, 1});
+    add_component(*g_world, entity, Collider_AABB, .{make_bounds(position, PLAYER_SIZE)});
 
     return entity;
 }

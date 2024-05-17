@@ -20,7 +20,7 @@ is_inside :: (bounds: AABB, vec: Vector2) -> bool {
             (vec.y >= bounds.min.y && vec.y <= bounds.max.y);
 }
 
-intersect :: (a: AABB, b: AABB) -> bool {
+intersects :: (a: AABB, b: AABB) -> bool {
     if a.max.x < b.min.x || a.min.x > b.max.x then return false;
     if a.max.y < b.min.y || a.min.y > b.max.y then return false;
     return true;

@@ -167,8 +167,11 @@ register_all_systems :: () {
         ImGui.ShowDemoWindow();
     });
 
+    add_system(.OnValidate, detect_collisions_system);
+
     add_system(.PostUpdate, update_player_positions_on_network);
     add_system(.PostUpdate, cleanup_player_controllers);
+    add_system(.PostUpdate, cleanup_collision_results_system);
 
     add_system(.PreRender, render_imgui);
 
@@ -181,6 +184,7 @@ using Basic :: #import "Basic";
 #import "tracy"(IMPORT_MODE = .CLIENT);
 
 #load "utils/utils.jai";
+#load "math.jai";
 #load "logging.jai";
 #load "networking.jai";
 #load "window.jai";
@@ -196,3 +200,4 @@ using Basic :: #import "Basic";
 #load "gameplay/components.jai";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";
+#load "physics/collision.jai";
