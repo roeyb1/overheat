@@ -1,7 +1,7 @@
 /** Stores component data for a single component type in contiguous memory blocks */
 ComponentContainer :: struct {
     /** Maps the entity id to the position of it's component in storage */
-    indirection: Table(Entity, s64);
+    indirection: Table(s32, s64);
 
     /** List of available slots in the contiguous block of memory */
     free_slots: [..] s64;
@@ -26,7 +26,7 @@ component_type_id :: ($c: Type) -> s64 {
 }
 
 add_component :: (cc: *ComponentContainer, entity: Entity, $initialize := true) -> *void {
-    assert(!table_contains(*cc.indirection, entity), "Attempted to add a component to an entity that already has one of that type");
+    assert(!table_contains(*cc.indirection, entity.index), "Attempted to add a component to an entity that already has one of that type");
 
     new_index := -1;
     if cc.free_slots.count > 0 {
@@ -57,7 +57,7 @@ add_component :: (cc: *ComponentContainer, entity: Entity, $initialize := true) 
         cc.count += 1;
     }
 
-    table_add(*cc.indirection, entity, new_index);
+    table_add(*cc.indirection, entity.index, new_index);
 
     assert(cc.data != null && cc.count > 0);
     ptr := cc.data + new_index * cc.type.runtime_size;
@@ -75,7 +75,7 @@ add_component :: (cc: *ComponentContainer, entity: Entity, $initialize := true) 
 }
 
 remove_component :: (cc: *ComponentContainer, entity: Entity) -> bool {
-    success, removed_index := table_remove(*cc.indirection, entity);
+    success, removed_index := table_remove(*cc.indirection, entity.index);
 
     if !success then return false;
 
@@ -85,7 +85,7 @@ remove_component :: (cc: *ComponentContainer, entity: Entity) -> bool {
 }
 
 get_component :: (cc: *ComponentContainer, entity: Entity) -> *void {
-    index, success := table_find(*cc.indirection, entity);
+    index, success := table_find(*cc.indirection, entity.index);
 
     if !success then return null;
 
@@ -98,7 +98,7 @@ test_component_container :: (ctx: *TestContext) {
     cc: ComponentContainer;
     cc.type = type_info(Test);
 
-    e1: Entity = 1;
+    e1: Entity = .{index = 1, generation = 0};
 
     c := cast(*Test) add_component(*cc, e1);
     << c  = .{11};
@@ -114,8 +114,8 @@ test_component_container :: (ctx: *TestContext) {
     c = cast(*Test) add_component(*cc, e1);
     << c = .{11};
 
-    e2: Entity = 2;
-    e3: Entity = 3;
+    e2: Entity = .{index = 2, generation = 0};
+    e3: Entity = .{index = 3, generation = 0};
     c = cast(*Test) add_component(*cc, e2);
     << c = .{12};
     c = cast(*Test) add_component(*cc, e3);
@@ -132,7 +132,7 @@ test_component_container :: (ctx: *TestContext) {
     test_expect_equals(11, c1.x);
     test_expect_equals(13, c3.x);
 
-    e4: Entity = 4;
+    e4: Entity = .{index = 4, generation = 0};
     c = cast(*Test) add_component(*cc, e4);
     << c = .{14};
     c4 := cast(*Test) get_component(*cc, e4);

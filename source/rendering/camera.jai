@@ -27,7 +27,7 @@ update_camera_positions :: (world: *World) {
     SMOOTH_SPEED :: 15.;
 
     for Query(*Position, Camera).{world = world} {
-        assert(it.camera.entity_to_track != INVALID_EID);
+        assert(is_entity_valid(world, it.camera.entity_to_track));
 
         target_location := get_component(*g_world, it.camera.entity_to_track, Position);
         assert(target_location != null);

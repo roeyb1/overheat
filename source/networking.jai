@@ -590,7 +590,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_left: PlayerLeft_Packet;
             byte_buffer_read(buffer, *player_left);
 
-            player_to_kill: Entity = INVALID_EID;
+            player_to_kill: Entity;
             for Query(Player, Networking_ID, Name).{world = *g_world} {
                 if it.networking_id.id == player_left.networking_id {
                     player_to_kill = it_index;
@@ -600,7 +600,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
                 }
             }
 
-            assert(player_to_kill != INVALID_EID);
+            assert(is_entity_valid(*g_world, player_to_kill));
             destroy_entity(*g_world, player_to_kill);
         case;
     }

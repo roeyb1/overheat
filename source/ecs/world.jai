@@ -6,6 +6,8 @@ World :: struct {
     /** A list of all currently alive entities */
     entities: [..] Entity;
 
+    free_entity_indices: [..] s32;
+
     /** Storage for all component types. */
     components: Table(s64, ComponentContainer);
 
@@ -26,30 +28,37 @@ World :: struct {
  * new_entity := spawn_entity(world, Position, Velocity); // Creates a new entity with a default initialized Position and Velocity component
  */
 spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
-    entity: Entity = next_entity_id;
-    next_entity_id += 1;
+    if world.free_entity_indices.count > 0 {
+        index := pop(*world.free_entity_indices);
+        world.entities[index].generation += 1;
+        world.entities[index].index = index;
 
-    array_add(*world.entities, entity);
+        return .{index = index, generation = world.entities[index].generation};
+    }
+
+    new_entity := array_add(*world.entities);
+    new_entity.generation = 0;
+    new_entity.index = cast(s32) world.entities.count-1;
 
     #insert #run () -> string {
         builder: String_Builder;
 
         for 0..initial_component_types.count-1 {
-            print_to_builder(*builder, "add_component(world, entity, initial_component_types[%]);\n", it);
+            print_to_builder(*builder, "add_component(world, new_entity, initial_component_types[%]);\n", it);
         }
 
         return builder_to_string(*builder);
     }();
 
-    return entity;
+    return new_entity;
 }
 
 /**
- * Destroy and entity in the world. Returns true if that entity was successfully removed.
+ * Destroy and entity in the world.
  *
  * IMPORTANT: This function should never be called while systems are iterating over queries!
  */
-destroy_entity :: (world: *World, entity: Entity) -> bool {
+destroy_entity :: (world: *World, entity: Entity) {
     // #todo [roey]: we should be able to accelerate this by storing bitset for each entity to determine what components it has
     for * world.components {
         key, value := it_index, it;
@@ -58,7 +67,8 @@ destroy_entity :: (world: *World, entity: Entity) -> bool {
 
     invalidate_caches_for_entity(world, entity);
 
-    return array_ordered_remove_by_value(*world.entities, entity);
+    array_add(*world.free_entity_indices, entity.index);
+    world.entities[entity.index].index = INVALID_ENTITY_INDEX;
 }
 
 /**
@@ -73,6 +83,8 @@ destroy_entity :: (world: *World, entity: Entity) -> bool {
  */
 
 add_component :: (world: *World, entity: Entity, $component: Type, $initialize := true) -> *component {
+    assert(is_entity_valid(world, entity));
+
     type_id :: #run component_type_id(component);
 
     cc := table_find_pointer(*world.components, type_id);
@@ -98,6 +110,8 @@ add_component :: (world: *World, entity: Entity, $component: Type, val: componen
  * remove_component(world, my_entity, Position); // Removes the Position component from my_entity, if it had it.
  */
 remove_component :: (world: *World, entity: Entity, $component: Type) -> bool {
+    assert(is_entity_valid(world, entity));
+
     type_id :: #run component_type_id(component);
 
     cc := table_find_pointer(*world.components, type_id);
@@ -117,11 +131,20 @@ remove_component :: (world: *World, entity: Entity, $component: Type) -> bool {
  * position := get_component(world, my_entity, Position);
  */
 get_component :: (world: *World, entity: Entity, $component: Type) -> *component {
+    assert(is_entity_valid(world, entity));
+
     cc := table_find_pointer(*world.components, #run component_type_id(component));
 
     if cc == null then return null;
 
     return cast(*component) get_component(cc, entity);
+}
+
+is_entity_valid :: (world: *World, entity: Entity) -> bool {
+    if entity.index == INVALID_ENTITY_INDEX then return false;
+    if entity.index >= world.entities.count then return false;
+    if entity.generation != world.entities[entity.index].generation then return false;
+    return true;
 }
 
 
@@ -135,7 +158,8 @@ test_entity_components :: (ctx: *TestContext) {
     world: World;
 
     e1 := spawn_entity(*world);
-    test_expect_not_equals(INVALID_EID, e1);
+    test_expect_not_equals(INVALID_ENTITY_INDEX, e1.index);
+    test_expect_equals(0, e1.generation);
     e2 := spawn_entity(*world);
     e3 := spawn_entity(*world);
 
@@ -161,6 +185,11 @@ test_entity_components :: (ctx: *TestContext) {
     e4 := spawn_entity(*world, Test, Test2);
     test_expect_not_equals(null, get_component(*world, e4, Test));
     test_expect_not_equals(null, get_component(*world, e4, Test2));
+
+    destroy_entity(*world, e4);
+    e5 := spawn_entity(*world);
+    test_expect_equals(e4.index, e5.index);
+    test_expect_not_equals(e4.generation, e5.generation);
 } @UnitTest
 
 #load "component_storage.jai";

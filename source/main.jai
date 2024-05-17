@@ -10,8 +10,8 @@ g_frame_number: u64 = 0;
 
 g_world: World;
 
-g_local_player: Entity = INVALID_EID;
-main_view_camera: Entity = INVALID_EID;
+g_local_player: Entity;
+main_view_camera: Entity;
 
 ExitGame :: (key_state: Key_Current_State) {
     g_should_exit = true;
@@ -177,7 +177,7 @@ register_all_systems :: () {
 
 
 
-#import "Basic";
+using Basic :: #import "Basic";
 #import "tracy"(IMPORT_MODE = .CLIENT);
 
 #load "utils/utils.jai";

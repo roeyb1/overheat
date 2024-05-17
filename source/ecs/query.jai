@@ -48,6 +48,8 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
     for entity : entities_to_iterate {
         // if the query was dirty, rebuilt it as we iterate
         if cached_query.dirty {
+            if entity.index == INVALID_ENTITY_INDEX continue;
+
             #insert #run () -> string {
                 builder: String_Builder;
                 
