@@ -44,24 +44,22 @@ visualize_system_execution :: () {
     if ImGui.Begin("System Execution", *show_system_graph, .NoResize | .NoMove | .NoSavedSettings) {
         ImNodes.BeginNodeEditor();
 
-        phase_node_offset_x := 50.;
+        phase_node_offset_y := 50.;
         for phase_index : 0..NUM_SYSTEM_PHASES-1 {
             phase_offset: s32 = cast(s32)(phase_index * 10000);
             input_offset: s32 : 1000;
             output_offset: s32 : 2000;
 
-            scheduler := *system_groups[phase_index];
+            phase_node_offset_x := 50.;
 
-            // skip phases that don't have systems
-            if scheduler.systems.count == 0 {
-                continue;
-            }
+            scheduler := *system_groups[phase_index];
             
             if scheduler.built == false {
                 build_dependency_graph(scheduler);
             }
 
             max_node_width := 0.;
+            max_node_height := 0.;
             phase_node_index := phase_offset;
             {
                 ImNodes.PushColorStyle(.TitleBar, PHASE_COLORS[phase_index]);
@@ -77,11 +75,13 @@ visualize_system_execution :: () {
                 ImNodes.EndNode();
 
                 ImNodes.SetNodeDraggable(phase_node_index, false);
-                ImNodes.SetNodeGridSpacePos(phase_node_index, .{phase_node_offset_x, 0.});
+                ImNodes.SetNodeGridSpacePos(phase_node_index, .{phase_node_offset_x, phase_node_offset_y});
             
                 node_dims := ImNodes.GetNodeDimensions(phase_node_index);
                 max_node_width = max(node_dims.x, max_node_width);
+                max_node_height = max(node_dims.y, max_node_height);
                 phase_node_offset_x += node_dims.x + 50.;
+                phase_node_offset_y += node_dims.y + 10.;
 
                 ImNodes.PopColorStyle();
             }
@@ -116,6 +116,7 @@ visualize_system_execution :: () {
 
                 node_dims := ImNodes.GetNodeDimensions(node_index);
                 max_node_width = max(node_dims.x, max_node_width);
+                max_node_height = max(node_dims.y, max_node_height);
 
                 for dep_index : scheduler.dependencies[system_index] {
                     node_depths[dep_index] = max(node_depths[system_index] + 1, node_depths[dep_index]);
@@ -129,7 +130,7 @@ visualize_system_execution :: () {
                 node_index := cast(s32) system_index + phase_offset + 1; 
 
                 ImNodes.SetNodeDraggable(node_index, false);
-                ImNodes.SetNodeGridSpacePos(node_index, .{phase_node_offset_x + (50. + max_node_width) * node_depths[system_index], 50. + 50 * height});
+                ImNodes.SetNodeGridSpacePos(node_index, .{phase_node_offset_x + (50. + max_node_width) * node_depths[system_index], phase_node_offset_y + (max_node_height + 10) * height});
                 height += 1;
             }
 
@@ -157,6 +158,7 @@ visualize_system_execution :: () {
             }
 
             phase_node_offset_x += (50 + max_node_width) * (max_depth + 1);
+            phase_node_offset_y += (10 + max_node_height) * (height);
 
             ImNodes.PopColorStyle();
         }
