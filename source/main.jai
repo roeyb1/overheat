@@ -58,6 +58,7 @@ main :: () {
         input_map_update();
 
         rendering_begin_frame();
+        ImGui.NewFrame();
 
         execute(*g_world, .Init);
         execute(*g_world, .OnLoad);
@@ -101,6 +102,9 @@ main :: () {
         input_map_update();
 
         rendering_begin_frame();
+        ImGui.NewFrame();
+
+        render_debug_ui();
 
         execute(*g_world, .Init);
         execute(*g_world, .OnLoad);
@@ -145,11 +149,6 @@ render_scene :: (world: *World) {
 
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
-
-    add_system(System_Phase.Init, (world: *World) {
-        ImGui.NewFrame();
-    });
-
     add_system(System_Phase.OnLoad, (world: *World) {
         now := seconds_since_init();
         g_delta_time = cast(float) (now - last_time);
@@ -163,9 +162,6 @@ register_all_systems :: () {
     add_system(.OnUpdate, update_camera_projections);
     add_system(.OnUpdate, update_camera_positions);
     add_system(.OnUpdate, update_positions);
-    add_system(.OnUpdate, (world: *World) {
-        ImGui.ShowDemoWindow();
-    });
 
     add_system(.OnValidate, detect_collisions_system);
 
@@ -201,3 +197,5 @@ using Basic :: #import "Basic";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";
 #load "physics/collision.jai";
+#load "debug_ui.jai";
+

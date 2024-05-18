@@ -66,6 +66,9 @@ System_Scheduler :: struct {
 
     /** Maps system index to indicies of systems which depend on it to complete */
     dependencies: [..][..] s64;
+
+    /** Maps system index to indicies of systems which it depends on before it can run (inverse of dependencies) */
+    inv_dependencies: [..][..] s64;
     /**
      * Each system maps to a number indicating how many more systems that it depend on have not yet completed.
      * This array is used as a template that can be copied every time this graph executes to avoid having to recompute the values each time.
@@ -88,7 +91,7 @@ add_system :: (phase: System_Phase, func: System_Func, run_after: [] System_Func
         proc_call := cast(*Code_Procedure_Call) nodes;
 
         if proc_call.arguments_sorted[1].kind != .IDENT {
-            return "";
+            return "(anon)";
         }
 
         ident := cast(*Code_Ident) proc_call.arguments_sorted[1];
@@ -103,9 +106,53 @@ execute :: (world: *World, phase: System_Phase) {
     execute_(world, scheduler);
 }
 
-#scope_file
+build_dependency_graph :: (scheduler: *System_Scheduler) {
+    find_system :: (systems: [] System, func: System_Func) -> bool, s64 {
+        for systems if it.func == func then return true, it_index;
+        return false, -1;
+    }
+
+    // Reset any existing data:
+    assert(scheduler.dependencies.count == scheduler.wait_count_template.count);
+    for 0..scheduler.dependencies.count-1 {
+        array_reset(*scheduler.dependencies[it]);
+        scheduler.wait_count_template[it] = 0;
+    }
+
+    array_resize(*scheduler.dependencies, scheduler.systems.count);
+    array_resize(*scheduler.inv_dependencies, scheduler.systems.count);
+    array_resize(*scheduler.wait_count_template, scheduler.systems.count);
+
+    // build dependency map:
+    for scheduler.systems {
+        system_index := it_index;
+
+        for dependee : it.run_after {
+            found, index := find_system(scheduler.systems, dependee);
+            if found {
+                array_add(*scheduler.dependencies[index], system_index);
+                array_add(*scheduler.inv_dependencies[system_index], index);
+                scheduler.wait_count_template[system_index] += 1;
+            }
+        }
+
+        for dependent : it.run_before {
+            found, index := find_system(scheduler.systems, dependent);
+            if found {
+                array_add(*scheduler.dependencies[system_index], index);
+                array_add(*scheduler.inv_dependencies[index], system_index);
+                scheduler.wait_count_template[index] += 1;
+            }
+        }
+    }
+
+    scheduler.built = true;
+}
+
 
 NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
+
+#scope_file
 
 System :: struct {
     func: System_Func;
@@ -171,46 +218,6 @@ add_system_ :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] S
     array_copy(*system.run_after, run_after);
 
     scheduler.built = false;
-}
-
-build_dependency_graph :: (scheduler: *System_Scheduler) {
-    find_system :: (systems: [] System, func: System_Func) -> bool, s64 {
-        for systems if it.func == func then return true, it_index;
-        return false, -1;
-    }
-
-    // Reset any existing data:
-    assert(scheduler.dependencies.count == scheduler.wait_count_template.count);
-    for 0..scheduler.dependencies.count-1 {
-        array_reset(*scheduler.dependencies[it]);
-        scheduler.wait_count_template[it] = 0;
-    }
-
-    array_resize(*scheduler.dependencies, scheduler.systems.count);
-    array_resize(*scheduler.wait_count_template, scheduler.systems.count);
-
-    // build dependency map:
-    for scheduler.systems {
-        system_index := it_index;
-
-        for dependee : it.run_after {
-            found, index := find_system(scheduler.systems, dependee);
-            if found {
-                array_add(*scheduler.dependencies[index], system_index);
-                scheduler.wait_count_template[system_index] += 1;
-            }
-        }
-
-        for dependent : it.run_before {
-            found, index := find_system(scheduler.systems, dependent);
-            if found {
-                array_add(*scheduler.dependencies[system_index], index);
-                scheduler.wait_count_template[index] += 1;
-            }
-        }
-    }
-
-    scheduler.built = true;
 }
 
 #scope_export
