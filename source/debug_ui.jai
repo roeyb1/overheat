@@ -1,10 +1,12 @@
 
 show_system_graph := false;
 show_imgui_demo_window := false;
+show_stats := false;
 
 render_debug_ui :: () {
     if ImGui.BeginMainMenuBar() {
         if ImGui.BeginMenu("Tools") {
+            if ImGui.MenuItem("Stats", null, *show_stats) {}
             if ImGui.MenuItem("View System Graph", null, *show_system_graph) {}
             ImGui.EndMenu();
         }
@@ -15,12 +17,30 @@ render_debug_ui :: () {
         ImGui.EndMainMenuBar();
     }
 
+    if show_stats {
+        show_stats_overlay();
+    }
     if show_system_graph {
         visualize_system_execution();
     }
     if show_imgui_demo_window {
         ImGui.ShowDemoWindow(*show_imgui_demo_window);
     }
+}
+
+show_stats_overlay :: () {
+    viewport := ImGui.GetMainViewport();
+    PADDING :: 10.;
+
+    ImGui.SetNextWindowPos(viewport.WorkPos + .{PADDING, PADDING});
+
+    ImGui.SetNextWindowBgAlpha(0.35);
+    if ImGui.Begin("Stats", null, .NoMove | .NoDecoration | .AlwaysAutoResize | .NoSavedSettings | .NoFocusOnAppearing | .NoNav) {
+        ImGui.TextUnformatted("Stats");
+        ImGui.Separator();
+        ImGui.Text("FPS: %",  cast(u32)(1. / g_smooth_delta_time));
+    }
+    ImGui.End();
 }
 
 visualize_system_execution :: () {
