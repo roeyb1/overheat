@@ -1,5 +1,7 @@
 imgui_init :: () {
-    ImGui.CreateContext();
+    ctx := ImGui.CreateContext();
+    ImNodes.SetImGuiContext(ctx);
+    ImNodes.CreateContext();
 
     init_style();
 
@@ -48,6 +50,7 @@ imgui_init :: () {
 }
 
 imgui_shutdown :: () {
+    ImNodes.DestroyContext();
     ImGui.DestroyContext();
 }
 
@@ -133,6 +136,8 @@ imgui_new_frame :: (window: *SDL_Window) {
         case .ResizeNWSE;    SDL_SetCursor(cursor_resize_nwse);
     }
 }
+
+ImNodes :: #import "imnodes";
 
 #scope_file
 
@@ -255,3 +260,4 @@ style_color_active :: ImGui.ImVec4.{ 0.3, 0.3, 0.3, 1. };
 
 style_color_error :: ImGui.ImVec4.{ 0.8, 0.141, 0.113, 1. };
 style_color_disabled :: ImGui.ImVec4.{ 1., 1., 1., 0.7 };
+
