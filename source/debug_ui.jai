@@ -59,8 +59,8 @@ visualize_system_execution :: () {
 
     viewport := ImGui.GetMainViewport();
 
-    ImGui.SetNextWindowPos(viewport.Pos);
-    ImGui.SetNextWindowSize(viewport.Size);
+    ImGui.SetNextWindowPos(viewport.WorkPos);
+    ImGui.SetNextWindowSize(viewport.WorkSize);
     if ImGui.Begin("System Execution", *show_system_graph, .NoResize | .NoMove | .NoSavedSettings) {
         ImNodes.BeginNodeEditor();
 
