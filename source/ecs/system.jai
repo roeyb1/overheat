@@ -66,6 +66,9 @@ System_Scheduler :: struct {
 
     /** Maps system index to indicies of systems which depend on it to complete */
     dependencies: [..][..] s64;
+
+    /** Maps system index to indicies of systems which it depends on before it can run (inverse of dependencies) */
+    inv_dependencies: [..][..] s64;
     /**
      * Each system maps to a number indicating how many more systems that it depend on have not yet completed.
      * This array is used as a template that can be copied every time this graph executes to avoid having to recompute the values each time.
@@ -117,6 +120,7 @@ build_dependency_graph :: (scheduler: *System_Scheduler) {
     }
 
     array_resize(*scheduler.dependencies, scheduler.systems.count);
+    array_resize(*scheduler.inv_dependencies, scheduler.systems.count);
     array_resize(*scheduler.wait_count_template, scheduler.systems.count);
 
     // build dependency map:
@@ -127,6 +131,7 @@ build_dependency_graph :: (scheduler: *System_Scheduler) {
             found, index := find_system(scheduler.systems, dependee);
             if found {
                 array_add(*scheduler.dependencies[index], system_index);
+                array_add(*scheduler.inv_dependencies[system_index], index);
                 scheduler.wait_count_template[system_index] += 1;
             }
         }
@@ -135,6 +140,7 @@ build_dependency_graph :: (scheduler: *System_Scheduler) {
             found, index := find_system(scheduler.systems, dependent);
             if found {
                 array_add(*scheduler.dependencies[system_index], index);
+                array_add(*scheduler.inv_dependencies[index], system_index);
                 scheduler.wait_count_template[index] += 1;
             }
         }
