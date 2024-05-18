@@ -172,6 +172,8 @@ register_all_systems :: () {
     add_system(.PreRender, render_imgui);
 
     add_system(.OnRender, render_scene);
+
+    build_system_dependency_graphs();
 }
 
 

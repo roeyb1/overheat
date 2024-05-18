@@ -74,9 +74,6 @@ System_Scheduler :: struct {
      * This array is used as a template that can be copied every time this graph executes to avoid having to recompute the values each time.
      */
     wait_count_template: [..] s64;
-
-    /** Has the dependency graph been built for this scheduler? */
-    built := false;
 }
 
 system_groups: [NUM_SYSTEM_PHASES] System_Scheduler;
@@ -103,7 +100,27 @@ add_system :: (phase: System_Phase, func: System_Func, run_after: [] System_Func
 
 execute :: (world: *World, phase: System_Phase) {
     scheduler := *system_groups[phase];
+    assert(scheduler.dependencies.count == scheduler.systems.count, "System graph attempted to execute before it was built!");
     execute_(world, scheduler);
+}
+
+build_system_dependency_graphs :: () {
+    for * scheduler : system_groups {
+        build_dependency_graph(scheduler);
+    }
+}
+
+NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
+
+#scope_file
+
+System :: struct {
+    func: System_Func;
+
+    debug_name: string;
+
+    run_before: [..] System_Func;
+    run_after: [..] System_Func;
 }
 
 build_dependency_graph :: (scheduler: *System_Scheduler) {
@@ -145,28 +162,10 @@ build_dependency_graph :: (scheduler: *System_Scheduler) {
             }
         }
     }
-
-    scheduler.built = true;
 }
 
-
-NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
-
-#scope_file
-
-System :: struct {
-    func: System_Func;
-
-    debug_name: string;
-
-    run_before: [..] System_Func;
-    run_after: [..] System_Func;
-}
 
 execute_ :: (world: *World, scheduler: *System_Scheduler) {
-    if scheduler.built == false {
-        build_dependency_graph(scheduler);
-    }
     found_one := false;
 
     systems_to_run: [..] s64;
@@ -216,8 +215,6 @@ add_system_ :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] S
 
     array_copy(*system.run_before, run_before);
     array_copy(*system.run_after, run_after);
-
-    scheduler.built = false;
 }
 
 #scope_export
@@ -250,6 +247,8 @@ test_ecs_systems :: (ctx: *TestContext) {
 
     c2 := add_component(*world, e2, Test);
     c2.x = 101;
+
+    build_dependency_graph(*scheduler);
 
     execute_(*world, *scheduler);
 

@@ -53,10 +53,6 @@ visualize_system_execution :: () {
             phase_node_offset_x := 50.;
 
             scheduler := *system_groups[phase_index];
-            
-            if scheduler.built == false {
-                build_dependency_graph(scheduler);
-            }
 
             max_node_width := 0.;
             max_node_height := 0.;
