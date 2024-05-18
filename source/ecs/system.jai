@@ -150,9 +150,9 @@ build_dependency_graph :: (scheduler: *System_Scheduler) {
 }
 
 
-#scope_file
-
 NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
+
+#scope_file
 
 System :: struct {
     func: System_Func;
