@@ -57,30 +57,55 @@ visualize_system_execution :: () {
                 continue;
             }
             
-            ImNodes.PushColorStyle(.NodeBackground, PHASE_COLORS[phase_index]);
-
             if scheduler.built == false {
                 build_dependency_graph(scheduler);
+            }
+
+            max_node_width := 0.;
+            phase_node_index := phase_offset;
+            {
+                ImNodes.PushColorStyle(.TitleBar, PHASE_COLORS[phase_index]);
+                ImNodes.BeginNode(phase_node_index);
+
+                ImNodes.BeginNodeTitleBar();
+                ImGui.Text("Phase::%", type_info(System_Phase).names[phase_index]);
+                ImNodes.EndNodeTitleBar();
+
+                ImNodes.BeginOutputAttribute(output_offset + phase_node_index, .TriangleFilled);
+                ImNodes.EndInputAttribute();
+
+                ImNodes.EndNode();
+
+                ImNodes.SetNodeDraggable(phase_node_index, false);
+                ImNodes.SetNodeGridSpacePos(phase_node_index, .{phase_node_offset_x, 0.});
+            
+                node_dims := ImNodes.GetNodeDimensions(phase_node_index);
+                max_node_width = max(node_dims.x, max_node_width);
+                phase_node_offset_x += node_dims.x + 50.;
+
+                ImNodes.PopColorStyle();
             }
 
             node_depths: [..] s32;
             node_depths.allocator = temp;
             array_resize(*node_depths, scheduler.systems.count);
+            for 0..node_depths.count-1 {
+                node_depths[it] = 0;
+            }
 
-            max_node_width := 0.;
+            ImNodes.PushColorStyle(.NodeBackground, PHASE_COLORS[phase_index]);
+
             for scheduler.systems {
                 system_index := it_index;
-                node_index := cast(s32) system_index + phase_offset; 
+                node_index := cast(s32) system_index + phase_offset + 1; 
             
                 ImNodes.BeginNode(node_index);
 
                 ImGui.Text("%", scheduler.systems[system_index].debug_name);
 
-                // we don't need an input attribute if we have no dependents
-                if scheduler.wait_count_template[system_index] != 0 {
-                    ImNodes.BeginInputAttribute(input_offset + node_index, .TriangleFilled);
-                    ImNodes.EndInputAttribute();
-                }
+                ImNodes.BeginInputAttribute(input_offset + node_index, .TriangleFilled);
+                ImNodes.EndInputAttribute();
+
                 // if no system depends on this one, we don't need an output attribute
                 if scheduler.dependencies[system_index].count != 0 {
                     ImNodes.BeginOutputAttribute(output_offset + node_index, .TriangleFilled);
@@ -101,7 +126,7 @@ visualize_system_execution :: () {
             // reposition nodes by depth
             for scheduler.systems {
                 system_index := it_index;
-                node_index := cast(s32) system_index + phase_offset; 
+                node_index := cast(s32) system_index + phase_offset + 1; 
 
                 ImNodes.SetNodeDraggable(node_index, false);
                 ImNodes.SetNodeGridSpacePos(node_index, .{phase_node_offset_x + (50. + max_node_width) * node_depths[system_index], 50. + 50 * height});
@@ -111,9 +136,16 @@ visualize_system_execution :: () {
 
             link_index: s32 = phase_offset;
             for system, system_index : scheduler.systems {
-                system_node_index := cast(s32) system_index + phase_offset;
+                system_node_index := cast(s32) system_index + phase_offset + 1;
+
+                // if this system has no dependencies, we link it to the node corresponding to the phase
+                if scheduler.wait_count_template[system_index] == 0 {
+                    ImNodes.Link(link_index, output_offset + phase_node_index, input_offset + system_node_index);
+                    link_index += 1;
+                }
+
                 for dependent_index : scheduler.dependencies[system_index] {
-                    dep_node_index := cast(s32) dependent_index + phase_offset;
+                    dep_node_index := cast(s32) dependent_index + phase_offset + 1;
                     ImNodes.Link(link_index, output_offset + system_node_index, input_offset + dep_node_index);
                     link_index += 1;
                 }

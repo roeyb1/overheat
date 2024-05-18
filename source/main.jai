@@ -159,10 +159,9 @@ register_all_systems :: () {
 
     add_system(.PreUpdate, update_player_controllers);
 
+    add_system(.OnUpdate, update_camera_projections);
+    add_system(.OnUpdate, update_camera_positions);
     add_system(.OnUpdate, update_positions);
-    add_system(.OnUpdate, update_camera_projections, run_after =.[update_positions]);
-    add_system(.OnUpdate, (world: *World) {}, run_before =.[update_camera_positions]);
-    add_system(.OnUpdate, update_camera_positions, run_after = .[update_camera_projections]);
 
     add_system(.OnValidate, detect_collisions_system);
 
