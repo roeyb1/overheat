@@ -336,18 +336,14 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
             // Since the draw commands are already sorted by spritesheet
             // we can assume that the moment we find a new spritesheet that doesn't match, we're starting a new bucket.
             if current_bucket == null || (draw_cmd.sheet != current_bucket.sprite_sheet) || (draw_cmd.z_order != current_z_order) {
-                // first time this runs, current will be null
-                if current_bucket != null {
-                    current_bucket.count = cast(u64) it_index - current_bucket.count;
-                }
-
                 current_bucket = array_add(out_buckets);
                 current_bucket.start = cast(u64) it_index;
                 current_bucket.sprite_sheet = draw_cmd.sheet;
                 current_z_order = draw_cmd.z_order;
             }
+
+            current_bucket.count += 1;
         }
 
-        current_bucket.count = cast(u64) out_draws.count - current_bucket.start;
     }
 }
