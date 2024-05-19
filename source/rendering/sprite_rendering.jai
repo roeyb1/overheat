@@ -117,8 +117,8 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
 
     depth_image_desc := RDGImageDescription.{
         debug_name = "Sprite Depth Buffer",
-        width = swapchain.extent.width,
-        height = swapchain.extent.height,
+        width = view_data.scene_texture_size.width,
+        height = view_data.scene_texture_size.height,
         format = .D32_SFLOAT,
         usage_flags = .DEPTH_STENCIL_ATTACHMENT_BIT,
     };
@@ -127,8 +127,8 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
 
     color_image_desc := RDGImageDescription.{
         debug_name = "Sprite Color Buffer",
-        width = swapchain.extent.width,
-        height = swapchain.extent.height,
+        width = view_data.scene_texture_size.width,
+        height = view_data.scene_texture_size.height,
         format = .R8G8B8A8_SRGB,
         usage_flags = .COLOR_ATTACHMENT_BIT,
     };
@@ -210,12 +210,12 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
             store_op = .STORE,
         };
 
-        render_rect := RHIRect.{ .{0, 0}, .{xx g_window_width, xx g_window_height}};
+        render_rect := RHIRect.{ .{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
         rhi_cmd_begin_renderpass(cmd_list, .[color_buffer_desc], *depth_buffer_desc, render_rect, true);
         {
-            viewport := RHIViewport.{ 0, 0, cast(float) g_window_width, cast(float) g_window_height, 0., 1.};
-            scissor := RHIRect.{.{0, 0}, .{xx g_window_width, xx g_window_height}};
+            viewport := RHIViewport.{ 0, 0, cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height, 0., 1.};
+            scissor := RHIRect.{.{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
             rhi_cmd_set_viewport(cmd_list, 0, .[viewport]);
             rhi_cmd_set_scissor(cmd_list, 0, .[scissor]);

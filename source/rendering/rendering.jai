@@ -97,6 +97,8 @@ imgui_font_texture_view: *RHIImageView;
 imgui_font_texture_view_handle: RDGTextureViewHandle;
 
 RenderViewData :: struct {
+    scene_texture_size: Extent2D;
+
     camera_proj: Matrix4;
     camera_position: Vector3;
 
@@ -136,7 +138,8 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     // render sprites
     sprite_color_image_view := render_sprite_pass(rg, *view_data);
 
-    lightmap_texture_view := render_lightmap_pass(rg, *view_data);
+    lightmap_texture_view := render_shadowmap_pass(rg, *view_data);
+    render_lightmap_pass(rg, *view_data, lightmap_texture_view);
 
     // render post process
     tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view, lightmap_texture_view);
@@ -205,6 +208,7 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
 
 init_view_data_for_frame :: (rg: *RenderGraph, view_proj: Matrix4, view_pos: Vector2, resource_index: u64) -> RenderViewData {
     view_data := RenderViewData.{
+        scene_texture_size = swapchain.extent,
         bindless_set = *g_view_registry.descriptor_sets[g_view_registry.frame_index % RDG_NUM_FRAMES],
         offset_buffer_set = *offset_buffer_descriptor_sets[resource_index],
         constant_buffer_allocator = *constant_buff_linear_allocs[resource_index],
@@ -391,6 +395,7 @@ init_rendering_resources :: () {
 
 
     init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
+    init_shadowmap_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
     init_lightmap_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
     init_post_process_pipelines(*g_view_registry.descriptor_set_layout);
     init_imgui_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
@@ -409,6 +414,7 @@ destroy_rendering_resources :: () {
     destroy_imgui_pipeline();
     destroy_post_process_pipelines();
     destroy_lightmap_pipeline();
+    destroy_shadowmap_pipeline();
     destroy_sprite_pipeline();
 
     for 0..RDG_NUM_FRAMES-1 {
@@ -434,6 +440,7 @@ destroy_rendering_resources :: () {
 #load "sprite_rendering.jai";
 #load "post_process.jai";
 #load "imgui_rendering.jai";
+#load "shadowmap_rendering.jai";
 #load "lightmap_rendering.jai";
 
 #import "Sort";

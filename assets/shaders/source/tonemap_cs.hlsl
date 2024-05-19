@@ -60,10 +60,16 @@ float3 accurateLinearToSRGB(in float3 linearCol)
 
 [numthreads(8, 8, 1)]
 void main(uint3 thread_id: SV_DispatchThreadID) {
+    float3 ambient_color = float3(0.8, 0.8, 0.8);
 
-    float3 color = g_textures[g_push_consts.input_color_image_index].Load(int3(thread_id.xy, 0)).rgb;
-    float3 lightcolor = g_textures[g_push_consts.input_lightmap_image_index].Load(int3(thread_id.xy, 0)).rgb;
-    color = uchimura(color * lightcolor);
+    float3 scene_color = g_textures[g_push_consts.input_color_image_index].Load(int3(thread_id.xy, 0)).rgb;
+
+    float3 light_color = g_textures[g_push_consts.input_lightmap_image_index].Load(int3(thread_id.xy, 0)).rgb;
+    float shadow_mask = g_textures[g_push_consts.input_lightmap_image_index].Load(int3(thread_id.xy, 0)).a;
+    light_color *= shadow_mask;
+
+    float3 color = scene_color * (light_color + ambient_color);
+    color = uchimura(color);
 	color = accurateLinearToSRGB(color);
 
     g_rw_textures[g_push_consts.output_image_index][thread_id.xy] = float4(color, 1.f);

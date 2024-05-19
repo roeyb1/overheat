@@ -11,6 +11,7 @@ AMBIENT_LIGHT :: float32.[0.5, 0.5, 0.5, 1.];
 g_point_light_texture: TextureHandle;
 
 init_lightmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
+    // Store lightmap data in a higher precision, non-linear format for higher dynamic range
     render_target_formats := RHIFormat.[
         .R16G16B16A16_SFLOAT,
     ];
@@ -19,10 +20,10 @@ init_lightmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bi
     blend_states := RHIPipelineColorBlendAttachmentState.[
         .{
             blend_enable = true,
-            src_color_blend_factor = .ONE,
+            src_color_blend_factor = .DST_ALPHA,
             dst_color_blend_factor = .ONE,
             color_blend_op = .ADD,
-            src_alpha_blend_factor = .ONE,
+            src_alpha_blend_factor = .ZERO,
             dst_alpha_blend_factor = .ONE,
             alpha_blend_op = .ADD,
         }
@@ -85,7 +86,7 @@ destroy_lightmap_pipeline :: () {
     rhi_graphics_pipeline_destroy(lightmap_pipeline);
 }
 
-render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResourceViewHandle {
+render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle) {
     point_lights: [..] Point_Light_Data;
     point_lights.allocator = temp;
     for Query(Point_Light, Position).{world = *g_world} {
@@ -97,18 +98,6 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGRes
         };
         array_add(*point_lights, light_data);
     }
-
-    lightmap_image_desc := RDGImageDescription.{
-        debug_name = "Lightmap Buffer",
-        width = swapchain.extent.width,
-        height = swapchain.extent.height,
-        format = .R16G16B16A16_SFLOAT,
-        usage_flags = .COLOR_ATTACHMENT_BIT,
-    };
-    lightmap_image_desc.clear_value.color._float32 = AMBIENT_LIGHT;
-
-    lightmap_image_handle := rdg_create_image(rg, lightmap_image_desc);
-    lightmap_image_view := rdg_create_image_view(rg, lightmap_image_handle, "Lightmap Buffer View");
 
     lightmap_pass_usages := RDGResourceUsageDesc.[
         .{lightmap_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
@@ -157,18 +146,17 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGRes
 
         lightmap_buffer_desc := RHIColorAttachmentDesc.{
             image_view = rdg_get_image_view(lightmap_image_view),
-            load_op = .CLEAR,
+            load_op = .LOAD,
             store_op = .STORE,
         };
-        lightmap_buffer_desc.clear_value._float32 = AMBIENT_LIGHT;
 
-        render_rect := RHIRect.{ .{0, 0}, .{xx g_window_width, xx g_window_height}};
+        render_rect := RHIRect.{ .{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
         rhi_cmd_begin_renderpass(cmd_list, .[lightmap_buffer_desc], null, render_rect, true);
 
         if pass_data.point_lights.count > 0 {
-            viewport := RHIViewport.{ 0, 0, cast(float) g_window_width, cast(float) g_window_height, 0., 1.};
-            scissor := RHIRect.{.{0, 0}, .{xx g_window_width, xx g_window_height}};
+            viewport := RHIViewport.{ 0, 0, cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height, 0., 1.};
+            scissor := RHIRect.{.{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
             rhi_cmd_set_viewport(cmd_list, 0, .[viewport]);
             rhi_cmd_set_scissor(cmd_list, 0, .[scissor]);
@@ -201,8 +189,6 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGRes
 
         rhi_cmd_end_renderpass(cmd_list);
     });
-
-    return lightmap_image_view;
 }
 
 #scope_file
