@@ -4,7 +4,8 @@ TonemapPushConsts :: struct {
     resolution: [2] u32;
     texel_size: [2] float;
 
-    input_image_index: u32;
+    input_color_image_index: u32;
+    input_lightmap_image_index: u32;
     output_image_index: u32;
 }
 
@@ -33,7 +34,7 @@ destroy_post_process_pipelines :: () {
     rhi_compute_pipeline_destroy(tonemap_pipeline);
 }
 
-render_post_process_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_texture_handle: RDGResourceViewHandle) -> RDGResourceViewHandle {
+render_post_process_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_texture_handle: RDGResourceViewHandle, lightmap_texture_handle: RDGResourceViewHandle) -> RDGResourceViewHandle {
     // tonemap and store result in the swapchain's image format
     tonemap_result_desc := RDGImageDescription.{
         debug_name = "Tonemap Result",
@@ -48,17 +49,20 @@ render_post_process_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color
 
     tonemap_pass_usage_descs := RDGResourceUsageDesc.[
         .{color_texture_handle, .{.READ_RESOURCE, .COMPUTE_SHADER_BIT}, .{}},
+        .{lightmap_texture_handle, .{.READ_RESOURCE, .COMPUTE_SHADER_BIT}, .{}},
         .{tonemap_view_handle, .{.RW_RESOURCE_WRITE_ONLY, .COMPUTE_SHADER_BIT }, .{}}
     ];
 
     TonemapPassData :: struct {
-        input_image: RDGResourceViewHandle;
+        input_color_image: RDGResourceViewHandle;
+        input_lightmap_image: RDGResourceViewHandle;
         output_image: RDGResourceViewHandle;
         view_data: *RenderViewData;
     }
 
     tonemap_data := rdg_allocate_pass_data(rg, TonemapPassData);
-    tonemap_data.input_image = color_texture_handle;
+    tonemap_data.input_color_image = color_texture_handle;
+    tonemap_data.input_lightmap_image = lightmap_texture_handle;
     tonemap_data.output_image = tonemap_view_handle;
     tonemap_data.view_data = view_data;
 
@@ -76,7 +80,8 @@ render_post_process_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color
         push_consts.resolution[1] = height;
         push_consts.texel_size[0] = 1. / width;
         push_consts.texel_size[1] = 1. / height;
-        push_consts.input_image_index = rdg_get_bindless_handle(pass_data.input_image, .TEXTURE);
+        push_consts.input_color_image_index = rdg_get_bindless_handle(pass_data.input_color_image, .TEXTURE);
+        push_consts.input_lightmap_image_index = rdg_get_bindless_handle(pass_data.input_lightmap_image, .TEXTURE);
         push_consts.output_image_index = rdg_get_bindless_handle(pass_data.output_image, .RW_TEXTURE);
 
         rhi_cmd_push_constants(cmd_list, tonemap_pipeline, .COMPUTE_BIT, 0, size_of(TonemapPushConsts), *push_consts);

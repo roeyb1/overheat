@@ -24,6 +24,7 @@ load_all_assets :: () {
     g_local_player_sprite = load_spritesheet("assets/orc_mage_walk.png", 64, 0, 0);
     g_player_sprite = load_spritesheet("assets/orc_mage_walk_2.png", 64, 0, 0);
     g_default_grid = load_texture("assets/grid.png");
+    g_point_light_texture = load_texture("assets/point_light.png");
 
     log("Asset loading complete");
 }

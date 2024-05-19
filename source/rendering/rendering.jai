@@ -136,8 +136,10 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     // render sprites
     sprite_color_image_view := render_sprite_pass(rg, *view_data);
 
+    lightmap_texture_view := render_lightmap_pass(rg, *view_data);
+
     // render post process
-    tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view);
+    tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view, lightmap_texture_view);
 
     render_imgui_pass(rg, *view_data, tonemap_result_image_view);
 
@@ -389,6 +391,7 @@ init_rendering_resources :: () {
 
 
     init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
+    init_lightmap_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
     init_post_process_pipelines(*g_view_registry.descriptor_set_layout);
     init_imgui_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
 }
@@ -405,6 +408,7 @@ destroy_rendering_resources :: () {
 
     destroy_imgui_pipeline();
     destroy_post_process_pipelines();
+    destroy_lightmap_pipeline();
     destroy_sprite_pipeline();
 
     for 0..RDG_NUM_FRAMES-1 {
@@ -430,6 +434,7 @@ destroy_rendering_resources :: () {
 #load "sprite_rendering.jai";
 #load "post_process.jai";
 #load "imgui_rendering.jai";
+#load "lightmap_rendering.jai";
 
 #import "Sort";
 #import "File";

@@ -3,7 +3,8 @@
 struct PushConsts {
     uint2 resolution;
     float2 texel_size;
-    uint input_image_index;
+    uint input_color_image_index;
+    uint input_lightmap_image_index;
     uint output_image_index;
 };
 
@@ -60,8 +61,9 @@ float3 accurateLinearToSRGB(in float3 linearCol)
 [numthreads(8, 8, 1)]
 void main(uint3 thread_id: SV_DispatchThreadID) {
 
-    float3 color = g_textures[g_push_consts.input_image_index].Load(int3(thread_id.xy, 0)).rgb;
-    color = uchimura(color);
+    float3 color = g_textures[g_push_consts.input_color_image_index].Load(int3(thread_id.xy, 0)).rgb;
+    float3 lightcolor = g_textures[g_push_consts.input_lightmap_image_index].Load(int3(thread_id.xy, 0)).rgb;
+    color = uchimura(color * lightcolor);
 	color = accurateLinearToSRGB(color);
 
     g_rw_textures[g_push_consts.output_image_index][thread_id.xy] = float4(color, 1.f);
