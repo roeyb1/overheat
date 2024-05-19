@@ -27,6 +27,7 @@ RHISwapchain :: struct {
 
 swapchain: RHISwapchain;
 
+
 rhi_swapchain_init :: (width: u32, height: u32) {
     select_surface_format :: (formats: [] VkSurfaceFormatKHR) -> VkSurfaceFormatKHR {
         for formats {
@@ -49,6 +50,7 @@ rhi_swapchain_init :: (width: u32, height: u32) {
         // FIFO is always supported
         return .FIFO_KHR;
     }
+
 
     select_extent :: (surface_capabilities: VkSurfaceCapabilitiesKHR, extent: VkExtent2D) -> VkExtent2D {
         if surface_capabilities.currentExtent.width != U32_MAX {
@@ -76,6 +78,7 @@ rhi_swapchain_init :: (width: u32, height: u32) {
     present_mode_count: u32 = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, *present_mode_count, null);
     present_modes: [..] VkPresentModeKHR;
+    array_resize(*present_modes, present_mode_count);
     vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, *present_mode_count, present_modes.data);
 
     format := select_surface_format(formats);
