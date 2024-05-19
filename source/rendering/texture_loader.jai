@@ -24,7 +24,8 @@ texture_load :: (filename: string) -> TextureHandle {
     pixel_data := stbi_load(temp_c_string(filename), *width, *height, *num_channels, 4);
     defer stbi_image_free(pixel_data);
 
-    assert(pixel_data != null && width > 0 && height > 0);
+    // @todo: support fewer than 4 channel textures
+    assert(pixel_data != null && width > 0 && height > 0 && num_channels == 4);
     
     // #todo: support array textures
 

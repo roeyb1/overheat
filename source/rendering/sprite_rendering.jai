@@ -1,3 +1,8 @@
+Vertex2D :: struct {
+    pos: Vector2;
+    uv: Vector2;
+}
+
 #scope_file
 
 sprite_pipeline: RHIGraphicsPipeline;
@@ -8,11 +13,6 @@ SpritePushConst :: struct {
     // #todo: pass to shader to save on instructions
     //spritesheet_width: float;
     //spritesheet_height: float;
-}
-
-SpriteVertex :: struct {
-    pos: Vector2;
-    uv: Vector2;
 }
 
 SpriteInstanceData :: struct {
@@ -41,15 +41,15 @@ init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bind
     ];
 
     attribute_descs := RHIVertexInputAttributeDesc.[
-        .{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, xx offset_of(SpriteVertex, "pos")},
-        .{ "TEXCOORD", 1, 0, .R32G32_SFLOAT, xx offset_of(SpriteVertex, "uv")},
+        .{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "pos")},
+        .{ "TEXCOORD", 1, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "uv")},
         .{ "INSTANCE_POS", 2, 1, .R32G32B32_SFLOAT, xx offset_of(SpriteInstanceData, "instance_pos")},
         .{ "INSTANCE_SCALE", 3, 1, .R32G32_SFLOAT, xx offset_of(SpriteInstanceData, "instance_scale")},
         .{ "SPRITE_INDEX", 4, 1, .R32_UINT, xx offset_of(SpriteInstanceData, "sprite_index")},
     ];
 
     binding_descs := RHIVertexInputBindingDesc.[
-        .{0, size_of(SpriteVertex), .VERTEX },
+        .{0, size_of(Vertex2D), .VERTEX },
         .{1, size_of(SpriteInstanceData), .INSTANCE },
     ];
 
@@ -157,7 +157,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
         index_buffer_offset: s64 = -1;
         instance_buffer_offset: s64 = -1;
         {
-            vertices := SpriteVertex.[
+            vertices := Vertex2D.[
                 .{.{-0.5, -0.5}, .{0., 0.}},
                 .{.{+0.5, -0.5}, .{1., 0.}},
                 .{.{-0.5, +0.5}, .{0., 1.}},
@@ -169,11 +169,11 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
                 0, 3, 2,
             ];
 
-            vertex_dst:, vertex_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(SpriteVertex), size_of(SpriteVertex) * vertices.count);
+            vertex_dst:, vertex_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(Vertex2D), size_of(Vertex2D) * vertices.count);
             instance_dst:, instance_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(SpriteInstanceData), size_of(SpriteInstanceData) * pass_data.sprite_datas.count);
             index_dst:, index_buffer_offset = rhi_allocate(view_data.index_buffer_allocator, size_of(u32), size_of(u32) * indices.count);
 
-            memcpy(vertex_dst, vertices.data, size_of(SpriteVertex) * vertices.count);
+            memcpy(vertex_dst, vertices.data, size_of(Vertex2D) * vertices.count);
             memcpy(index_dst, indices.data, size_of(u32) * indices.count);
 
             instance_data: [..] SpriteInstanceData;
