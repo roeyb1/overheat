@@ -19,6 +19,23 @@ update_player_state :: (world: *World) {
     }
 } @System
 
+update_player_sprite :: (world: *World) {
+    for Query(Player,*Anim_State,*Sprite).{world = world} {
+        using it.anim_state;
+        if current_state == {
+            case .IDLE;
+                
+                break;
+            case .WALKING;
+                vel := get_component(*g_world, it_index, Velocity);
+                if (length(vel) == 0) {
+                    current_state = .IDLE;
+                }
+                break;
+        }
+    }
+}
+
 
 
 
