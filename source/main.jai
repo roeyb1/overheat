@@ -165,6 +165,7 @@ register_all_systems :: () {
     add_system(.OnUpdate, update_camera_projections);
     add_system(.OnUpdate, update_camera_positions);
     add_system(.OnUpdate, update_positions);
+    add_system(.OnUpdate, update_player_state);
 
     add_system(.OnValidate, detect_collisions_system);
 
@@ -173,6 +174,7 @@ register_all_systems :: () {
     add_system(.PostUpdate, cleanup_collision_results_system);
 
     add_system(.PreRender, render_imgui);
+    add_system(.PreRender, assign_player_sprite);
 
     add_system(.OnRender, render_scene);
 

@@ -19,20 +19,19 @@ update_player_state :: (world: *World) {
     }
 } @System
 
-update_player_sprite :: (world: *World) {
+assign_player_sprite :: (world: *World) {
     for Query(Player,*Anim_State,*Sprite).{world = world} {
+        sprite: *SpriteSheet;
         using it.anim_state;
         if current_state == {
             case .IDLE;
-                
-                break;
+                    sprite = g_local_player_sprite;
             case .WALKING;
-                vel := get_component(*g_world, it_index, Velocity);
-                if (length(vel) == 0) {
-                    current_state = .IDLE;
-                }
-                break;
+                    sprite = g_player_sprite;
+
         }
+        //move this out
+        <<it.sprite = .{sprite, .{1.5, 1.5}, 0, 1};
     }
 }
 
