@@ -2,6 +2,8 @@
 add_clear_image_pass :: (rg: *RenderGraph, texture_view: RDGResourceViewHandle, clear_color: RHIClearColorValue, range: RHIImageSubresourceRange = .{0, 1, 0, 1}) {
     Clear_Pass_Data :: struct {
         texture_view: RDGResourceViewHandle;
+        clear_color: RHIClearColorValue;
+        range: RHIImageSubresourceRange;
     }
 
     usage_descs := RDGResourceUsageDesc.[
@@ -10,19 +12,15 @@ add_clear_image_pass :: (rg: *RenderGraph, texture_view: RDGResourceViewHandle, 
 
     pass_data := rdg_allocate_pass_data(rg, Clear_Pass_Data);
     pass_data.texture_view = texture_view;
+    pass_data.clear_color = clear_color;
+    pass_data.range = range;
     rdg_add_pass(rg, "Clear Image", .GRAPHICS, usage_descs, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
         pass_data := cast(*Clear_Pass_Data)pass_data_ptr;
-        clear_color: RHIClearColorValue;
-        clear_color._float32 = .[0., 0., 0., 1.];
-
-        range := RHIImageSubresourceRange.{
-            0, 1, 0, 1
-        };
 
         image: *RHIImage = rdg_get_image(pass_data.texture_view);
         assert(image != null);
 
-        rhi_cmd_clear_image(cmd_list, image, clear_color, .[range]);
+        rhi_cmd_clear_image(cmd_list, image, pass_data.clear_color, .[pass_data.range]);
 
         barrier := RHIBarrier.{
             image,
@@ -33,7 +31,7 @@ add_clear_image_pass :: (rg: *RenderGraph, texture_view: RDGResourceViewHandle, 
             .RW_RESOURCE,
             null,
             null,
-            range,
+            pass_data.range,
             0,
         };
 

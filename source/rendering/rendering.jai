@@ -223,11 +223,13 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     rdg_swap_sets(*g_view_registry);
 }
 
+g_ambient_color: Vector4 = .{0.5, 0.5, 0.5, 1.};
+
 render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_texture_view: RDGResourceViewHandle) {
     RDG_SCOPED_GPU_LABEL("Lights");
 
     clear_color: RHIClearColorValue;
-    clear_color._float32 = .[0., 0., 0., 1.];
+    clear_color._float32 = .[g_ambient_color.x, g_ambient_color.y, g_ambient_color.z, 1.];
 
     add_clear_image_pass(rg, lightmap_texture_view, clear_color);
     for Query(Position, Point_Light).{world = *g_world} {

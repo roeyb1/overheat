@@ -90,6 +90,8 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
         add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.max.y}, .{box.min.x, box.min.y});
     }
 
+    if shadow_vertex_data.count == 0 then return;
+
     lightmap_pass_usages := RDGResourceUsageDesc.[
         .{lightmap_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
     ];

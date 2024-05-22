@@ -273,15 +273,15 @@ rdg_next_frame :: (rg: *RenderGraph) -> u64 {
 }
 
 rdg_allocate_pass_data :: (rg: *RenderGraph, $type: Type) -> *type {
-    // #todo: allocate from a linear allocator that can be freed when graph finishes executing
-    return New(type);
+    push_allocator(temp);
+    ptr := New(type);
+    return ptr;
 }
 
 rdg_free_pass_datas :: (rg: *RenderGraph) {
     for pass : rg.passes {
         free(pass.before_barriers.data);
         free(pass.after_barriers.data);
-        free(pass.user_data);
     }
 }
 

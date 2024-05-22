@@ -1,7 +1,6 @@
 #include "bindless.hlsli"
 
 struct PushConsts {
-    float4 ambient_color;
     uint2 resolution;
     float2 texel_size;
     uint input_color_image_index;
@@ -65,10 +64,8 @@ void main(uint3 thread_id: SV_DispatchThreadID) {
     float3 scene_color = g_textures[g_push_consts.input_color_image_index].Load(int3(thread_id.xy, 0)).rgb;
 
     float3 light_color = g_textures[g_push_consts.input_lightmap_image_index].Load(int3(thread_id.xy, 0)).rgb;
-    float shadow_mask = g_textures[g_push_consts.input_lightmap_image_index].Load(int3(thread_id.xy, 0)).a;
-    light_color *= shadow_mask;
 
-    float3 color = scene_color * (light_color + g_push_consts.ambient_color.xyz);
+    float3 color = scene_color * light_color;
     color = uchimura(color);
 	color = accurateLinearToSRGB(color);
 

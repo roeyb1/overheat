@@ -323,7 +323,7 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
                 return cast(s64) a.sheet - cast(s64) b.sheet;
             }
             return cast(s64) a.z_order - cast(s64) b.z_order;
-        }
+        } @NoProfile
 
         quick_sort(<< out_draws, sort_predicate);
     }
