@@ -1,7 +1,7 @@
 #include "bindless.hlsli"
 
 struct VSInput {
-    float2 vertex_pos: VERTEX_POSITION;
+    float4 vertex_pos: VERTEX_POSITION;
 };
 
 struct VSOutput {
@@ -18,10 +18,10 @@ ConstantBuffer<PassConstants> g_pass_consts : REGISTER_CBV(0, 0, 0);
 VSOutput main(VSInput input) {
     VSOutput output = (VSOutput)0;
 
-    float2 vertex_pos = input.vertex_pos;
-    float3 worlspace_pos = float3(vertex_pos, 1.) - g_pass_consts.camera_position;
+    float4 vertex_pos = input.vertex_pos;
+    float4 worldspace_pos = vertex_pos - float4(g_pass_consts.camera_position.xy, 0., 0.);
 
-    output.position = mul(g_pass_consts.view_projection_matrix, float4(worlspace_pos.xy, 0, 1.));
+    output.position = mul(g_pass_consts.view_projection_matrix, worldspace_pos);
 
     return output;
 }

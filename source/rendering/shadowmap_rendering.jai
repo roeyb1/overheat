@@ -22,7 +22,7 @@ init_shadowmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, b
     ];
 
     attribute_descs := RHIVertexInputAttributeDesc.[
-        .{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, xx offset_of(Shadow_Vertex, "pos")},
+        .{ "VERTEX_POSITION", 0, 0, .R32G32B32A32_SFLOAT, xx offset_of(Shadow_Vertex, "pos")},
     ];
 
     binding_descs := RHIVertexInputBindingDesc.[
@@ -76,10 +76,10 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
     shadow_vertex_data.allocator = temp;
 
     add_segment :: (shadow_vertex_data: *[..] Shadow_Vertex, light_position: Vector2, a: Vector2, b: Vector2) {
-        array_add(shadow_vertex_data, .{a});
-        array_add(shadow_vertex_data, .{a + 10000 * (a - light_position)});
-        array_add(shadow_vertex_data, .{b});
-        array_add(shadow_vertex_data, .{b + 10000 * (b - light_position)});
+        array_add(shadow_vertex_data, .{ make_vector4(a, 0., 1.) });
+        array_add(shadow_vertex_data, .{ make_vector4(a - light_position, 0., 0.) });
+        array_add(shadow_vertex_data, .{ make_vector4(b, 0., 1.) });
+        array_add(shadow_vertex_data, .{ make_vector4(b - light_position, 0., 0.) });
     }
 
     for Query(Shadow_Caster, Position).{world = *g_world} {
@@ -170,5 +170,5 @@ Shadowmap_Pass_Data :: struct {
 }
 
 Shadow_Vertex :: struct {
-    pos: Vector2;
+    pos: Vector4;
 }
