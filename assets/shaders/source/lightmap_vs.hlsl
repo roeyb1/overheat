@@ -33,7 +33,7 @@ VSOutput main(VSInput input) {
     VSOutput output = (VSOutput)0;
 
     // Scale up the quads to ensure they cover the entire render space so we can use the pixel shader to also reset the alpha mask
-    float2 screenspace_scale = float2(16.f, 16.f);
+    float2 screenspace_scale = float2(100.f, 100.f);
     float2 vertex_pos = input.vertex_pos * screenspace_scale;
     float3 scaled_vertex_pos = float3(vertex_pos, 1.) * float3(g_draw_consts.radius, g_draw_consts.radius, 1);
     float3 worlspace_pos = float3(g_draw_consts.position, 0.) - g_pass_consts.camera_position;

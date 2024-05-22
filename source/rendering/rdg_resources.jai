@@ -109,6 +109,7 @@ rdg_create_image_view :: (rg: *RenderGraph, image_handle: RDGResourceHandle, nam
 }
 
 rdg_get_image :: (view_handle: RDGResourceViewHandle) -> *RHIImage {
+    assert(view_handle != RDG_NULL_HANDLE, "Attempted to retrieve resource for a null resource handle!");
     rg := g_render_graph;
     frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
 
@@ -116,6 +117,7 @@ rdg_get_image :: (view_handle: RDGResourceViewHandle) -> *RHIImage {
 }
 
 rdg_get_image_view :: (view_handle: RDGResourceViewHandle) -> *RHIImageView {
+    assert(view_handle != RDG_NULL_HANDLE, "Attempted to retrieve resource for a null resource handle!");
     rg := g_render_graph;
     frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
 
@@ -123,6 +125,7 @@ rdg_get_image_view :: (view_handle: RDGResourceViewHandle) -> *RHIImageView {
 }
 
 rdg_get_bindless_handle :: (handle: RDGResourceViewHandle, type: RHIDescriptorType) -> u32 {
+    assert(handle != RDG_NULL_HANDLE, "Attempted to retrieve resource for a null resource handle!");
     rg := g_render_graph;
     frame_resources := *rg.per_frame_resources[rg.frame_number % RDG_NUM_FRAMES];
 

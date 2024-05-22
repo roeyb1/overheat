@@ -224,7 +224,14 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
 }
 
 render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_texture_view: RDGResourceViewHandle) {
+    RDG_SCOPED_GPU_LABEL("Lights");
+
+    clear_color: RHIClearColorValue;
+    clear_color._float32 = .[0., 0., 0., 1.];
+
+    add_clear_image_pass(rg, lightmap_texture_view, clear_color);
     for Query(Position, Point_Light).{world = *g_world} {
+        RDG_SCOPED_GPU_LABEL("Point Light");
         render_shadowmap_pass(rg, view_data, lightmap_texture_view, it.position);
         render_lightmap_pass(rg, view_data, lightmap_texture_view, it.position, it.point_light);
     }
@@ -466,6 +473,7 @@ destroy_rendering_resources :: () {
 #load "imgui_rendering.jai";
 #load "shadowmap_rendering.jai";
 #load "lightmap_rendering.jai";
+#load "render_graph_utils.jai";
 
 #import "Sort";
 #import "File";

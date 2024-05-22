@@ -23,8 +23,8 @@ init_lightmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bi
             src_color_blend_factor = .DST_ALPHA,
             dst_color_blend_factor = .ONE,
             color_blend_op = .ADD,
-            src_alpha_blend_factor = .ZERO,
-            dst_alpha_blend_factor = .ONE,
+            src_alpha_blend_factor = .ONE,
+            dst_alpha_blend_factor = .ZERO,
             alpha_blend_op = .ADD,
         }
     ];
@@ -165,8 +165,11 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
             rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
 
             push_const: Lightmap_Push_Const = .{
+                color = pass_data.light_data.color,
+                position = pass_data.light_data.position,
+                radius = pass_data.light_data.radius,
+                intensity = pass_data.light_data.intensity,
                 point_light_texture = cast(u32) get_texture_view_handle(g_point_light_texture),
-                light_data = pass_data.light_data,
             };
             rhi_cmd_push_constants(cmd_list, *lightmap_pipeline, .VERTEX_BIT | .PIXEL_BIT, 0, size_of(Lightmap_Push_Const), *push_const);
 
@@ -187,14 +190,17 @@ Lightmap_Pass_Data :: struct {
 
 Point_Light_Data :: struct {
     color: Vector3;
+    intensity: float;
     position: Vector2;
     radius: float;
-    intensity: float;
 }
 
 Lightmap_Push_Const :: struct {
-    using light_data: Point_Light_Data;
-
+    color: Vector3;
+    _pad: float;
+    position: Vector2;
+    radius: float;
+    intensity: float;
     point_light_texture: u32;
 }
 

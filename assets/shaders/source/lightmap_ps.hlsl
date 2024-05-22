@@ -16,7 +16,7 @@ struct PassConstants {
 
 struct DrawConstants {
     float4 color;
-    float2 instance_pos;
+    float2 position;
     float radius;
     float intensity;
 
