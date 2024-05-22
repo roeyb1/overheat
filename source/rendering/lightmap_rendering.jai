@@ -32,15 +32,10 @@ init_lightmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bi
     attribute_descs := RHIVertexInputAttributeDesc.[
         .{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "pos")},
         .{ "TEXCOORD", 1, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "uv")},
-        .{ "COLOR", 2, 1, .R32G32B32_SFLOAT, xx offset_of(Point_Light_Data, "color")},
-        .{ "INSTANCE_POS", 3, 1, .R32G32_SFLOAT, xx offset_of(Point_Light_Data, "position")},
-        .{ "RADIUS", 4, 1, .R32_SFLOAT, xx offset_of(Point_Light_Data, "radius")},
-        .{ "INTENSITY", 5, 1, .R32_SFLOAT, xx offset_of(Point_Light_Data, "intensity")},
     ];
 
     binding_descs := RHIVertexInputBindingDesc.[
         .{0, size_of(Vertex2D), .VERTEX },
-        .{1, size_of(Point_Light_Data), .INSTANCE },
     ];
 
 
@@ -77,7 +72,7 @@ init_lightmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bi
 
     push_const_size: u32 = size_of(Lightmap_Push_Const);
 
-    rhi_set_pipeline_layout_desc(*create_info, layout_decls, push_const_size, .PIXEL_BIT, static_samplers, 2);
+    rhi_set_pipeline_layout_desc(*create_info, layout_decls, push_const_size, .VERTEX_BIT | .PIXEL_BIT, static_samplers, 2);
     
     lightmap_pipeline = rhi_graphics_pipeline_build(create_info);
 }
@@ -86,18 +81,13 @@ destroy_lightmap_pipeline :: () {
     rhi_graphics_pipeline_destroy(lightmap_pipeline);
 }
 
-render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle) {
-    point_lights: [..] Point_Light_Data;
-    point_lights.allocator = temp;
-    for Query(Point_Light, Position).{world = *g_world} {
-        light_data := Point_Light_Data.{
-            color = it.point_light.color,
-            position = it.position,
-            radius = it.point_light.radius,
-            intensity = it.point_light.intensity,
-        };
-        array_add(*point_lights, light_data);
-    }
+render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle, light_position: Position, point_light: Point_Light) {
+    light_data := Point_Light_Data.{
+        color = point_light.color,
+        position = light_position,
+        radius = point_light.radius,
+        intensity = point_light.intensity,
+    };
 
     lightmap_pass_usages := RDGResourceUsageDesc.[
         .{lightmap_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
@@ -105,7 +95,7 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
 
     pass_data := rdg_allocate_pass_data(rg, Lightmap_Pass_Data);
     pass_data.view_data = view_data;
-    pass_data.point_lights = point_lights;
+    pass_data.light_data = light_data;
     pass_data.lightmap_image_view = lightmap_image_view;
 
     rdg_add_pass(rg, "Lightmap Pass", .GRAPHICS, lightmap_pass_usages, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) {
@@ -114,8 +104,7 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
 
         vertex_buffer_offset: s64 = -1;
         index_buffer_offset: s64 = -1;
-        instance_buffer_offset: s64 = -1;
-        if pass_data.point_lights.count > 0 {
+        {
             vertices := Vertex2D.[
                 .{.{-0.5, -0.5}, .{0., 0.}},
                 .{.{+0.5, -0.5}, .{1., 0.}},
@@ -129,16 +118,13 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
             ];
 
             vertex_dst:, vertex_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(Vertex2D), size_of(Vertex2D) * vertices.count);
-            instance_dst:, instance_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(Point_Light_Data), size_of(Point_Light_Data) * pass_data.point_lights.count);
             index_dst:, index_buffer_offset = rhi_allocate(view_data.index_buffer_allocator, size_of(u32), size_of(u32) * indices.count);
 
             memcpy(vertex_dst, vertices.data, size_of(Vertex2D) * vertices.count);
             memcpy(index_dst, indices.data, size_of(u32) * indices.count);
-            memcpy(instance_dst, pass_data.point_lights.data, size_of(Point_Light_Data) * pass_data.point_lights.count);
 
             assert(vertex_buffer_offset != -1);
             assert(index_buffer_offset != -1);
-            assert(instance_buffer_offset != -1);
         }
 
 
@@ -153,8 +139,7 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
         render_rect := RHIRect.{ .{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
         rhi_cmd_begin_renderpass(cmd_list, .[lightmap_buffer_desc], null, render_rect, true);
-
-        if pass_data.point_lights.count > 0 {
+        {
             viewport := RHIViewport.{ 0, 0, cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height, 0., 1.};
             scissor := RHIRect.{.{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
@@ -176,15 +161,16 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
             descriptor_sets := RHIDescriptorSet.[ pass_data.view_data.offset_buffer_set, pass_data.view_data.bindless_set];
             rhi_cmd_bind_descriptor_sets(cmd_list, *lightmap_pipeline, 0, descriptor_sets, .[ xx pass_const_addr ]);
             
-            rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer, view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset, xx instance_buffer_offset]);
+            rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset]);
             rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
 
             push_const: Lightmap_Push_Const = .{
                 point_light_texture = cast(u32) get_texture_view_handle(g_point_light_texture),
+                light_data = pass_data.light_data,
             };
-            rhi_cmd_push_constants(cmd_list, *lightmap_pipeline, .PIXEL_BIT, 0, size_of(Lightmap_Push_Const), *push_const);
+            rhi_cmd_push_constants(cmd_list, *lightmap_pipeline, .VERTEX_BIT | .PIXEL_BIT, 0, size_of(Lightmap_Push_Const), *push_const);
 
-            rhi_cmd_draw_indexed(cmd_list, 6, xx pass_data.point_lights.count, 0, 0, 0);
+            rhi_cmd_draw_indexed(cmd_list, 6, 1, 0, 0, 0);
         }
 
         rhi_cmd_end_renderpass(cmd_list);
@@ -193,6 +179,12 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
 
 #scope_file
 
+Lightmap_Pass_Data :: struct {
+    view_data: *RenderViewData;
+    light_data: Point_Light_Data;
+    lightmap_image_view: RDGResourceViewHandle;
+}
+
 Point_Light_Data :: struct {
     color: Vector3;
     position: Vector2;
@@ -200,13 +192,9 @@ Point_Light_Data :: struct {
     intensity: float;
 }
 
-Lightmap_Pass_Data :: struct {
-    view_data: *RenderViewData;
-    point_lights: [..] Point_Light_Data;
-    lightmap_image_view: RDGResourceViewHandle;
-}
-
 Lightmap_Push_Const :: struct {
+    using light_data: Point_Light_Data;
+
     point_light_texture: u32;
 }
 

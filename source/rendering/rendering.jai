@@ -79,6 +79,8 @@ DrawBucket :: struct {
 g_single_use_cmd_pool: RHICmdPool;
 g_single_use_cmd_list: RHICmdList;
 
+quad_vertex_buffer: *RHIBuffer;
+
 constant_buffers: [RDG_NUM_FRAMES] *RHIBuffer;
 constant_buff_linear_allocs: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
 
@@ -138,11 +140,26 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     // render sprites
     sprite_color_image_view := render_sprite_pass(rg, *view_data);
 
-    lightmap_texture_view := render_shadowmap_pass(rg, *view_data);
-    render_lightmap_pass(rg, *view_data, lightmap_texture_view);
+
+    lightmap_image_view: RDGResourceViewHandle;
+    {
+        lightmap_image_desc := RDGImageDescription.{
+            debug_name = "Lightmap Buffer",
+            width = view_data.scene_texture_size.width,
+            height = view_data.scene_texture_size.height,
+            format = .R16G16B16A16_SFLOAT,
+            usage_flags = .COLOR_ATTACHMENT_BIT,
+        };
+        lightmap_image_desc.clear_value.color._float32 = .[0, 0, 0, 1.];
+
+        lightmap_image_handle := rdg_create_image(rg, lightmap_image_desc);
+        lightmap_image_view = rdg_create_image_view(rg, lightmap_image_handle, "Lightmap Buffer View");
+
+        render_light_passes(rg, *view_data, lightmap_image_view);
+    }
 
     // render post process
-    tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view, lightmap_texture_view);
+    tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view, lightmap_image_view);
 
     render_imgui_pass(rg, *view_data, tonemap_result_image_view);
 
@@ -204,6 +221,13 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     rg.semaphore_values[RHIQueueIndex.GRAPHICS] += 1;
 
     rdg_swap_sets(*g_view_registry);
+}
+
+render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_texture_view: RDGResourceViewHandle) {
+    for Query(Position, Point_Light).{world = *g_world} {
+        render_shadowmap_pass(rg, view_data, lightmap_texture_view, it.position);
+        render_lightmap_pass(rg, view_data, lightmap_texture_view, it.position, it.point_light);
+    }
 }
 
 init_view_data_for_frame :: (rg: *RenderGraph, view_proj: Matrix4, view_pos: Vector2, resource_index: u64) -> RenderViewData {

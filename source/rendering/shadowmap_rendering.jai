@@ -67,32 +67,18 @@ destroy_shadowmap_pipeline :: () {
     rhi_graphics_pipeline_destroy(shadowmap_pipeline);
 }
 
-render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResourceViewHandle {
+render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle, light_position: Position) {
     shadow_vertex_data: [..] Shadow_Vertex;
     shadow_vertex_data.allocator = temp;
 
     // temp single shadow segment
     a := Vector2.{-3, 3};
     b := Vector2.{3, 3};
-    for Query(Point_Light, Position).{world = *g_world} {
-        array_add(*shadow_vertex_data, .{a});
-        array_add(*shadow_vertex_data, .{a + 100 * (a - it.position)});
-        array_add(*shadow_vertex_data, .{b});
-        array_add(*shadow_vertex_data, .{b + 100 * (b - it.position)});
-    }
 
-
-    lightmap_image_desc := RDGImageDescription.{
-        debug_name = "Lightmap Buffer",
-        width = view_data.scene_texture_size.width,
-        height = view_data.scene_texture_size.height,
-        format = .R16G16B16A16_SFLOAT,
-        usage_flags = .COLOR_ATTACHMENT_BIT,
-    };
-    lightmap_image_desc.clear_value.color._float32 = .[0, 0, 0, 1.];
-
-    lightmap_image_handle := rdg_create_image(rg, lightmap_image_desc);
-    lightmap_image_view := rdg_create_image_view(rg, lightmap_image_handle, "Lightmap Buffer View");
+    array_add(*shadow_vertex_data, .{a});
+    array_add(*shadow_vertex_data, .{a + 100 * (a - light_position)});
+    array_add(*shadow_vertex_data, .{b});
+    array_add(*shadow_vertex_data, .{b + 100 * (b - light_position)});
 
     lightmap_pass_usages := RDGResourceUsageDesc.[
         .{lightmap_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
@@ -130,10 +116,9 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGRe
 
         lightmap_buffer_desc := RHIColorAttachmentDesc.{
             image_view = rdg_get_image_view(lightmap_image_view),
-            load_op = .CLEAR,
+            load_op = .LOAD,
             store_op = .STORE,
         };
-        lightmap_buffer_desc.clear_value._float32 = .[0, 0, 0, 1.];
 
         render_rect := RHIRect.{ .{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
@@ -171,8 +156,6 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGRe
 
         rhi_cmd_end_renderpass(cmd_list);
     });
-
-    return lightmap_image_view;
 }
 
 #scope_file

@@ -3,8 +3,6 @@
 struct PSInput {
     float4 position: SV_Position;
     float2 tex_coord: TEXCOORD;
-    float3 color: COLOR;
-    float intensity: INTENSITY;
 };
 
 struct PSOutput {
@@ -17,6 +15,11 @@ struct PassConstants {
 };
 
 struct DrawConstants {
+    float4 color;
+    float2 instance_pos;
+    float radius;
+    float intensity;
+
     uint point_light_texture;
 };
 
@@ -31,9 +34,7 @@ PUSH_CONSTS(DrawConstants, g_draw_consts);
 PSOutput main(PSInput input) {
     PSOutput output;
 
-    const uint light_texture_index = uint(g_draw_consts.point_light_texture);
-
-    output.color.xyz = input.color.xyz * input.intensity * g_textures[light_texture_index].SampleLevel(g_point_clamp_sampler, input.tex_coord, 0).xyz;
+    output.color.xyz = g_draw_consts.color.xyz * g_draw_consts.intensity * g_textures[g_draw_consts.point_light_texture].SampleLevel(g_point_clamp_sampler, input.tex_coord, 0).xyz;
     // clear the alpha back to 1 so we can re-draw shadowmaps for the next light
     output.color.a = 1.;
 
