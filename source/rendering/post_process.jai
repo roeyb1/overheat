@@ -1,6 +1,8 @@
 #scope_file
 
 TonemapPushConsts :: struct {
+    ambient_color: Vector4;
+
     resolution: [2] u32;
     texel_size: [2] float;
 
@@ -12,6 +14,8 @@ TonemapPushConsts :: struct {
 tonemap_pipeline: RHIComputePipeline;
 
 #scope_export
+
+g_ambient_color: Vector4 = .{0.1, 0.1, 0.1, 1.};
 
 init_post_process_pipelines :: (bindless_set_layout: *RHIDescriptorSetLayout) {
     used_bindless_bindings := RHIDescriptorSetLayoutBinding.[
@@ -76,6 +80,7 @@ render_post_process_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color
         height := swapchain.extent.height;
 
         push_consts: TonemapPushConsts;
+        push_consts.ambient_color = g_ambient_color;
         push_consts.resolution[0] = width;
         push_consts.resolution[1] = height;
         push_consts.texel_size[0] = 1. / width;

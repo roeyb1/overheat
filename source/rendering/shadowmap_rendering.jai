@@ -1,3 +1,7 @@
+Shadow_Caster :: struct {
+    box: AABB;
+}
+
 init_shadowmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
     // Store lightmap data in a higher precision, non-linear format for higher dynamic range
     render_target_formats := RHIFormat.[
@@ -67,18 +71,24 @@ destroy_shadowmap_pipeline :: () {
     rhi_graphics_pipeline_destroy(shadowmap_pipeline);
 }
 
-render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle, light_position: Position) {
+render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle, light_position: Vector2) {
     shadow_vertex_data: [..] Shadow_Vertex;
     shadow_vertex_data.allocator = temp;
 
-    // temp single shadow segment
-    a := Vector2.{-3, 3};
-    b := Vector2.{3, 3};
+    add_segment :: (shadow_vertex_data: *[..] Shadow_Vertex, light_position: Vector2, a: Vector2, b: Vector2) {
+        array_add(shadow_vertex_data, .{a});
+        array_add(shadow_vertex_data, .{a + 10000 * (a - light_position)});
+        array_add(shadow_vertex_data, .{b});
+        array_add(shadow_vertex_data, .{b + 10000 * (b - light_position)});
+    }
 
-    array_add(*shadow_vertex_data, .{a});
-    array_add(*shadow_vertex_data, .{a + 100 * (a - light_position)});
-    array_add(*shadow_vertex_data, .{b});
-    array_add(*shadow_vertex_data, .{b + 100 * (b - light_position)});
+    for Query(Shadow_Caster, Position).{world = *g_world} {
+        box := translate(it.shadow_caster.box, it.position);
+        add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.min.y}, .{box.max.x, box.min.y});
+        add_segment(*shadow_vertex_data, light_position, .{box.max.x, box.min.y}, .{box.max.x, box.max.y});
+        add_segment(*shadow_vertex_data, light_position, .{box.max.x, box.max.y}, .{box.min.x, box.max.y});
+        add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.max.y}, .{box.min.x, box.min.y});
+    }
 
     lightmap_pass_usages := RDGResourceUsageDesc.[
         .{lightmap_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
