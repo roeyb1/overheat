@@ -71,7 +71,7 @@ destroy_shadowmap_pipeline :: () {
     rhi_graphics_pipeline_destroy(shadowmap_pipeline);
 }
 
-render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle, light_position: Vector2) {
+render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle, light_position: Vector2, render_rect: RHIRect) {
     shadow_vertex_data: [..] Shadow_Vertex;
     shadow_vertex_data.allocator = temp;
 
@@ -84,12 +84,14 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
 
     for Query(Shadow_Caster, Position).{world = *g_world} {
         box := translate(it.shadow_caster.box, it.position);
+
         add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.min.y}, .{box.max.x, box.min.y});
         add_segment(*shadow_vertex_data, light_position, .{box.max.x, box.min.y}, .{box.max.x, box.max.y});
         add_segment(*shadow_vertex_data, light_position, .{box.max.x, box.max.y}, .{box.min.x, box.max.y});
         add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.max.y}, .{box.min.x, box.min.y});
     }
 
+    // early out if we have no shadow geometry
     if shadow_vertex_data.count == 0 then return;
 
     lightmap_pass_usages := RDGResourceUsageDesc.[
@@ -100,6 +102,7 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
     pass_data.view_data = view_data;
     pass_data.shadow_vertex_data = shadow_vertex_data;
     pass_data.lightmap_image_view = lightmap_image_view;
+    pass_data.render_rect = render_rect;
 
     rdg_add_pass(rg, "Shadowmap Pass", .GRAPHICS, lightmap_pass_usages, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) {
         pass_data := cast(*Shadowmap_Pass_Data) pass_data_ptr;
@@ -114,25 +117,19 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
             assert(vertex_buffer_offset != -1);
         }
 
-
-        lightmap_image_view := pass_data.lightmap_image_view;
-
         lightmap_buffer_desc := RHIColorAttachmentDesc.{
-            image_view = rdg_get_image_view(lightmap_image_view),
+            image_view = rdg_get_image_view(pass_data.lightmap_image_view),
             load_op = .LOAD,
             store_op = .STORE,
         };
 
-        render_rect := RHIRect.{ .{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
-
-        rhi_cmd_begin_renderpass(cmd_list, .[lightmap_buffer_desc], null, render_rect, true);
+        rhi_cmd_begin_renderpass(cmd_list, .[lightmap_buffer_desc], null, pass_data.render_rect, true);
 
         {
             viewport := RHIViewport.{ 0, 0, cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height, 0., 1.};
-            scissor := RHIRect.{.{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
             rhi_cmd_set_viewport(cmd_list, 0, .[viewport]);
-            rhi_cmd_set_scissor(cmd_list, 0, .[scissor]);
+            rhi_cmd_set_scissor(cmd_list, 0, .[pass_data.render_rect]);
 
             PassConstants :: struct {
                 view_projection_matrix: Matrix4;
@@ -169,6 +166,7 @@ Shadowmap_Pass_Data :: struct {
     view_data: *RenderViewData;
     shadow_vertex_data: [..] Shadow_Vertex;
     lightmap_image_view: RDGResourceViewHandle;
+    render_rect: RHIRect;
 }
 
 Shadow_Vertex :: struct {

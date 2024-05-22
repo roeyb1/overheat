@@ -235,8 +235,23 @@ render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_t
     add_clear_image_pass(rg, lightmap_texture_view, clear_color);
     for Query(Position, Point_Light).{world = *g_world} {
         RDG_SCOPED_GPU_LABEL("Point Light");
-        render_shadowmap_pass(rg, view_data, lightmap_texture_view, it.position);
-        render_lightmap_pass(rg, view_data, lightmap_texture_view, it.position, it.point_light);
+
+        // calculate light bounds in screenspace so we can optimize render regions to only render within those bounds
+        light_bounds := make_bounds(it.position, make_vector2(2. * it.point_light.radius));
+
+        min_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.min);
+        max_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.max);
+
+        scissor_offset := min_ss;
+        scissor_extent := max_ss - min_ss;
+        
+        render_rect := RHIRect.{
+            offset = .{clamp(cast(s32) scissor_offset.x, 0, cast(s32) view_data.scene_texture_size.width), clamp(cast(s32) scissor_offset.y, 0, cast(s32) view_data.scene_texture_size.width)},
+            extent = .{cast(u32) scissor_extent.x, cast(u32) scissor_extent.y},
+        };
+
+        render_shadowmap_pass(rg, view_data, lightmap_texture_view, it.position, render_rect);
+        render_lightmap_pass(rg, view_data, lightmap_texture_view, it.position, it.point_light, render_rect);
     }
 }
 

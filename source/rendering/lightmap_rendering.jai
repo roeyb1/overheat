@@ -81,7 +81,7 @@ destroy_lightmap_pipeline :: () {
     rhi_graphics_pipeline_destroy(lightmap_pipeline);
 }
 
-render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle, light_position: Position, point_light: Point_Light) {
+render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle, light_position: Position, point_light: Point_Light, render_rect: RHIRect) {
     light_data := Point_Light_Data.{
         color = point_light.color,
         position = light_position,
@@ -93,10 +93,13 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
         .{lightmap_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
     ];
 
+    // calculate the maximum screenspace bounds for the light so we can build the scissor rect
+
     pass_data := rdg_allocate_pass_data(rg, Lightmap_Pass_Data);
     pass_data.view_data = view_data;
     pass_data.light_data = light_data;
     pass_data.lightmap_image_view = lightmap_image_view;
+    pass_data.render_rect = render_rect;
 
     rdg_add_pass(rg, "Lightmap Pass", .GRAPHICS, lightmap_pass_usages, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) {
         pass_data := cast(*Lightmap_Pass_Data) pass_data_ptr;
@@ -110,15 +113,12 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
             store_op = .STORE,
         };
 
-        render_rect := RHIRect.{ .{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
-
-        rhi_cmd_begin_renderpass(cmd_list, .[lightmap_buffer_desc], null, render_rect, true);
+        rhi_cmd_begin_renderpass(cmd_list, .[lightmap_buffer_desc], null, pass_data.render_rect, true);
         {
             viewport := RHIViewport.{ 0, 0, cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height, 0., 1.};
-            scissor := RHIRect.{.{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
             rhi_cmd_set_viewport(cmd_list, 0, .[viewport]);
-            rhi_cmd_set_scissor(cmd_list, 0, .[scissor]);
+            rhi_cmd_set_scissor(cmd_list, 0, .[pass_data.render_rect]);
 
             PassConstants :: struct {
                 view_projection_matrix: Matrix4;
@@ -160,6 +160,7 @@ Lightmap_Pass_Data :: struct {
     view_data: *RenderViewData;
     light_data: Point_Light_Data;
     lightmap_image_view: RDGResourceViewHandle;
+    render_rect: RHIRect;
 }
 
 Point_Light_Data :: struct {
