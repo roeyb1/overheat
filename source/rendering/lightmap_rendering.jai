@@ -102,32 +102,6 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
         pass_data := cast(*Lightmap_Pass_Data) pass_data_ptr;
         view_data := pass_data.view_data;
 
-        vertex_buffer_offset: s64 = -1;
-        index_buffer_offset: s64 = -1;
-        {
-            vertices := Vertex2D.[
-                .{.{-0.5, -0.5}, .{0., 0.}},
-                .{.{+0.5, -0.5}, .{1., 0.}},
-                .{.{-0.5, +0.5}, .{0., 1.}},
-                .{.{+0.5, +0.5}, .{1., 1.}},
-            ];
-
-            indices := u32.[
-                0, 1, 3,
-                0, 3, 2,
-            ];
-
-            vertex_dst:, vertex_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(Vertex2D), size_of(Vertex2D) * vertices.count);
-            index_dst:, index_buffer_offset = rhi_allocate(view_data.index_buffer_allocator, size_of(u32), size_of(u32) * indices.count);
-
-            memcpy(vertex_dst, vertices.data, size_of(Vertex2D) * vertices.count);
-            memcpy(index_dst, indices.data, size_of(u32) * indices.count);
-
-            assert(vertex_buffer_offset != -1);
-            assert(index_buffer_offset != -1);
-        }
-
-
         lightmap_image_view := pass_data.lightmap_image_view;
 
         lightmap_buffer_desc := RHIColorAttachmentDesc.{
@@ -161,8 +135,8 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
             descriptor_sets := RHIDescriptorSet.[ pass_data.view_data.offset_buffer_set, pass_data.view_data.bindless_set];
             rhi_cmd_bind_descriptor_sets(cmd_list, *lightmap_pipeline, 0, descriptor_sets, .[ xx pass_const_addr ]);
             
-            rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset]);
-            rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
+            rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[quad_vertex_buffer], .[0]);
+            rhi_cmd_bind_index_buffer(cmd_list, quad_index_buffer, 0, .UINT32);
 
             push_const: Lightmap_Push_Const = .{
                 color = pass_data.light_data.color,

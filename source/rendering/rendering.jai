@@ -80,6 +80,7 @@ g_single_use_cmd_pool: RHICmdPool;
 g_single_use_cmd_list: RHICmdList;
 
 quad_vertex_buffer: *RHIBuffer;
+quad_index_buffer: *RHIBuffer;
 
 constant_buffers: [RDG_NUM_FRAMES] *RHIBuffer;
 constant_buff_linear_allocs: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
@@ -262,6 +263,94 @@ init_rendering_resources :: () {
         g_single_use_cmd_list = rhi_cmd_list_allocate(g_single_use_cmd_pool);
     }
 
+    // reusable quad vertex/index buffer
+    {
+        vertices := Vertex2D.[
+            .{.{-0.5, -0.5}, .{0., 0.}},
+            .{.{+0.5, -0.5}, .{1., 0.}},
+            .{.{-0.5, +0.5}, .{0., 1.}},
+            .{.{+0.5, +0.5}, .{1., 1.}},
+        ];
+
+        indices := u32.[
+            0, 1, 3,
+            0, 3, 2,
+        ];
+
+        vertex_upload_size := size_of(Vertex2D) * vertices.count;
+        index_upload_size := size_of(u32) * indices.count;
+
+        staging_create_info := RHIBufferCreateInfo.{
+            size = cast(u64)(vertex_upload_size + index_upload_size),
+            usage_flags = .TRANSFER_SRC_BIT,
+        };
+
+        staging_buffer := rhi_buffer_create(staging_create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, 0, false);
+
+        mapped_ptr := rhi_buffer_map(staging_buffer);
+        {
+            memcpy(mapped_ptr, vertices.data, vertex_upload_size);
+            memcpy(mapped_ptr + vertex_upload_size, indices.data, index_upload_size);
+        }
+        rhi_buffer_unmap(staging_buffer);
+
+        quad_vertex_buffer_info := RHIBufferCreateInfo.{
+            size = xx vertex_upload_size,
+            usage_flags = .TRANSFER_DST_BIT | .VERTEX_BUFFER_BIT
+        };
+    
+        quad_vertex_buffer = rhi_buffer_create(quad_vertex_buffer_info, .DEVICE_LOCAL_BIT, 0, false);
+        rhi_debug_set_object_name(quad_vertex_buffer, "Quad Vertex Buffer");
+
+        quad_index_buffer_info := RHIBufferCreateInfo.{
+            size = xx index_upload_size,
+            usage_flags = .TRANSFER_DST_BIT | .INDEX_BUFFER_BIT,
+        };
+
+        quad_index_buffer = rhi_buffer_create(quad_index_buffer_info, .DEVICE_LOCAL_BIT, 0, false);
+        rhi_debug_set_object_name(quad_index_buffer, "Quad Index Buffer");
+
+        rhi_cmd_pool_reset(g_single_use_cmd_pool);
+        cmd_list := *g_single_use_cmd_list;
+        rhi_cmd_list_begin(cmd_list);
+
+        vertex_region := RHIBufferCopy.{
+            src_offset = 0,
+            dst_offset = 0,
+            size = xx vertex_upload_size,
+        };
+        index_region := RHIBufferCopy.{
+            src_offset = xx vertex_upload_size,
+            dst_offset = 0,
+            size = xx index_upload_size,
+        };
+
+        rhi_cmd_copy_buffer(cmd_list, staging_buffer, quad_vertex_buffer, .[vertex_region]);
+        rhi_cmd_copy_buffer(cmd_list, staging_buffer, quad_index_buffer, .[index_region]);
+
+        vert_barrier := RHIBarrier.{
+            buffer = quad_vertex_buffer,
+            stages_before = .TRANSFER_BIT,
+            stages_after = .VERTEX_INPUT_BIT,
+            state_before = .WRITE_TRANSFER,
+            state_after = .READ_VERTEX_BUFFER,
+        };
+        index_barrier := RHIBarrier.{
+            buffer = quad_index_buffer,
+            stages_before = .TRANSFER_BIT,
+            stages_after = .VERTEX_INPUT_BIT,
+            state_before = .WRITE_TRANSFER,
+            state_after = .READ_INDEX_BUFFER,
+        };
+
+        rhi_cmd_barrier(cmd_list, .[vert_barrier, index_barrier]);
+
+        rhi_cmd_list_end(cmd_list);
+        rhi_submit_single_time_commands(*rhi_queues[RHIQueueType.GRAPHICS], cmd_list);
+
+        rhi_buffer_destroy(staging_buffer);
+    }
+
     // constant buffers:
     {
         create_info := RHIBufferCreateInfo.{
@@ -435,6 +524,9 @@ init_rendering_resources :: () {
 }
 
 destroy_rendering_resources :: () {
+    rhi_buffer_destroy(quad_vertex_buffer);
+    rhi_buffer_destroy(quad_index_buffer);
+
     rhi_image_view_destroy(imgui_font_texture_view);
     rhi_image_destroy(imgui_font_texture);
 

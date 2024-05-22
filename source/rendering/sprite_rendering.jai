@@ -153,28 +153,9 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
         view_data := pass_data.view_data;
 
         // upload sprite vertex buffers
-        vertex_buffer_offset: s64 = -1;
-        index_buffer_offset: s64 = -1;
         instance_buffer_offset: s64 = -1;
         {
-            vertices := Vertex2D.[
-                .{.{-0.5, -0.5}, .{0., 0.}},
-                .{.{+0.5, -0.5}, .{1., 0.}},
-                .{.{-0.5, +0.5}, .{0., 1.}},
-                .{.{+0.5, +0.5}, .{1., 1.}},
-            ];
-
-            indices := u32.[
-                0, 1, 3,
-                0, 3, 2,
-            ];
-
-            vertex_dst:, vertex_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(Vertex2D), size_of(Vertex2D) * vertices.count);
             instance_dst:, instance_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(SpriteInstanceData), size_of(SpriteInstanceData) * pass_data.sprite_datas.count);
-            index_dst:, index_buffer_offset = rhi_allocate(view_data.index_buffer_allocator, size_of(u32), size_of(u32) * indices.count);
-
-            memcpy(vertex_dst, vertices.data, size_of(Vertex2D) * vertices.count);
-            memcpy(index_dst, indices.data, size_of(u32) * indices.count);
 
             instance_data: [..] SpriteInstanceData;
             instance_data.allocator = temp;
@@ -188,8 +169,6 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
             }
             memcpy(instance_dst, instance_data.data, size_of(SpriteInstanceData) * instance_data.count);
         }
-        assert(vertex_buffer_offset != -1);
-        assert(index_buffer_offset != -1);
         assert(instance_buffer_offset != -1);
 
 
@@ -236,8 +215,8 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
             descriptor_sets := RHIDescriptorSet.[ pass_data.view_data.offset_buffer_set, pass_data.view_data.bindless_set];
             rhi_cmd_bind_descriptor_sets(cmd_list, *sprite_pipeline, 0, descriptor_sets, .[ xx pass_const_addr ]);
             
-            rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer, view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset, xx instance_buffer_offset]);
-            rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
+            rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[quad_vertex_buffer, view_data.vertex_buffer_allocator.buffer], .[0, xx instance_buffer_offset]);
+            rhi_cmd_bind_index_buffer(cmd_list, quad_index_buffer, 0, .UINT32);
 
             for *bucket : pass_data.buckets {
                 push_const: SpritePushConst = .{

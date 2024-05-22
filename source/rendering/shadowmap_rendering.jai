@@ -106,21 +106,12 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
         view_data := pass_data.view_data;
 
         vertex_buffer_offset: s64 = -1;
-        index_buffer_offset: s64 = -1;
         {
-            indices := u32.[
-                0, 1, 3,
-                0, 3, 2,
-            ];
-
             vertex_dst:, vertex_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(Shadow_Vertex), size_of(Shadow_Vertex) * pass_data.shadow_vertex_data.count);
-            index_dst:, index_buffer_offset = rhi_allocate(view_data.index_buffer_allocator, size_of(u32), size_of(u32) * indices.count);
 
             memcpy(vertex_dst,pass_data.shadow_vertex_data.data, size_of(Shadow_Vertex) * pass_data.shadow_vertex_data.count);
-            memcpy(index_dst, indices.data, size_of(u32) * indices.count);
 
             assert(vertex_buffer_offset != -1);
-            assert(index_buffer_offset != -1);
         }
 
 
@@ -159,7 +150,7 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
             rhi_cmd_bind_descriptor_sets(cmd_list, *shadowmap_pipeline, 0, descriptor_sets, .[ xx pass_const_addr ]);
             
             rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset]);
-            rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
+            rhi_cmd_bind_index_buffer(cmd_list, quad_index_buffer, 0, .UINT32);
 
             for 0..(pass_data.shadow_vertex_data.count / 4)-1 {
                 rhi_cmd_draw_indexed(cmd_list, 6, 1, 0, cast(s32) (it * 4), 0);

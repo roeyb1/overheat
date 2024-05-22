@@ -115,6 +115,10 @@ rhi_cmd_barrier :: (cmd_list: *RHICmdList, barriers: [] RHIBarrier) {
     }
 }
 
+rhi_cmd_copy_buffer :: (cmd_list: *RHICmdList, src: *RHIBuffer, dst: *RHIBuffer, regions: [] RHIBufferCopy) {
+    vkCmdCopyBuffer(cmd_list.handle, src.handle, dst.handle, xx regions.count, cast(*VkBufferCopy)regions.data);
+}
+
 rhi_cmd_copy_image :: (cmd_list: *RHICmdList, src: *RHIImage, dst: *RHIImage, regions: [] RHIImageCopy) {
     src_handle: VkImage = src.handle;
     dst_handle: VkImage = dst.handle;
