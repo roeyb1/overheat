@@ -1,7 +1,7 @@
 
 /** Point light is a component that can be added to an entity to make it render a as a radial, point source light light */
 Point_Light :: struct {
-    color: Vector4;
+    color: Vector3;
     radius: float;
     intensity: float;
 }
@@ -32,7 +32,7 @@ init_lightmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bi
     attribute_descs := RHIVertexInputAttributeDesc.[
         .{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "pos")},
         .{ "TEXCOORD", 1, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "uv")},
-        .{ "COLOR", 2, 1, .R32G32B32A32_SFLOAT, xx offset_of(Point_Light_Data, "color")},
+        .{ "COLOR", 2, 1, .R32G32B32_SFLOAT, xx offset_of(Point_Light_Data, "color")},
         .{ "INSTANCE_POS", 3, 1, .R32G32_SFLOAT, xx offset_of(Point_Light_Data, "position")},
         .{ "RADIUS", 4, 1, .R32_SFLOAT, xx offset_of(Point_Light_Data, "radius")},
         .{ "INTENSITY", 5, 1, .R32_SFLOAT, xx offset_of(Point_Light_Data, "intensity")},
@@ -194,7 +194,7 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
 #scope_file
 
 Point_Light_Data :: struct {
-    color: Vector4;
+    color: Vector3;
     position: Vector2;
     radius: float;
     intensity: float;

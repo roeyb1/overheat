@@ -12,8 +12,8 @@ init_shadowmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, b
             dst_color_blend_factor = .ONE, // retain whatever the color is in the lightmap (usually the ambient light)
             color_blend_op = .ADD,
             src_alpha_blend_factor = .ONE,
-            dst_alpha_blend_factor = .ONE,
-            alpha_blend_op = .MIN, // take the min of the current value and the drawn value. Ensures we always write 0's over cleared data
+            dst_alpha_blend_factor = .ZERO,
+            alpha_blend_op = .ADD, // take the min of the current value and the drawn value. Ensures we always write 0's over cleared data
         }
     ];
 
@@ -70,15 +70,17 @@ destroy_shadowmap_pipeline :: () {
 render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResourceViewHandle {
     shadow_vertex_data: [..] Shadow_Vertex;
     shadow_vertex_data.allocator = temp;
-    array_resize(*shadow_vertex_data, 4);
-    test_light_pos := Vector2.{0, 0};
+
     // temp single shadow segment
     a := Vector2.{-3, 3};
     b := Vector2.{3, 3};
-    shadow_vertex_data[0] = .{a};
-    shadow_vertex_data[1] = .{a + 100 * (a - test_light_pos)};
-    shadow_vertex_data[2] = .{b};
-    shadow_vertex_data[3] = .{b + 100 * (b - test_light_pos)};
+    for Query(Point_Light, Position).{world = *g_world} {
+        array_add(*shadow_vertex_data, .{a});
+        array_add(*shadow_vertex_data, .{a + 100 * (a - it.position)});
+        array_add(*shadow_vertex_data, .{b});
+        array_add(*shadow_vertex_data, .{b + 100 * (b - it.position)});
+    }
+
 
     lightmap_image_desc := RDGImageDescription.{
         debug_name = "Lightmap Buffer",
@@ -162,8 +164,9 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGRe
             rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset]);
             rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
 
-
-            rhi_cmd_draw_indexed(cmd_list, 6, xx (pass_data.shadow_vertex_data.count / 4), 0, 0, 0);
+            for 0..(pass_data.shadow_vertex_data.count / 4)-1 {
+                rhi_cmd_draw_indexed(cmd_list, 6, 1, 0, cast(s32) (it * 4), 0);
+            }
         }
 
         rhi_cmd_end_renderpass(cmd_list);
