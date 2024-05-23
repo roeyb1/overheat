@@ -273,15 +273,15 @@ rdg_next_frame :: (rg: *RenderGraph) -> u64 {
 }
 
 rdg_allocate_pass_data :: (rg: *RenderGraph, $type: Type) -> *type {
-    // #todo: allocate from a linear allocator that can be freed when graph finishes executing
-    return New(type);
+    push_allocator(temp);
+    ptr := New(type);
+    return ptr;
 }
 
 rdg_free_pass_datas :: (rg: *RenderGraph) {
     for pass : rg.passes {
         free(pass.before_barriers.data);
         free(pass.after_barriers.data);
-        free(pass.user_data);
     }
 }
 
@@ -750,8 +750,9 @@ rdg_record_and_submit :: (rg: *RenderGraph) {
             pass_data := *rg.passes[it + batch.pass_index_offset];
             ZoneScoped(name = pass_data.debug_name);
 
-            rhi_cmd_debug_label_begin(cmd_list, pass_data.debug_name);
-            defer rhi_cmd_debug_label_end(cmd_list);
+            if pass_data.debug_name.count > 0 {
+                rhi_cmd_debug_label_begin(cmd_list, pass_data.debug_name);
+            }
 
             if pass_data.before_barriers.count > 0 {
                 rhi_cmd_barrier(cmd_list, pass_data.before_barriers);
@@ -761,6 +762,9 @@ rdg_record_and_submit :: (rg: *RenderGraph) {
 
             if pass_data.after_barriers.count > 0 {
                 rhi_cmd_barrier(cmd_list, pass_data.after_barriers);
+            }
+            if pass_data.debug_name.count > 0 {
+                rhi_cmd_debug_label_end(cmd_list);
             }
         }
         

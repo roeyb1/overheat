@@ -45,20 +45,28 @@ main :: () {
 
     {
         light0 := spawn_entity(*g_world, Velocity);
-        add_component(*g_world, light0, Position, .{value = .{3., 3.}});
-        add_component(*g_world, light0, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255., 1.,}, radius = 5.});
+        add_component(*g_world, light0, Position, .{value = .{0., 0.}});
+        add_component(*g_world, light0, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
 
         light1 := spawn_entity(*g_world, Velocity);
         add_component(*g_world, light1, Position, .{value = .{-3., -3.}});
-        add_component(*g_world, light1, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255., 1.,}, radius = 5.});
+        add_component(*g_world, light1, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
 
         light2 := spawn_entity(*g_world, Velocity);
-        add_component(*g_world, light2, Position, .{value = .{-3., 3.}});
-        add_component(*g_world, light2, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255., 1.,}, radius = 5.});
+        add_component(*g_world, light2, Position, .{value = .{-3., -5.}});
+        add_component(*g_world, light2, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
 
-        light3 := spawn_entity(*g_world, Velocity);
-        add_component(*g_world, light3, Position, .{value = .{3., -3.}});
-        add_component(*g_world, light3, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255., 1.,}, radius = 5.});
+        //light3 := spawn_entity(*g_world, Velocity);
+        //add_component(*g_world, light3, Position, .{value = .{3., -3.}});
+        //add_component(*g_world, light3, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 5.});
+
+        shadow_caster0 := spawn_entity(*g_world);
+        add_component(*g_world, shadow_caster0, Position, .{value = .{1., 1.}});
+        add_component(*g_world, shadow_caster0, Shadow_Caster, .{box = .{.{-1.5, -0.5}, .{1.5, 0.5}}});
+
+        shadow_caster1 := spawn_entity(*g_world);
+        add_component(*g_world, shadow_caster1, Position, .{value = .{3., -1.}});
+        add_component(*g_world, shadow_caster1, Shadow_Caster, .{box = .{.{-0.5, -1.5}, .{0.5, 1.5}}});
     }
 
     // Only update networking while we attempt to connect to the server and don't yet have a player:

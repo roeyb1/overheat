@@ -117,8 +117,8 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
 
     depth_image_desc := RDGImageDescription.{
         debug_name = "Sprite Depth Buffer",
-        width = swapchain.extent.width,
-        height = swapchain.extent.height,
+        width = view_data.scene_texture_size.width,
+        height = view_data.scene_texture_size.height,
         format = .D32_SFLOAT,
         usage_flags = .DEPTH_STENCIL_ATTACHMENT_BIT,
     };
@@ -127,8 +127,8 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
 
     color_image_desc := RDGImageDescription.{
         debug_name = "Sprite Color Buffer",
-        width = swapchain.extent.width,
-        height = swapchain.extent.height,
+        width = view_data.scene_texture_size.width,
+        height = view_data.scene_texture_size.height,
         format = .R8G8B8A8_SRGB,
         usage_flags = .COLOR_ATTACHMENT_BIT,
     };
@@ -153,28 +153,9 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
         view_data := pass_data.view_data;
 
         // upload sprite vertex buffers
-        vertex_buffer_offset: s64 = -1;
-        index_buffer_offset: s64 = -1;
         instance_buffer_offset: s64 = -1;
         {
-            vertices := Vertex2D.[
-                .{.{-0.5, -0.5}, .{0., 0.}},
-                .{.{+0.5, -0.5}, .{1., 0.}},
-                .{.{-0.5, +0.5}, .{0., 1.}},
-                .{.{+0.5, +0.5}, .{1., 1.}},
-            ];
-
-            indices := u32.[
-                0, 1, 3,
-                0, 3, 2,
-            ];
-
-            vertex_dst:, vertex_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(Vertex2D), size_of(Vertex2D) * vertices.count);
             instance_dst:, instance_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(SpriteInstanceData), size_of(SpriteInstanceData) * pass_data.sprite_datas.count);
-            index_dst:, index_buffer_offset = rhi_allocate(view_data.index_buffer_allocator, size_of(u32), size_of(u32) * indices.count);
-
-            memcpy(vertex_dst, vertices.data, size_of(Vertex2D) * vertices.count);
-            memcpy(index_dst, indices.data, size_of(u32) * indices.count);
 
             instance_data: [..] SpriteInstanceData;
             instance_data.allocator = temp;
@@ -188,8 +169,6 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
             }
             memcpy(instance_dst, instance_data.data, size_of(SpriteInstanceData) * instance_data.count);
         }
-        assert(vertex_buffer_offset != -1);
-        assert(index_buffer_offset != -1);
         assert(instance_buffer_offset != -1);
 
 
@@ -210,12 +189,12 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
             store_op = .STORE,
         };
 
-        render_rect := RHIRect.{ .{0, 0}, .{xx g_window_width, xx g_window_height}};
+        render_rect := RHIRect.{ .{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
         rhi_cmd_begin_renderpass(cmd_list, .[color_buffer_desc], *depth_buffer_desc, render_rect, true);
         {
-            viewport := RHIViewport.{ 0, 0, cast(float) g_window_width, cast(float) g_window_height, 0., 1.};
-            scissor := RHIRect.{.{0, 0}, .{xx g_window_width, xx g_window_height}};
+            viewport := RHIViewport.{ 0, 0, cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height, 0., 1.};
+            scissor := RHIRect.{.{0, 0}, .{view_data.scene_texture_size.width, view_data.scene_texture_size.height}};
 
             rhi_cmd_set_viewport(cmd_list, 0, .[viewport]);
             rhi_cmd_set_scissor(cmd_list, 0, .[scissor]);
@@ -236,8 +215,8 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
             descriptor_sets := RHIDescriptorSet.[ pass_data.view_data.offset_buffer_set, pass_data.view_data.bindless_set];
             rhi_cmd_bind_descriptor_sets(cmd_list, *sprite_pipeline, 0, descriptor_sets, .[ xx pass_const_addr ]);
             
-            rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer, view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset, xx instance_buffer_offset]);
-            rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
+            rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[quad_vertex_buffer, view_data.vertex_buffer_allocator.buffer], .[0, xx instance_buffer_offset]);
+            rhi_cmd_bind_index_buffer(cmd_list, quad_index_buffer, 0, .UINT32);
 
             for *bucket : pass_data.buckets {
                 push_const: SpritePushConst = .{
@@ -323,7 +302,7 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
                 return cast(s64) a.sheet - cast(s64) b.sheet;
             }
             return cast(s64) a.z_order - cast(s64) b.z_order;
-        }
+        } @NoProfile
 
         quick_sort(<< out_draws, sort_predicate);
     }

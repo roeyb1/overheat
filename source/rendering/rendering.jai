@@ -79,6 +79,9 @@ DrawBucket :: struct {
 g_single_use_cmd_pool: RHICmdPool;
 g_single_use_cmd_list: RHICmdList;
 
+quad_vertex_buffer: *RHIBuffer;
+quad_index_buffer: *RHIBuffer;
+
 constant_buffers: [RDG_NUM_FRAMES] *RHIBuffer;
 constant_buff_linear_allocs: [RDG_NUM_FRAMES] RHILinearGPUAllocator;
 
@@ -97,6 +100,8 @@ imgui_font_texture_view: *RHIImageView;
 imgui_font_texture_view_handle: RDGTextureViewHandle;
 
 RenderViewData :: struct {
+    scene_texture_size: Extent2D;
+
     camera_proj: Matrix4;
     camera_position: Vector3;
 
@@ -136,10 +141,26 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     // render sprites
     sprite_color_image_view := render_sprite_pass(rg, *view_data);
 
-    lightmap_texture_view := render_lightmap_pass(rg, *view_data);
+
+    lightmap_image_view: RDGResourceViewHandle;
+    {
+        lightmap_image_desc := RDGImageDescription.{
+            debug_name = "Lightmap Buffer",
+            width = view_data.scene_texture_size.width,
+            height = view_data.scene_texture_size.height,
+            format = .R16G16B16A16_SFLOAT,
+            usage_flags = .COLOR_ATTACHMENT_BIT,
+        };
+        lightmap_image_desc.clear_value.color._float32 = .[0, 0, 0, 1.];
+
+        lightmap_image_handle := rdg_create_image(rg, lightmap_image_desc);
+        lightmap_image_view = rdg_create_image_view(rg, lightmap_image_handle, "Lightmap Buffer View");
+
+        render_light_passes(rg, *view_data, lightmap_image_view);
+    }
 
     // render post process
-    tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view, lightmap_texture_view);
+    tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view, lightmap_image_view);
 
     render_imgui_pass(rg, *view_data, tonemap_result_image_view);
 
@@ -203,8 +224,40 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     rdg_swap_sets(*g_view_registry);
 }
 
+g_ambient_color: Vector4 = .{0.5, 0.5, 0.5, 1.};
+
+render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_texture_view: RDGResourceViewHandle) {
+    RDG_SCOPED_GPU_LABEL("Lights");
+
+    clear_color: RHIClearColorValue;
+    clear_color._float32 = .[g_ambient_color.x, g_ambient_color.y, g_ambient_color.z, 1.];
+
+    add_clear_image_pass(rg, lightmap_texture_view, clear_color);
+    for Query(Position, Point_Light).{world = *g_world} {
+        RDG_SCOPED_GPU_LABEL("Point Light");
+
+        // calculate light bounds in screenspace so we can optimize render regions to only render within those bounds
+        light_bounds := make_bounds(it.position, make_vector2(2. * it.point_light.radius));
+
+        min_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.min);
+        max_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.max);
+
+        scissor_offset := min_ss;
+        scissor_extent := max_ss - min_ss;
+        
+        render_rect := RHIRect.{
+            offset = .{clamp(cast(s32) scissor_offset.x, 0, cast(s32) view_data.scene_texture_size.width), clamp(cast(s32) scissor_offset.y, 0, cast(s32) view_data.scene_texture_size.width)},
+            extent = .{cast(u32) scissor_extent.x, cast(u32) scissor_extent.y},
+        };
+
+        render_shadowmap_pass(rg, view_data, lightmap_texture_view, it.position, render_rect);
+        render_lightmap_pass(rg, view_data, lightmap_texture_view, it.position, it.point_light, render_rect);
+    }
+}
+
 init_view_data_for_frame :: (rg: *RenderGraph, view_proj: Matrix4, view_pos: Vector2, resource_index: u64) -> RenderViewData {
     view_data := RenderViewData.{
+        scene_texture_size = swapchain.extent,
         bindless_set = *g_view_registry.descriptor_sets[g_view_registry.frame_index % RDG_NUM_FRAMES],
         offset_buffer_set = *offset_buffer_descriptor_sets[resource_index],
         constant_buffer_allocator = *constant_buff_linear_allocs[resource_index],
@@ -223,6 +276,94 @@ init_rendering_resources :: () {
     {
         g_single_use_cmd_pool = rhi_cmd_pool_create(rhi_queues[RHIQueueType.GRAPHICS]);
         g_single_use_cmd_list = rhi_cmd_list_allocate(g_single_use_cmd_pool);
+    }
+
+    // reusable quad vertex/index buffer
+    {
+        vertices := Vertex2D.[
+            .{.{-0.5, -0.5}, .{0., 0.}},
+            .{.{+0.5, -0.5}, .{1., 0.}},
+            .{.{-0.5, +0.5}, .{0., 1.}},
+            .{.{+0.5, +0.5}, .{1., 1.}},
+        ];
+
+        indices := u32.[
+            0, 1, 3,
+            0, 3, 2,
+        ];
+
+        vertex_upload_size := size_of(Vertex2D) * vertices.count;
+        index_upload_size := size_of(u32) * indices.count;
+
+        staging_create_info := RHIBufferCreateInfo.{
+            size = cast(u64)(vertex_upload_size + index_upload_size),
+            usage_flags = .TRANSFER_SRC_BIT,
+        };
+
+        staging_buffer := rhi_buffer_create(staging_create_info, .HOST_VISIBLE_BIT | .HOST_COHERENT_BIT, 0, false);
+
+        mapped_ptr := rhi_buffer_map(staging_buffer);
+        {
+            memcpy(mapped_ptr, vertices.data, vertex_upload_size);
+            memcpy(mapped_ptr + vertex_upload_size, indices.data, index_upload_size);
+        }
+        rhi_buffer_unmap(staging_buffer);
+
+        quad_vertex_buffer_info := RHIBufferCreateInfo.{
+            size = xx vertex_upload_size,
+            usage_flags = .TRANSFER_DST_BIT | .VERTEX_BUFFER_BIT
+        };
+    
+        quad_vertex_buffer = rhi_buffer_create(quad_vertex_buffer_info, .DEVICE_LOCAL_BIT, 0, false);
+        rhi_debug_set_object_name(quad_vertex_buffer, "Quad Vertex Buffer");
+
+        quad_index_buffer_info := RHIBufferCreateInfo.{
+            size = xx index_upload_size,
+            usage_flags = .TRANSFER_DST_BIT | .INDEX_BUFFER_BIT,
+        };
+
+        quad_index_buffer = rhi_buffer_create(quad_index_buffer_info, .DEVICE_LOCAL_BIT, 0, false);
+        rhi_debug_set_object_name(quad_index_buffer, "Quad Index Buffer");
+
+        rhi_cmd_pool_reset(g_single_use_cmd_pool);
+        cmd_list := *g_single_use_cmd_list;
+        rhi_cmd_list_begin(cmd_list);
+
+        vertex_region := RHIBufferCopy.{
+            src_offset = 0,
+            dst_offset = 0,
+            size = xx vertex_upload_size,
+        };
+        index_region := RHIBufferCopy.{
+            src_offset = xx vertex_upload_size,
+            dst_offset = 0,
+            size = xx index_upload_size,
+        };
+
+        rhi_cmd_copy_buffer(cmd_list, staging_buffer, quad_vertex_buffer, .[vertex_region]);
+        rhi_cmd_copy_buffer(cmd_list, staging_buffer, quad_index_buffer, .[index_region]);
+
+        vert_barrier := RHIBarrier.{
+            buffer = quad_vertex_buffer,
+            stages_before = .TRANSFER_BIT,
+            stages_after = .VERTEX_INPUT_BIT,
+            state_before = .WRITE_TRANSFER,
+            state_after = .READ_VERTEX_BUFFER,
+        };
+        index_barrier := RHIBarrier.{
+            buffer = quad_index_buffer,
+            stages_before = .TRANSFER_BIT,
+            stages_after = .VERTEX_INPUT_BIT,
+            state_before = .WRITE_TRANSFER,
+            state_after = .READ_INDEX_BUFFER,
+        };
+
+        rhi_cmd_barrier(cmd_list, .[vert_barrier, index_barrier]);
+
+        rhi_cmd_list_end(cmd_list);
+        rhi_submit_single_time_commands(*rhi_queues[RHIQueueType.GRAPHICS], cmd_list);
+
+        rhi_buffer_destroy(staging_buffer);
     }
 
     // constant buffers:
@@ -391,12 +532,16 @@ init_rendering_resources :: () {
 
 
     init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
+    init_shadowmap_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
     init_lightmap_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
     init_post_process_pipelines(*g_view_registry.descriptor_set_layout);
     init_imgui_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
 }
 
 destroy_rendering_resources :: () {
+    rhi_buffer_destroy(quad_vertex_buffer);
+    rhi_buffer_destroy(quad_index_buffer);
+
     rhi_image_view_destroy(imgui_font_texture_view);
     rhi_image_destroy(imgui_font_texture);
 
@@ -409,6 +554,7 @@ destroy_rendering_resources :: () {
     destroy_imgui_pipeline();
     destroy_post_process_pipelines();
     destroy_lightmap_pipeline();
+    destroy_shadowmap_pipeline();
     destroy_sprite_pipeline();
 
     for 0..RDG_NUM_FRAMES-1 {
@@ -434,7 +580,9 @@ destroy_rendering_resources :: () {
 #load "sprite_rendering.jai";
 #load "post_process.jai";
 #load "imgui_rendering.jai";
+#load "shadowmap_rendering.jai";
 #load "lightmap_rendering.jai";
+#load "render_graph_utils.jai";
 
 #import "Sort";
 #import "File";

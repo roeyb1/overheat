@@ -360,6 +360,12 @@ RHIImageSubresourceRange :: struct {
     layer_count: u32 = 0;
 }
 
+RHIBufferCopy :: struct {
+    src_offset: u64;
+    dst_offset: u64;
+    size: u64;
+}
+
 RHIImageCopy :: struct {
     src_mip_level: u32;
     src_base_layer: u32;
