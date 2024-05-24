@@ -38,7 +38,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     PLAYER_SIZE :: Vector2.{1.5, 1.5};
 
     add_component(*g_world, entity, Sprite, .{sprite, PLAYER_SIZE, 0, 10});
-    add_component(*g_world, entity, Collider_AABB, .{make_bounds(position, PLAYER_SIZE)});
+    add_component(*g_world, entity, Collider_AABB, .{make_bounds(.{0, 0}, PLAYER_SIZE)});
 
     return entity;
 }

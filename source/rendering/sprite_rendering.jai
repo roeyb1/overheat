@@ -271,13 +271,8 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
 
     // collect all the draws for this frame
     {
-        // Draw a temporary background
-
-        // Draw sprites
-        {
-            for Query(Sprite, Position).{world = *g_world} {
-                add_sprite_draw(out_draws, it.sprite, it.position);
-            }
+        for Query(Sprite, Position).{world = *g_world} {
+            add_sprite_draw(out_draws, it.sprite, it.position);
         }
     }
 
