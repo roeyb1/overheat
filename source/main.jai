@@ -45,17 +45,17 @@ main :: () {
     add_component(*g_world, main_view_camera, Camera);
 
     {
-        light0 := spawn_entity(*g_world, Velocity);
-        add_component(*g_world, light0, Position, .{value = .{0., 0.}});
-        add_component(*g_world, light0, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
+        //light0 := spawn_entity(*g_world, Velocity);
+        //add_component(*g_world, light0, Position, .{value = .{0., 0.}});
+        //add_component(*g_world, light0, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
 
-        light1 := spawn_entity(*g_world, Velocity);
-        add_component(*g_world, light1, Position, .{value = .{-3., -3.}});
-        add_component(*g_world, light1, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
+        //light1 := spawn_entity(*g_world, Velocity);
+        //add_component(*g_world, light1, Position, .{value = .{-3., -3.}});
+        //add_component(*g_world, light1, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
 
-        light2 := spawn_entity(*g_world, Velocity);
-        add_component(*g_world, light2, Position, .{value = .{-3., -5.}});
-        add_component(*g_world, light2, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
+        //light2 := spawn_entity(*g_world, Velocity);
+        //add_component(*g_world, light2, Position, .{value = .{-3., -5.}});
+        //add_component(*g_world, light2, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
     }
 
     // Only update networking while we attempt to connect to the server and don't yet have a player:

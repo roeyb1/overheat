@@ -61,9 +61,13 @@ import_ldtk_level :: (world: *World) {
 
     for *level : root.levels {
         for *layer, layer_level : level.layerInstances {
-            log("layer: %", layer.__identifier);
-
+            // ignore non-tilemap layers for now
             if layer.__tilesetRelPath.count == 0 then continue;
+
+            // the layer stack is inverted when importing from the ldtk file, so reverse it back here:
+            layer_index := level.layerInstances.count - layer_level;
+
+            tile_size := 2 * cast(float) layer.__gridSize / cast(float) PIXELS_PER_METER;
 
             // tilesetRelPath is relative to the ldtk file itself, we need to rebase the path to the assets directory
             tileset_filename: string;
@@ -74,26 +78,26 @@ import_ldtk_level :: (world: *World) {
             }
             layer_spritesheet := load_spritesheet(tileset_filename, layer.__gridSize, 0, 0);
 
-            // @todo: collisions based on intgrid
-            //for value : layer.intGridCsv {
-            //    if value == 0 then continue;
-            //    x := cast(float) (it_index % layer.__cWid);
-            //    y := cast(float) (layer.__cHei - (it_index / layer.__cWid));
-            //}
-
             for tile : layer.autoLayerTiles {
                 x := cast(float) (tile.px[0] / xx layer.__gridSize);
                 y := cast(float) ((layer.__gridSize * layer.__cHei - xx tile.px[1]) / layer.__gridSize);
 
-                wall := spawn_entity(world);
-                pos := add_component(*g_world, wall, Position, .{value = .{x, y}});
+                tile_entity := spawn_entity(world);
+
+                pos := add_component(*g_world, tile_entity, Position, .{value = .{x, y}});
 
                 ground_sprite: Sprite;
                 ground_sprite.sheet = layer_spritesheet;
-                ground_sprite.z_order = cast(u16) (level.layerInstances.count - layer_level);
-                ground_sprite.scale = make_vector2(layer.__gridSize / 32.);
+                ground_sprite.z_order = cast(u16) layer_index;
+                ground_sprite.scale = make_vector2(tile_size);
                 ground_sprite.index = tile.t;
-                add_component(*g_world, wall, Sprite, ground_sprite);
+                add_component(*g_world, tile_entity, Sprite, ground_sprite);
+
+                // any layer above the custom ground is a collidable layer
+                if layer_index > 1 {
+                    collider := add_component(world, tile_entity, Collider_AABB);
+                    collider.aabb = make_bounds(.{0, 0}, make_vector2(tile_size));
+                }
             }
         }
     }

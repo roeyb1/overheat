@@ -44,15 +44,10 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
     cached_query: *Query_Cache = find_or_add(*query.world.cached_queries, query_types);
     assert(cached_query != null);
 
-    entities_to_iterate: [] Entity = ifx cached_query.dirty then query.world.entities else cached_query.cached_entities;
     if cached_query.dirty {
         cached_query.cached_entities.count = 0;
-    }
-
-    query.world.currently_iterating = true;
-    for entity : entities_to_iterate {
-        // if the query was dirty, rebuilt it as we iterate
-        if cached_query.dirty {
+        for entity : query.world.entities {
+            // if the query was dirty, rebuilt it as we iterate
             if entity.index == INVALID_ENTITY_INDEX continue;
 
             #insert #run () -> string {
@@ -61,9 +56,9 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
                 print_to_builder(*builder, "matches_query := true");
                 for 0..query.component_types.count-1 {
                     if (cast(*Type_Info) query.component_types[it]).type == .POINTER {
-                        print_to_builder(*builder, " && get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)type_info(query.component_types[%])).pointer_to))", it);
+                        print_to_builder(*builder, " && get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)type_info(query.component_types[%])).pointer_to)) != null", it);
                     } else {
-                        print_to_builder(*builder, " && get_component(query.world, entity, query.component_types[%])", it);
+                        print_to_builder(*builder, " && get_component(query.world, entity, query.component_types[%]) != null", it);
                     }
                 }
                 print_to_builder(*builder, ";\n");
@@ -76,7 +71,12 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
 
             array_add(*cached_query.cached_entities, entity);
         }
+        cached_query.dirty = false;
+    }
 
+    assert(cached_query.dirty == false);
+    query.world.currently_iterating = true;
+    for entity : cached_query.cached_entities {
         #insert #run () -> string {
             builder: String_Builder;
             defer free_buffers(*builder);
@@ -93,6 +93,10 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
                         "query.% = get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)query.component_types[%]).pointer_to));\n",
                         to_lower_copy_new(ti.name),
                         it);
+                    print_to_builder(
+                        *builder, 
+                        "assert(query.% != null);\n",
+                        to_lower_copy_new(ti.name));
                 } else {
                     ti = cast(*Type_Info_Struct) query.component_types[it];
                     print_to_builder(
@@ -120,9 +124,6 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
         }
     }
     query.world.currently_iterating = false;
-
-    cached_query.dirty = false;
-    #if DISABLE_QUERY_CACHE { cached_query.dirty = true; }
 
     for removed_entities {
         destroy_entity(query.world, it);

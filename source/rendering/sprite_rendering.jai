@@ -136,6 +136,8 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
     color_image_handle := rdg_create_image(rg, color_image_desc);
     color_image_view := rdg_create_image_view(rg, color_image_handle, "Sprite Color Buffer View");
 
+    if draws.count == 0 then return color_image_view;
+
     sprite_pass_usage_descs := RDGResourceUsageDesc.[
         .{depth_image_view, .{resource_state = .WRITE_DEPTH_STENCIL}, .{}},
         .{color_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
