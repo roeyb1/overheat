@@ -4,11 +4,19 @@ LDTK_Tile :: struct {
     t: u32; // tile id
 }
 
+LDTK_Entity :: struct {
+    __identifier: string;
+    __worldX: u32;
+    __worldY: u32;
+}
+
 LDTK_Layer :: struct {
     __identifier: string;
+    __type: string;
     intGridCsv: [..] s32;
     autoLayerTiles: [..] LDTK_Tile;
     gridTiles: [..] LDTK_Tile;
+    entityInstances: [..] LDTK_Entity;
     __tilesetRelPath: string;
     __cWid: u32; // width in cells
     __cHei: u32; // height in cells
@@ -22,14 +30,14 @@ LDTK_Level :: struct {
     pxHei: s32;
 }
 
-LDTK_Entity_Instance :: struct {
+LDTK_TOC_Entity_Instance :: struct {
     worldX: s32;
     worldY: s32;
 }
 
 LDTK_TOC_Entry :: struct {
     identifier: string;
-    instancesData: [..] LDTK_Entity_Instance;
+    instancesData: [..] LDTK_TOC_Entity_Instance;
 }
 
 LDTK_Root :: struct {
@@ -61,7 +69,18 @@ import_ldtk_level :: (world: *World) {
 
     for *level : root.levels {
         for *layer, layer_level : level.layerInstances {
-            // ignore non-tilemap layers for now
+            if layer.__type == "Entities" {
+                for *ldtk_entity : layer.entityInstances {
+                    if ldtk_entity.__identifier != "light" then continue;
+
+                    x := cast(float) (ldtk_entity.__worldX / xx layer.__gridSize);
+                    y := cast(float) ((layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / layer.__gridSize);
+                    light := spawn_entity(world);
+                    add_component(world, light, Position, .{.{x, y}});
+                    add_component(world, light, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 5.});
+                }
+            }
+
             if layer.__tilesetRelPath.count == 0 then continue;
 
             // the layer stack is inverted when importing from the ldtk file, so reverse it back here:

@@ -44,20 +44,6 @@ main :: () {
     add_component(*g_world, main_view_camera, Position);
     add_component(*g_world, main_view_camera, Camera);
 
-    {
-        //light0 := spawn_entity(*g_world, Velocity);
-        //add_component(*g_world, light0, Position, .{value = .{0., 0.}});
-        //add_component(*g_world, light0, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
-
-        //light1 := spawn_entity(*g_world, Velocity);
-        //add_component(*g_world, light1, Position, .{value = .{-3., -3.}});
-        //add_component(*g_world, light1, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
-
-        //light2 := spawn_entity(*g_world, Velocity);
-        //add_component(*g_world, light2, Position, .{value = .{-3., -5.}});
-        //add_component(*g_world, light2, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
-    }
-
     // Only update networking while we attempt to connect to the server and don't yet have a player:
     while g_client.local_client_id == INVALID_NETWORKING_ID {
         FrameMark();
@@ -147,17 +133,6 @@ main :: () {
     rendering_shutdown();
 }
 
-animate_lights :: (world: *World) {
-    for Query(*Velocity, Point_Light).{world = world} {
-        // animate any lights that are not attached to a player:
-        if get_component(world, it_index, Player) == null {
-            dx := random_get_zero_to_one() - 0.5;
-            dy := random_get_zero_to_one() - 0.5;
-            it.velocity.value += Vector2.{dx, dy} * 5.0 * g_delta_time;
-        }
-    }
-}
-
 update_positions :: (world: *World) {
     for Query(*Position, Velocity).{world = world} {
         it.position.value += it.velocity.value * g_delta_time;
@@ -186,7 +161,6 @@ register_all_systems :: () {
     });
 
     add_system(.PreUpdate, update_player_controllers);
-    add_system(.PreUpdate, animate_lights);
 
     add_system(.OnUpdate, update_camera_projections);
     add_system(.OnUpdate, update_camera_positions);
