@@ -173,7 +173,6 @@ register_all_systems :: () {
     add_system(.PostUpdate, cleanup_player_controllers);
     add_system(.PostUpdate, cleanup_collision_results_system);
     
-
     add_system(.PreRender, render_imgui);
     add_system(.PreRender, update_animation_index);
 

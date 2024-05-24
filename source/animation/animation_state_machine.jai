@@ -1,7 +1,6 @@
 update_player_state :: (world: *World) {
     for Query(Player,*Anim_State,*Animation).{world = world} {
         using it.anim_state;
-        print("current state is % \n", current_state);
         if current_state == {
             case .IDLE;
                 vel := get_component(*g_world, it_index, Velocity);
