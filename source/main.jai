@@ -99,6 +99,8 @@ main :: () {
 
     {
         camera := get_component(*g_world, main_view_camera, Camera);
+        cam_pos := get_component(*g_world, main_view_camera, Position);
+        cam_pos.value = g_player_start;
         camera.entity_to_track = g_local_player;
     }
     

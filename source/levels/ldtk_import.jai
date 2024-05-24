@@ -18,11 +18,26 @@ LDTK_Layer :: struct {
 LDTK_Level :: struct {
     identifier: string;
     layerInstances: [..] LDTK_Layer;
+    pxWid: s32;
+    pxHei: s32;
+}
+
+LDTK_Entity_Instance :: struct {
+    worldX: s32;
+    worldY: s32;
+}
+
+LDTK_TOC_Entry :: struct {
+    identifier: string;
+    instancesData: [..] LDTK_Entity_Instance;
 }
 
 LDTK_Root :: struct {
     levels: [..] LDTK_Level;
+    toc: [..] LDTK_TOC_Entry;
 }
+
+g_player_start: Vector2;
 
 import_ldtk_level :: (world: *World) {
     old_allocator := context.allocator;
@@ -36,11 +51,15 @@ import_ldtk_level :: (world: *World) {
 
     context.allocator = old_allocator;
 
-    load_success := false;
+    if root.levels.count == 0 then return;
+
+    for root.toc {
+        if it.identifier == "playerstart" {
+            g_player_start = Vector2.{it.instancesData[0].worldX / 32., (root.levels[0].pxHei - it.instancesData[0].worldY) / 32.};
+        }
+    }
+
     for *level : root.levels {
-        // only parse level_0:
-        if level.identifier != "level_0" then continue;
-        
         for *layer, layer_level : level.layerInstances {
             log("layer: %", layer.__identifier);
 
