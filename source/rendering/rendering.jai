@@ -237,16 +237,21 @@ render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_t
         RDG_SCOPED_GPU_LABEL("Point Light");
 
         // calculate light bounds in screenspace so we can optimize render regions to only render within those bounds
-        light_bounds := make_bounds(it.position, make_vector2(2. * it.point_light.radius));
+        light_bounds := make_bounds(it.position, make_vector2(it.point_light.radius));
+
+        debug := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, view_data.camera_position.xy + .{0, 1});
+        debug2 := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, view_data.camera_position.xy + .{0, 2});
+        debug3 := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, view_data.camera_position.xy + .{0, 3});
 
         min_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.min);
         max_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.max);
+        min_ss.y, max_ss.y = swap(min_ss.y, max_ss.y);
 
         scissor_offset := min_ss;
         scissor_extent := max_ss - min_ss;
         
         render_rect := RHIRect.{
-            offset = .{clamp(cast(s32) scissor_offset.x, 0, cast(s32) view_data.scene_texture_size.width), clamp(cast(s32) scissor_offset.y, 0, cast(s32) view_data.scene_texture_size.width)},
+            offset = .{clamp(cast(s32) scissor_offset.x, 0, cast(s32) view_data.scene_texture_size.width), clamp(cast(s32) scissor_offset.y, 0, cast(s32) view_data.scene_texture_size.height)},
             extent = .{cast(u32) scissor_extent.x, cast(u32) scissor_extent.y},
         };
 
