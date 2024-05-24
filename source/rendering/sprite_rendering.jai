@@ -272,19 +272,6 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
     // collect all the draws for this frame
     {
         // Draw a temporary background
-        {
-            ground_sprite: Sprite;
-            ground_sprite.sheet = g_dungeon_tiles;
-            ground_sprite.z_order = 0;
-            ground_sprite.scale = .{1, 1};
-
-            for x : -20..20 {
-                for y : -20..20 {
-                    ground_sprite.index = 256;
-                    add_sprite_draw(out_draws, ground_sprite, .{ xx x, xx y});
-                }
-            }
-        }
 
         // Draw sprites
         {

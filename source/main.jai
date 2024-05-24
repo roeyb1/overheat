@@ -36,6 +36,7 @@ main :: () {
     networking_init();
 
     load_all_assets();
+    import_ldtk_level(*g_world);
 
     last_time = seconds_since_init();
 
@@ -55,18 +56,6 @@ main :: () {
         light2 := spawn_entity(*g_world, Velocity);
         add_component(*g_world, light2, Position, .{value = .{-3., -5.}});
         add_component(*g_world, light2, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
-
-        //light3 := spawn_entity(*g_world, Velocity);
-        //add_component(*g_world, light3, Position, .{value = .{3., -3.}});
-        //add_component(*g_world, light3, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 5.});
-
-        shadow_caster0 := spawn_entity(*g_world);
-        add_component(*g_world, shadow_caster0, Position, .{value = .{1., 1.}});
-        add_component(*g_world, shadow_caster0, Shadow_Caster, .{box = .{.{-1.5, -0.5}, .{1.5, 0.5}}});
-
-        shadow_caster1 := spawn_entity(*g_world);
-        add_component(*g_world, shadow_caster1, Position, .{value = .{3., -1.}});
-        add_component(*g_world, shadow_caster1, Shadow_Caster, .{box = .{.{-0.5, -1.5}, .{0.5, 1.5}}});
     }
 
     // Only update networking while we attempt to connect to the server and don't yet have a player:
@@ -239,4 +228,5 @@ using Random :: #import "Random";
 #load "gameplay/attributes.jai";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
+#load "levels/ldtk_import.jai";
 
