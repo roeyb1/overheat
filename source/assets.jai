@@ -36,10 +36,14 @@ get_spritesheet :: (filename: string) -> *SpriteSheet {
 }
 
 load_spritesheet :: (filename: string, extent: u32, x_offset: u32, y_offset: u32) -> *SpriteSheet {
+    // check if we already have this spritesheet in the asset cache:
+    result := table_find_pointer(*sprite_sheets, filename);
+    if result != null then return result;
+
     key := copy_string(filename);
     texture := load_texture(filename);
 
-    result := table_add(*sprite_sheets, key, .{texture, extent, x_offset, y_offset});
+    result = table_add(*sprite_sheets, key, .{texture, extent, x_offset, y_offset});
     assert(result != null);
 
     return result;
