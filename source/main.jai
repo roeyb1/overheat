@@ -172,9 +172,10 @@ register_all_systems :: () {
     add_system(.PostUpdate, update_player_positions_on_network);
     add_system(.PostUpdate, cleanup_player_controllers);
     add_system(.PostUpdate, cleanup_collision_results_system);
+    
 
     add_system(.PreRender, render_imgui);
-    add_system(.PreRender, assign_player_sprite);
+    add_system(.PreRender, update_animation_index);
 
     add_system(.OnRender, render_scene);
 
@@ -208,5 +209,6 @@ using Random :: #import "Random";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
 
-#load "gameplay/animation_state_machine.jai";
-#load "gameplay/animation_states.jai";
+#load "animation/animation_state_machine.jai";
+#load "animation/animation_states.jai";
+#load "animation/animation_data.jai";
