@@ -45,7 +45,8 @@ update_camera_positions :: (world: *World) {
 
 worldspace_to_viewspace :: (proj: Matrix4, view: Vector2, x: Vector2) -> Vector2 {
     clip := (proj * make_vector4(x - view, 0., 1.)).xy; // result in NDC centered at 0, 0
-    ndc := (clip + .{1., -2.}) / 2.;
+    clip.y *= -1;
+    ndc := (clip + .{1., 1.}) / 2.;
     screen := ndc * Vector2.{xx g_window_width, xx g_window_height};
     return screen;
 }
