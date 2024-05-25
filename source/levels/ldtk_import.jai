@@ -51,7 +51,7 @@ import_ldtk_level :: (world: *World) {
     old_allocator := context.allocator;
     context.allocator = temp;
 
-    data, read_success := read_entire_file("assets/levels/prison/prison.ldtk", log_errors=true);
+    data, read_success := read_entire_file("assets/levels/prison/prison.ldtk", log_errors=false);
     assert(read_success);
 
     parse_success, root := json_parse_string(data, LDTK_Root, ignore_unknown=true);
@@ -77,7 +77,7 @@ import_ldtk_level :: (world: *World) {
                     y := cast(float) ((layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / layer.__gridSize);
                     light := spawn_entity(world);
                     add_component(world, light, Position, .{.{x, y}});
-                    add_component(world, light, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 5.});
+                    add_component(world, light, Point_Light, .{intensity = 2., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 10.});
                 }
             }
 
@@ -86,8 +86,6 @@ import_ldtk_level :: (world: *World) {
             // the layer stack is inverted when importing from the ldtk file, so reverse it back here:
             layer_index := level.layerInstances.count - layer_level;
 
-            tile_size := 2 * cast(float) layer.__gridSize / cast(float) PIXELS_PER_METER;
-
             // tilesetRelPath is relative to the ldtk file itself, we need to rebase the path to the assets directory
             tileset_filename: string;
             {
@@ -95,32 +93,39 @@ import_ldtk_level :: (world: *World) {
                 str_slice := slice(layer.__tilesetRelPath, index, layer.__tilesetRelPath.count - index);
                 tileset_filename = tprint("assets/%", str_slice);
             }
-            layer_spritesheet := load_spritesheet(tileset_filename, layer.__gridSize, 0, 0);
+            layer_spritesheet := load_spritesheet(tileset_filename, TILE_PIXEL_SIZE, 0, 0);
 
-            for tile : layer.autoLayerTiles {
-                x := cast(float) (tile.px[0] / xx layer.__gridSize);
-                y := cast(float) ((layer.__gridSize * layer.__cHei - xx tile.px[1]) / layer.__gridSize);
-
-                tile_entity := spawn_entity(world);
-
-                pos := add_component(*g_world, tile_entity, Position, .{value = .{x, y}});
-
-                ground_sprite: Sprite;
-                ground_sprite.sheet = layer_spritesheet;
-                ground_sprite.z_order = cast(u16) layer_index;
-                ground_sprite.scale = make_vector2(tile_size);
-                ground_sprite.index = tile.t;
-                add_component(*g_world, tile_entity, Sprite, ground_sprite);
-
-                // any layer above the custom ground is a collidable layer
-                if layer_index > 1 {
-                    collider := add_component(world, tile_entity, Collider_AABB);
-                    collider.aabb = make_bounds(.{0, 0}, make_vector2(tile_size));
-                }
-            }
+            spawn_entities_for_tiles(world, layer.autoLayerTiles, layer.__gridSize, layer.__cHei, layer_spritesheet, layer_index);
+            spawn_entities_for_tiles(world, layer.gridTiles, layer.__gridSize, layer.__cHei, layer_spritesheet, layer_index);
         }
     }
+}
 
+TILE_PIXEL_SIZE :: 32;
+
+spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32, layer_height: u32, layer_spritesheet: *SpriteSheet, layer_index: s64) {
+    tile_size := 2. * cast(float) TILE_PIXEL_SIZE / cast(float) PIXELS_PER_METER;
+    for tile : tiles {
+        x := (cast(float) tile.px[0] / cast(float) TILE_PIXEL_SIZE);
+        y := (cast(float) (grid_size * layer_height - xx tile.px[1]) / cast(float) TILE_PIXEL_SIZE);
+
+        tile_entity := spawn_entity(world);
+
+        pos := add_component(world, tile_entity, Position, .{value = .{x, y}});
+
+        sprite: Sprite;
+        sprite.sheet = layer_spritesheet;
+        sprite.z_order = cast(u16) layer_index;
+        sprite.scale = make_vector2(tile_size);
+        sprite.index = tile.t;
+        add_component(world, tile_entity, Sprite, sprite);
+
+        // any layer above the custom ground is a collidable layer
+        if layer_index > 1 {
+            collider := add_component(world, tile_entity, Collider_AABB);
+            collider.aabb = make_bounds(.{0, 0}, make_vector2(tile_size));
+        }
+    }
 }
 
 #import "jaison";
