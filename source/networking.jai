@@ -560,7 +560,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             g_client.local_client_id = conn_established.networking_id;
             log("Local player was assigned id %", conn_established.networking_id);
 
-            g_local_player = init_player(conn_established.networking_id, .{0, 0});
+            g_local_player = init_player(conn_established.networking_id, g_player_start);
 
             for player_data : conn_established.existing_players {
                 player := init_player(player_data.networking_id, player_data.position);

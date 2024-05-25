@@ -36,38 +36,13 @@ main :: () {
     networking_init();
 
     load_all_assets();
+    import_ldtk_level(*g_world);
 
     last_time = seconds_since_init();
 
     main_view_camera = spawn_entity(*g_world);
     add_component(*g_world, main_view_camera, Position);
     add_component(*g_world, main_view_camera, Camera);
-
-    {
-        light0 := spawn_entity(*g_world, Velocity);
-        add_component(*g_world, light0, Position, .{value = .{0., 0.}});
-        add_component(*g_world, light0, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
-
-        light1 := spawn_entity(*g_world, Velocity);
-        add_component(*g_world, light1, Position, .{value = .{-3., -3.}});
-        add_component(*g_world, light1, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
-
-        light2 := spawn_entity(*g_world, Velocity);
-        add_component(*g_world, light2, Position, .{value = .{-3., -5.}});
-        add_component(*g_world, light2, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 15.});
-
-        //light3 := spawn_entity(*g_world, Velocity);
-        //add_component(*g_world, light3, Position, .{value = .{3., -3.}});
-        //add_component(*g_world, light3, Point_Light, .{intensity = 1., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 5.});
-
-        shadow_caster0 := spawn_entity(*g_world);
-        add_component(*g_world, shadow_caster0, Position, .{value = .{1., 1.}});
-        add_component(*g_world, shadow_caster0, Shadow_Caster, .{box = .{.{-1.5, -0.5}, .{1.5, 0.5}}});
-
-        shadow_caster1 := spawn_entity(*g_world);
-        add_component(*g_world, shadow_caster1, Position, .{value = .{3., -1.}});
-        add_component(*g_world, shadow_caster1, Shadow_Caster, .{box = .{.{-0.5, -1.5}, .{0.5, 1.5}}});
-    }
 
     // Only update networking while we attempt to connect to the server and don't yet have a player:
     while g_client.local_client_id == INVALID_NETWORKING_ID {
@@ -110,6 +85,8 @@ main :: () {
 
     {
         camera := get_component(*g_world, main_view_camera, Camera);
+        cam_pos := get_component(*g_world, main_view_camera, Position);
+        cam_pos.value = g_player_start;
         camera.entity_to_track = g_local_player;
     }
     
@@ -156,17 +133,6 @@ main :: () {
     rendering_shutdown();
 }
 
-animate_lights :: (world: *World) {
-    for Query(*Velocity, Point_Light).{world = world} {
-        // animate any lights that are not attached to a player:
-        if get_component(world, it_index, Player) == null {
-            dx := random_get_zero_to_one() - 0.5;
-            dy := random_get_zero_to_one() - 0.5;
-            it.velocity.value += Vector2.{dx, dy} * 5.0 * g_delta_time;
-        }
-    }
-}
-
 update_positions :: (world: *World) {
     for Query(*Position, Velocity).{world = world} {
         it.position.value += it.velocity.value * g_delta_time;
@@ -195,7 +161,6 @@ register_all_systems :: () {
     });
 
     add_system(.PreUpdate, update_player_controllers);
-    add_system(.PreUpdate, animate_lights);
 
     add_system(.OnUpdate, update_camera_projections);
     add_system(.OnUpdate, update_camera_positions);
@@ -239,4 +204,5 @@ using Random :: #import "Random";
 #load "gameplay/attributes.jai";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
+#load "levels/ldtk_import.jai";
 

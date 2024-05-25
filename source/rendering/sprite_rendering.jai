@@ -19,6 +19,7 @@ SpriteInstanceData :: struct {
     instance_pos: Vector2;
     instance_scale: Vector2;
     sprite_index: u32;
+    flip: u32;
 }
 
 #scope_export
@@ -46,6 +47,7 @@ init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bind
         .{ "INSTANCE_POS", 2, 1, .R32G32B32_SFLOAT, xx offset_of(SpriteInstanceData, "instance_pos")},
         .{ "INSTANCE_SCALE", 3, 1, .R32G32_SFLOAT, xx offset_of(SpriteInstanceData, "instance_scale")},
         .{ "SPRITE_INDEX", 4, 1, .R32_UINT, xx offset_of(SpriteInstanceData, "sprite_index")},
+        .{ "FLIP", 5, 1, .R32_UINT, xx offset_of(SpriteInstanceData, "flip")},
     ];
 
     binding_descs := RHIVertexInputBindingDesc.[
@@ -136,6 +138,8 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
     color_image_handle := rdg_create_image(rg, color_image_desc);
     color_image_view := rdg_create_image_view(rg, color_image_handle, "Sprite Color Buffer View");
 
+    if draws.count == 0 then return color_image_view;
+
     sprite_pass_usage_descs := RDGResourceUsageDesc.[
         .{depth_image_view, .{resource_state = .WRITE_DEPTH_STENCIL}, .{}},
         .{color_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
@@ -165,6 +169,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
                     instance_pos = draw.position,
                     instance_scale = draw.scale,
                     sprite_index = draw.sprite_index,
+                    flip = draw.flip,
                 });
             }
             memcpy(instance_dst, instance_data.data, size_of(SpriteInstanceData) * instance_data.count);
@@ -241,6 +246,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
 SpriteDrawData :: struct {
     sheet: *SpriteSheet;
     sprite_index: u32;
+    flip: u32;
 
     position: Vector2;
     scale: Vector2;
@@ -263,6 +269,7 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
             sheet = sprite.sheet,
             scale = sprite.scale,
             sprite_index = sprite.index,
+            flip = xx sprite.flip,
             z_order = sprite.z_order,
         };
 
@@ -271,26 +278,8 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
 
     // collect all the draws for this frame
     {
-        // Draw a temporary background
-        {
-            ground_sprite: Sprite;
-            ground_sprite.sheet = g_dungeon_tiles;
-            ground_sprite.z_order = 0;
-            ground_sprite.scale = .{1, 1};
-
-            for x : -20..20 {
-                for y : -20..20 {
-                    ground_sprite.index = 256;
-                    add_sprite_draw(out_draws, ground_sprite, .{ xx x, xx y});
-                }
-            }
-        }
-
-        // Draw sprites
-        {
-            for Query(Sprite, Position).{world = *g_world} {
-                add_sprite_draw(out_draws, it.sprite, it.position);
-            }
+        for Query(Sprite, Position).{world = *g_world} {
+            add_sprite_draw(out_draws, it.sprite, it.position);
         }
     }
 

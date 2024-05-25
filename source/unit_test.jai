@@ -43,6 +43,13 @@ execute_unit_tests :: () -> bool {
     return failures == 0;
 }
 
+test_expect_true :: (actual: bool, loc := #caller_location) #expand {
+    if !actual {
+        print("\t\t%:%:% failure. \n\t\tActual %\n expected to be true", path_filename(loc.fully_pathed_filename), loc.line_number, loc.character_number, actual);
+        `ctx.success = false;
+    }
+}
+
 test_expect_equals :: (expected: $Tx, actual: $Ty, loc := #caller_location) #expand {
     if expected != actual {
         print("\t\t%:%:% failure. \n\t\tExpected %\n \t\tActual %\n", path_filename(loc.fully_pathed_filename), loc.line_number, loc.character_number, expected, actual);
@@ -54,6 +61,14 @@ test_expect_not_equals :: (expected: $Tx, actual: $Ty, loc := #caller_location) 
     if expected == actual {
         print("\t\t%:%:% failure. \n\t\tExpected %\n \t\tActual %\n", path_filename(loc.fully_pathed_filename), loc.line_number, loc.character_number, expected, actual);
         `ctx.success = false;
+    }
+}
+
+test_assert_true :: (actual: bool, loc := #caller_location) #expand {
+    if !actual {
+        print("\t\t%:%:% failure. \n\t\tActual %\n expected to be true", path_filename(loc.fully_pathed_filename), loc.line_number, loc.character_number, actual);
+        `ctx.success = false;
+        `return;
     }
 }
 

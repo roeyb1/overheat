@@ -12,7 +12,7 @@ SpriteSheet :: struct {
 }
 
 // just for now, store some common stuff globally until we have a proper map loading system with asset references
-g_dungeon_tiles: *SpriteSheet;
+g_prison_tiles: *SpriteSheet;
 g_default_grid: TextureHandle;
 g_local_player_sprite: *SpriteSheet;
 g_player_sprite: *SpriteSheet;
@@ -20,7 +20,7 @@ g_player_sprite: *SpriteSheet;
 load_all_assets :: () {
     stbi_set_flip_vertically_on_load(1);
 
-    g_dungeon_tiles = load_spritesheet("assets/dungeon_tiles.png", 32, 0, 0);
+    g_prison_tiles = load_spritesheet("assets/tilemaps/prison/terrain.png", 32, 0, 0);
     g_local_player_sprite = load_spritesheet("assets/orc_mage_walk.png", 64, 0, 0);
     g_player_sprite = load_spritesheet("assets/orc_mage_walk_2.png", 64, 0, 0);
     g_default_grid = load_texture("assets/grid.png");
@@ -36,10 +36,14 @@ get_spritesheet :: (filename: string) -> *SpriteSheet {
 }
 
 load_spritesheet :: (filename: string, extent: u32, x_offset: u32, y_offset: u32) -> *SpriteSheet {
+    // check if we already have this spritesheet in the asset cache:
+    result := table_find_pointer(*sprite_sheets, filename);
+    if result != null then return result;
+
     key := copy_string(filename);
     texture := load_texture(filename);
 
-    result := table_add(*sprite_sheets, key, .{texture, extent, x_offset, y_offset});
+    result = table_add(*sprite_sheets, key, .{texture, extent, x_offset, y_offset});
     assert(result != null);
 
     return result;
