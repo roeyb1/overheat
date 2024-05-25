@@ -78,7 +78,7 @@ import_ldtk_level :: (world: *World) {
                     y := cast(float) ((layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / layer.__gridSize);
                     light := spawn_entity(world);
                     add_component(world, light, Position, .{.{x, y}});
-                    add_component(world, light, Point_Light, .{intensity = 2., color = .{ 255. / 255., 147. / 255., 41./255.}, radius = 10.});
+                    add_component(world, light, Point_Light, .{intensity = 2., color = .{ 255. / 255., 115. / 255., 23. / 255.}, radius = 10.});
                 }
             }
 

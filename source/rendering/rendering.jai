@@ -226,7 +226,7 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     rdg_swap_sets(*g_view_registry);
 }
 
-g_ambient_color: Vector4 = .{0.5, 0.5, 0.5, 1.};
+g_ambient_color: Vector4 = .{0.7, 0.7, 0.7, 1.};
 
 render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_texture_view: RDGResourceViewHandle) {
     RDG_SCOPED_GPU_LABEL("Lights");
