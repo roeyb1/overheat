@@ -19,6 +19,7 @@ SpriteInstanceData :: struct {
     instance_pos: Vector2;
     instance_scale: Vector2;
     sprite_index: u32;
+    flip: u32;
 }
 
 #scope_export
@@ -46,6 +47,7 @@ init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bind
         .{ "INSTANCE_POS", 2, 1, .R32G32B32_SFLOAT, xx offset_of(SpriteInstanceData, "instance_pos")},
         .{ "INSTANCE_SCALE", 3, 1, .R32G32_SFLOAT, xx offset_of(SpriteInstanceData, "instance_scale")},
         .{ "SPRITE_INDEX", 4, 1, .R32_UINT, xx offset_of(SpriteInstanceData, "sprite_index")},
+        .{ "FLIP", 5, 1, .R32_UINT, xx offset_of(SpriteInstanceData, "flip")},
     ];
 
     binding_descs := RHIVertexInputBindingDesc.[
@@ -167,6 +169,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
                     instance_pos = draw.position,
                     instance_scale = draw.scale,
                     sprite_index = draw.sprite_index,
+                    flip = draw.flip,
                 });
             }
             memcpy(instance_dst, instance_data.data, size_of(SpriteInstanceData) * instance_data.count);
@@ -243,6 +246,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
 SpriteDrawData :: struct {
     sheet: *SpriteSheet;
     sprite_index: u32;
+    flip: u32;
 
     position: Vector2;
     scale: Vector2;
@@ -265,6 +269,7 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
             sheet = sprite.sheet,
             scale = sprite.scale,
             sprite_index = sprite.index,
+            flip = xx sprite.flip,
             z_order = sprite.z_order,
         };
 
