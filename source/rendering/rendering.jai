@@ -241,10 +241,6 @@ render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_t
         // calculate light bounds in screenspace so we can optimize render regions to only render within those bounds
         light_bounds := make_bounds(it.position, make_vector2(it.point_light.radius));
 
-        debug := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, view_data.camera_position.xy + .{0, 1});
-        debug2 := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, view_data.camera_position.xy + .{0, 2});
-        debug3 := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, view_data.camera_position.xy + .{0, 3});
-
         min_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.min);
         max_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.max);
         min_ss.y, max_ss.y = swap(min_ss.y, max_ss.y);

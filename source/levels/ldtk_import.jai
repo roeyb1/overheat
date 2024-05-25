@@ -9,6 +9,9 @@ LDTK_Entity :: struct {
     __identifier: string;
     __worldX: u32;
     __worldY: u32;
+    width: u32;
+    height: u32;
+    __pivot: [2] float;
 }
 
 LDTK_Layer :: struct {
@@ -48,6 +51,9 @@ LDTK_Root :: struct {
 
 g_player_start: Vector2;
 
+
+TILE_PIXEL_SIZE :: 32;
+
 import_ldtk_level :: (world: *World) {
     old_allocator := context.allocator;
     context.allocator = temp;
@@ -72,13 +78,21 @@ import_ldtk_level :: (world: *World) {
         for *layer, layer_level : level.layerInstances {
             if layer.__type == "Entities" {
                 for *ldtk_entity : layer.entityInstances {
-                    if ldtk_entity.__identifier != "light" then continue;
-
-                    x := cast(float) (ldtk_entity.__worldX / xx layer.__gridSize);
-                    y := cast(float) ((layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / layer.__gridSize);
-                    light := spawn_entity(world);
-                    add_component(world, light, Position, .{.{x, y}});
-                    add_component(world, light, Point_Light, .{intensity = 2., color = .{ 255. / 255., 115. / 255., 23. / 255.}, radius = 10.});
+                    if ldtk_entity.__identifier == "light" {
+                        x := cast(float) (ldtk_entity.__worldX / xx layer.__gridSize);
+                        y := cast(float) ((layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / layer.__gridSize);
+                        light := spawn_entity(world);
+                        add_component(world, light, Position, .{.{x, y}});
+                        add_component(world, light, Point_Light, .{intensity = 2., color = .{ 255. / 255., 115. / 255., 23. / 255.}, radius = 10.});
+                    } else if ldtk_entity.__identifier == "collider" {
+                        x := (cast(float) ldtk_entity.__worldX / cast(float) TILE_PIXEL_SIZE) - ldtk_entity.__pivot[0];
+                        y := cast(float)(layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / cast(float)(TILE_PIXEL_SIZE) + ldtk_entity.__pivot[1];
+                        width := cast(float) ldtk_entity.width / cast(float) TILE_PIXEL_SIZE;
+                        height := cast(float) ldtk_entity.height / cast(float) TILE_PIXEL_SIZE;
+                        collider := spawn_entity(world);
+                        add_component(world, collider, Position, .{.{x, y}});
+                        add_component(world, collider, Shadow_Caster, .{make_bounds(.{0, 0}, .{width, height})});
+                    }
                 }
             }
 
@@ -101,8 +115,6 @@ import_ldtk_level :: (world: *World) {
         }
     }
 }
-
-TILE_PIXEL_SIZE :: 32;
 
 spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32, layer_height: u32, layer_spritesheet: *SpriteSheet, layer_index: s64) {
     tile_size := 2. * cast(float) TILE_PIXEL_SIZE / cast(float) PIXELS_PER_METER;

@@ -77,9 +77,9 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
 
     add_segment :: (shadow_vertex_data: *[..] Shadow_Vertex, light_position: Vector2, a: Vector2, b: Vector2) {
         array_add(shadow_vertex_data, .{ make_vector4(a, 0., 1.) });
-        array_add(shadow_vertex_data, .{ make_vector4(a + (a - light_position), 0., 0.) });
+        array_add(shadow_vertex_data, .{ make_vector4(a + 1000 * (a - light_position), 0., 0.) });
         array_add(shadow_vertex_data, .{ make_vector4(b, 0., 1.) });
-        array_add(shadow_vertex_data, .{ make_vector4(b + (b - light_position), 0., 0.) });
+        array_add(shadow_vertex_data, .{ make_vector4(b + 1000 * (b - light_position), 0., 0.) });
     }
 
     for Query(Shadow_Caster, Position).{world = *g_world} {
