@@ -16,14 +16,11 @@ SpriteSheet :: struct {
 }
 
 // just for now, store some common stuff globally until we have a proper map loading system with asset references
-g_prison_tiles: *SpriteSheet;
 g_default_grid: TextureHandle;
 
 load_all_assets :: () {
     stbi_set_flip_vertically_on_load(1);
 
-    g_dungeon_tiles = load_spritesheet("assets/dungeon_tiles.png", 32, 0, 0,0,0);
-    g_prison_tiles = load_spritesheet("assets/tilemaps/prison/terrain.png", 32, 0, 0);
     g_default_grid = load_texture("assets/grid.png");
     g_point_light_texture = load_texture("assets/point_light.png");
 
@@ -44,8 +41,7 @@ load_spritesheet :: (filename: string, extent: u32, x_offset: u32, y_offset: u32
     key := copy_string(filename);
     texture := load_texture(filename);
 
-    result := table_add(*sprite_sheets, key, .{texture, extent, x_offset, y_offset,width_in_sprites, heigth_in_sprites});
-    result = table_add(*sprite_sheets, key, .{texture, extent, x_offset, y_offset});
+    result = table_add(*sprite_sheets, key, .{texture, extent, x_offset, y_offset,width_in_sprites, heigth_in_sprites});
     assert(result != null);
 
     return result;
