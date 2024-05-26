@@ -110,12 +110,12 @@ SpritePassData :: struct {
     buckets: [..] SpriteDrawBucket;
 };
 
-render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResourceViewHandle {
+render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_image_view: RDGResourceViewHandle, min_sprite_z_layer: u32, max_sprite_z_layer: u32) {
     draws: [..] SpriteDrawData;
     draws.allocator = temp;
     buckets: [..] SpriteDrawBucket;
     buckets.allocator = temp;
-    collect_sprite_draw_batches(*draws, *buckets);
+    collect_sprite_draw_batches(*draws, *buckets, min_sprite_z_layer, max_sprite_z_layer);
 
     depth_image_desc := RDGImageDescription.{
         debug_name = "Sprite Depth Buffer",
@@ -127,18 +127,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
     depth_image_handle := rdg_create_image(rg, depth_image_desc);
     depth_image_view := rdg_create_image_view(rg, depth_image_handle, "Sprite Depth Buffer View");
 
-    color_image_desc := RDGImageDescription.{
-        debug_name = "Sprite Color Buffer",
-        width = view_data.scene_texture_size.width,
-        height = view_data.scene_texture_size.height,
-        format = .R8G8B8A8_SRGB,
-        usage_flags = .COLOR_ATTACHMENT_BIT,
-    };
-
-    color_image_handle := rdg_create_image(rg, color_image_desc);
-    color_image_view := rdg_create_image_view(rg, color_image_handle, "Sprite Color Buffer View");
-
-    if draws.count == 0 then return color_image_view;
+    if draws.count == 0 then return;
 
     sprite_pass_usage_descs := RDGResourceUsageDesc.[
         .{depth_image_view, .{resource_state = .WRITE_DEPTH_STENCIL}, .{}},
@@ -190,7 +179,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
 
         color_buffer_desc := RHIColorAttachmentDesc.{
             image_view = rdg_get_image_view(color_image_view),
-            load_op = .CLEAR,
+            load_op = .LOAD,
             store_op = .STORE,
         };
 
@@ -237,8 +226,6 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData) -> RDGResou
         free(pass_data.buckets.data);
         free(pass_data.sprite_datas.data);
     });
-
-    return color_image_view;
 }
 
 #scope_file 
@@ -261,7 +248,7 @@ SpriteDrawBucket :: struct {
 }
 
 
-collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[..] SpriteDrawBucket) {
+collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[..] SpriteDrawBucket, min_sprite_z_layer: u32, max_sprite_z_layer: u32) {
     // #todo: automatically register all sprites instead of doing this by specific entity types:
     add_sprite_draw :: (out_draws: *[..] SpriteDrawData, sprite: Sprite, position: Vector2) {
         draw := SpriteDrawData.{
@@ -279,7 +266,9 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
     // collect all the draws for this frame
     {
         for Query(Sprite, Position).{world = *g_world} {
-            add_sprite_draw(out_draws, it.sprite, it.position);
+            if it.sprite.z_order >= min_sprite_z_layer && it.sprite.z_order < max_sprite_z_layer {
+                add_sprite_draw(out_draws, it.sprite, it.position);
+            }
         }
     }
 
