@@ -115,6 +115,8 @@ RenderViewData :: struct {
     index_buffer_allocator: *RHILinearGPUAllocator;
 }
 
+MAX_RECEIVE_SHADOW_LAYER :: 4;
+
 render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     rg := *g_render_graph;
     frame_number := rdg_next_frame(rg);
@@ -132,16 +134,24 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
         texture_loader_flush_uploads(cmd_list);
     });
 
-    render_image_desc := RDGImageDescription.{
-        debug_name = "Render Image",
-        width = swapchain.extent.width,
-        height = swapchain.extent.height,
-        format = .B8G8R8A8_UNORM,
-        usage_flags = .COLOR_ATTACHMENT_BIT | .TEXTURE_BIT | .RW_TEXTURE_BIT | . TRANSFER_SRC_BIT,
-    };
 
     // render sprites
-    sprite_color_image_view := render_sprite_pass(rg, *view_data);
+
+    color_image_view: RDGResourceViewHandle;
+    {
+        color_image_desc := RDGImageDescription.{
+            debug_name = "Sprite Color Buffer",
+            width = view_data.scene_texture_size.width,
+            height = view_data.scene_texture_size.height,
+            format = .R8G8B8A8_SRGB,
+            usage_flags = .COLOR_ATTACHMENT_BIT,
+        };
+
+        color_image_handle := rdg_create_image(rg, color_image_desc);
+        color_image_view = rdg_create_image_view(rg, color_image_handle, "Sprite Color Buffer View");
+
+        render_sprite_pass(rg, *view_data, color_image_view, 0, MAX_RECEIVE_SHADOW_LAYER);
+    }
 
 
     lightmap_image_view: RDGResourceViewHandle;
@@ -153,16 +163,18 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
             format = .R16G16B16A16_SFLOAT,
             usage_flags = .COLOR_ATTACHMENT_BIT,
         };
-        lightmap_image_desc.clear_value.color._float32 = .[0, 0, 0, 1.];
+        lightmap_image_desc.clear_value.color._float32 = .[0., 0., 0, 1.];
 
         lightmap_image_handle := rdg_create_image(rg, lightmap_image_desc);
         lightmap_image_view = rdg_create_image_view(rg, lightmap_image_handle, "Lightmap Buffer View");
 
-        render_light_passes(rg, *view_data, lightmap_image_view);
     }
+    lit_image_view := render_light_passes(rg, *view_data, color_image_view, lightmap_image_view);
+
+    render_sprite_pass(rg, *view_data, lit_image_view, MAX_RECEIVE_SHADOW_LAYER, U32_MAX);
 
     // render post process
-    tonemap_result_image_view := render_post_process_pass(rg, *view_data, sprite_color_image_view, lightmap_image_view);
+    tonemap_result_image_view := render_post_process_pass(rg, *view_data, lit_image_view);
 
     render_imgui_pass(rg, *view_data, tonemap_result_image_view);
 
@@ -226,9 +238,9 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     rdg_swap_sets(*g_view_registry);
 }
 
-g_ambient_color: Vector4 = .{0.7, 0.7, 0.7, 1.};
+g_ambient_color: Vector4 = .{1.0, 1.0, 1.0, 1.};
 
-render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_texture_view: RDGResourceViewHandle) {
+render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, color_texture_view: RDGResourceViewHandle, lightmap_texture_view: RDGResourceViewHandle) -> RDGResourceViewHandle {
     RDG_SCOPED_GPU_LABEL("Lights");
 
     clear_color: RHIClearColorValue;
@@ -250,12 +262,13 @@ render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_t
         
         render_rect := RHIRect.{
             offset = .{clamp(cast(s32) scissor_offset.x, 0, cast(s32) view_data.scene_texture_size.width), clamp(cast(s32) scissor_offset.y, 0, cast(s32) view_data.scene_texture_size.height)},
-            extent = .{cast(u32) scissor_extent.x, cast(u32) scissor_extent.y},
+            extent = .{max(cast(u32) 1, cast(u32) scissor_extent.x), max(cast(u32) 1, cast(u32) scissor_extent.y)},
         };
 
         render_shadowmap_pass(rg, view_data, lightmap_texture_view, it.position, render_rect);
         render_lightmap_pass(rg, view_data, lightmap_texture_view, it.position, it.point_light, render_rect);
     }
+    return render_lighting_pass(rg, view_data, color_texture_view, lightmap_texture_view);
 }
 
 init_view_data_for_frame :: (rg: *RenderGraph, view_proj: Matrix4, view_pos: Vector2, resource_index: u64) -> RenderViewData {

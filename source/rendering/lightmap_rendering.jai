@@ -6,78 +6,98 @@ Point_Light :: struct {
     intensity: float;
 }
 
-AMBIENT_LIGHT :: float32.[0.5, 0.5, 0.5, 1.];
-
 g_point_light_texture: TextureHandle;
 
 init_lightmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
-    // Store lightmap data in a higher precision, non-linear format for higher dynamic range
-    render_target_formats := RHIFormat.[
-        .R16G16B16A16_SFLOAT,
-    ];
+    {
+        // Store lightmap data in a higher precision, non-linear format for higher dynamic range
+        render_target_formats := RHIFormat.[
+            .R16G16B16A16_SFLOAT,
+        ];
 
-    // Use additive blending to add all light sources together
-    blend_states := RHIPipelineColorBlendAttachmentState.[
-        .{
-            blend_enable = true,
-            src_color_blend_factor = .DST_ALPHA,
-            dst_color_blend_factor = .ONE,
-            color_blend_op = .ADD,
-            src_alpha_blend_factor = .ONE,
-            dst_alpha_blend_factor = .ZERO,
-            alpha_blend_op = .ADD,
-        }
-    ];
+        // Use additive blending to add all light sources together
+        blend_states := RHIPipelineColorBlendAttachmentState.[
+            .{
+                blend_enable = true,
+                src_color_blend_factor = .DST_ALPHA,
+                dst_color_blend_factor = .ONE,
+                color_blend_op = .ADD,
+                src_alpha_blend_factor = .ONE,
+                dst_alpha_blend_factor = .ZERO,
+                alpha_blend_op = .ADD,
+            }
+        ];
 
-    attribute_descs := RHIVertexInputAttributeDesc.[
-        .{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "pos")},
-        .{ "TEXCOORD", 1, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "uv")},
-    ];
+        attribute_descs := RHIVertexInputAttributeDesc.[
+            .{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "pos")},
+            .{ "TEXCOORD", 1, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "uv")},
+        ];
 
-    binding_descs := RHIVertexInputBindingDesc.[
-        .{0, size_of(Vertex2D), .VERTEX },
-    ];
+        binding_descs := RHIVertexInputBindingDesc.[
+            .{0, size_of(Vertex2D), .VERTEX },
+        ];
 
 
-    create_info := rhi_default_graphics_pipeline_create_info();
-    rhi_set_vertex_shader(*create_info, "lightmap_vs");
-    rhi_set_pixel_shader(*create_info, "lightmap_ps");
-    rhi_set_vertex_binding_descs(*create_info, binding_descs);
-    rhi_set_vertex_attrib_descs(*create_info, attribute_descs);
-    rhi_set_color_blend_attachments(*create_info, blend_states);
-    rhi_set_depth_test(*create_info, false, false, .LESS_OR_EQUAL);
-    rhi_set_dynamic_state(*create_info, .VIEWPORT_BIT | .SCISSOR_BIT);
-    rhi_set_color_attachment_formats(*create_info, render_target_formats);
+        create_info := rhi_default_graphics_pipeline_create_info();
+        rhi_set_vertex_shader(*create_info, "lightmap_vs");
+        rhi_set_pixel_shader(*create_info, "lightmap_ps");
+        rhi_set_vertex_binding_descs(*create_info, binding_descs);
+        rhi_set_vertex_attrib_descs(*create_info, attribute_descs);
+        rhi_set_color_blend_attachments(*create_info, blend_states);
+        rhi_set_depth_test(*create_info, false, false, .LESS_OR_EQUAL);
+        rhi_set_dynamic_state(*create_info, .VIEWPORT_BIT | .SCISSOR_BIT);
+        rhi_set_color_attachment_formats(*create_info, render_target_formats);
 
-    used_offset_buffer_binding := RHIDescriptorSetLayoutBinding.[.{
-        descriptor_type = .OFFSET_CONSTANT_BUFFER,
-        binding = 0,
-        space = 0,
-        descriptor_count = 1,
-        stage_flags = .ALL_STAGES,
-    }];
+        used_offset_buffer_binding := RHIDescriptorSetLayoutBinding.[.{
+            descriptor_type = .OFFSET_CONSTANT_BUFFER,
+            binding = 0,
+            space = 0,
+            descriptor_count = 1,
+            stage_flags = .ALL_STAGES,
+        }];
 
-    used_bindless_bindings := RHIDescriptorSetLayoutBinding.[
-        rhi_bindless_descriptor_set_layout_binding(.TEXTURE, 0, .PIXEL_BIT), // point light sprite
-    ];
+        used_bindless_bindings := RHIDescriptorSetLayoutBinding.[
+            rhi_bindless_descriptor_set_layout_binding(.TEXTURE, 0, .PIXEL_BIT), // point light sprite
+        ];
 
-    layout_decls := RHIDescriptorSetLayoutDecl.[
-        .{offset_buffer_set_layout, used_offset_buffer_binding },
-        .{bindless_set_layout, used_bindless_bindings }
-    ];
+        layout_decls := RHIDescriptorSetLayoutDecl.[
+            .{offset_buffer_set_layout, used_offset_buffer_binding },
+            .{bindless_set_layout, used_bindless_bindings }
+        ];
 
-    static_samplers := RHIStaticSamplerDesc.[
-        rhi_static_point_clamp_sampler(0, 0, .PIXEL_BIT),
-    ];
+        static_samplers := RHIStaticSamplerDesc.[
+            rhi_static_point_clamp_sampler(0, 0, .PIXEL_BIT),
+        ];
 
-    push_const_size: u32 = size_of(Lightmap_Push_Const);
+        push_const_size: u32 = size_of(Lightmap_Push_Const);
 
-    rhi_set_pipeline_layout_desc(*create_info, layout_decls, push_const_size, .VERTEX_BIT | .PIXEL_BIT, static_samplers, 2);
-    
-    lightmap_pipeline = rhi_graphics_pipeline_build(create_info);
+        rhi_set_pipeline_layout_desc(*create_info, layout_decls, push_const_size, .VERTEX_BIT | .PIXEL_BIT, static_samplers, 2);
+        
+        lightmap_pipeline = rhi_graphics_pipeline_build(create_info);
+    }
+
+    {
+        used_bindless_bindings := RHIDescriptorSetLayoutBinding.[
+            rhi_bindless_descriptor_set_layout_binding(.TEXTURE, 0, .ALL_STAGES),
+            rhi_bindless_descriptor_set_layout_binding(.RW_TEXTURE, 0, .ALL_STAGES),
+        ];
+
+        layout_decls := RHIDescriptorSetLayoutDecl.[
+            .{bindless_set_layout, used_bindless_bindings},
+        ];
+
+        pipeline_create_info: RHIComputePipelineCreateInfo;
+        rhi_set_compute_shader(*pipeline_create_info, "apply_lighting_cs");
+
+        push_const_size := size_of(Lighting_Push_Consts);
+        rhi_set_pipeline_layout_desc(*pipeline_create_info, layout_decls, xx push_const_size, .COMPUTE_BIT, .[], 0);
+
+        apply_lighting_pipeline = rhi_compute_pipeline_build(pipeline_create_info);
+    }
 }
 
 destroy_lightmap_pipeline :: () {
+    rhi_compute_pipeline_destroy(apply_lighting_pipeline);
     rhi_graphics_pipeline_destroy(lightmap_pipeline);
 }
 
@@ -154,6 +174,61 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
     });
 }
 
+render_lighting_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_image_view: RDGResourceViewHandle, lightmap_image_view: RDGResourceViewHandle) -> RDGResourceViewHandle {
+    lit_image_desc := RDGImageDescription.{
+        debug_name = "Lit Image",
+        width = view_data.scene_texture_size.width,
+        height = view_data.scene_texture_size.height,
+        format = .R16G16B16A16_SFLOAT,
+        usage_flags = .COLOR_ATTACHMENT_BIT,
+    };
+
+    lit_image_handle := rdg_create_image(rg, lit_image_desc);
+    lit_image_view := rdg_create_image_view(rg, lit_image_handle, "Lightmap Buffer View");
+
+    lighting_pass_usages := RDGResourceUsageDesc.[
+        .{color_image_view, .{.READ_RESOURCE, .COMPUTE_SHADER_BIT}, .{}},
+        .{lightmap_image_view, .{.READ_RESOURCE, .COMPUTE_SHADER_BIT}, .{}},
+        .{lit_image_view, .{.RW_RESOURCE_WRITE_ONLY, .COMPUTE_SHADER_BIT}, .{}},
+    ];
+
+    Lighting_Pass_Data :: struct {
+        view_data: *RenderViewData;
+        input_color_image: RDGResourceViewHandle;
+        input_lightmap_image: RDGResourceViewHandle;
+        output_lit_image: RDGResourceViewHandle;
+    }
+
+    pass_data := rdg_allocate_pass_data(rg, Lighting_Pass_Data);
+    pass_data.view_data = view_data;
+    pass_data.input_color_image = color_image_view;
+    pass_data.input_lightmap_image = lightmap_image_view;
+    pass_data.output_lit_image = lit_image_view;
+
+    rdg_add_pass(rg, "Lighting", .GRAPHICS, lighting_pass_usages, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) -> () {
+        pass_data := cast(*Lighting_Pass_Data) pass_data_ptr;
+        rhi_cmd_bind_pipeline(cmd_list, apply_lighting_pipeline);
+
+        rhi_cmd_bind_descriptor_sets(cmd_list, apply_lighting_pipeline, 0, .[pass_data.view_data.bindless_set], .[]);
+
+        width := swapchain.extent.width;
+        height := swapchain.extent.height;
+
+        push_consts: Lighting_Push_Consts;
+        push_consts.resolution[0] = width;
+        push_consts.resolution[1] = height;
+        push_consts.texel_size[0] = 1. / width;
+        push_consts.texel_size[1] = 1. / height;
+        push_consts.input_color_image_index = rdg_get_bindless_handle(pass_data.input_color_image, .TEXTURE);
+        push_consts.input_lightmap_image_index = rdg_get_bindless_handle(pass_data.input_lightmap_image, .TEXTURE);
+        push_consts.output_lit_image_index = rdg_get_bindless_handle(pass_data.output_lit_image, .RW_TEXTURE);
+
+        rhi_cmd_push_constants(cmd_list, apply_lighting_pipeline, .COMPUTE_BIT, 0, size_of(Lighting_Push_Consts), *push_consts);
+        rhi_cmd_dispatch(cmd_list, (width + 7) / 8, (height + 7) / 8, 1);
+    });
+    return lit_image_view;
+}
+
 #scope_file
 
 Lightmap_Pass_Data :: struct {
@@ -179,4 +254,14 @@ Lightmap_Push_Const :: struct {
     point_light_texture: u32;
 }
 
+Lighting_Push_Consts :: struct {
+    resolution: [2] u32;
+    texel_size: [2] float;
+
+    input_color_image_index: u32;
+    input_lightmap_image_index: u32;
+    output_lit_image_index: u32;
+}
+
 lightmap_pipeline: RHIGraphicsPipeline;
+apply_lighting_pipeline: RHIComputePipeline;
