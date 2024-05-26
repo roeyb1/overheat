@@ -174,22 +174,11 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
     });
 }
 
-render_lighting_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_image_view: RDGResourceViewHandle, lightmap_image_view: RDGResourceViewHandle) -> RDGResourceViewHandle {
-    lit_image_desc := RDGImageDescription.{
-        debug_name = "Lit Image",
-        width = view_data.scene_texture_size.width,
-        height = view_data.scene_texture_size.height,
-        format = .R16G16B16A16_SFLOAT,
-        usage_flags = .COLOR_ATTACHMENT_BIT,
-    };
-
-    lit_image_handle := rdg_create_image(rg, lit_image_desc);
-    lit_image_view := rdg_create_image_view(rg, lit_image_handle, "Lightmap Buffer View");
-
+render_lighting_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_image_view: RDGResourceViewHandle, lightmap_image_view: RDGResourceViewHandle, lit_image_view: RDGResourceViewHandle) {
     lighting_pass_usages := RDGResourceUsageDesc.[
         .{color_image_view, .{.READ_RESOURCE, .COMPUTE_SHADER_BIT}, .{}},
         .{lightmap_image_view, .{.READ_RESOURCE, .COMPUTE_SHADER_BIT}, .{}},
-        .{lit_image_view, .{.RW_RESOURCE_WRITE_ONLY, .COMPUTE_SHADER_BIT}, .{}},
+        .{lit_image_view, .{.RW_RESOURCE, .COMPUTE_SHADER_BIT}, .{}},
     ];
 
     Lighting_Pass_Data :: struct {
@@ -226,7 +215,6 @@ render_lighting_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_ima
         rhi_cmd_push_constants(cmd_list, apply_lighting_pipeline, .COMPUTE_BIT, 0, size_of(Lighting_Push_Consts), *push_consts);
         rhi_cmd_dispatch(cmd_list, (width + 7) / 8, (height + 7) / 8, 1);
     });
-    return lit_image_view;
 }
 
 #scope_file
