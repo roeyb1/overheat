@@ -89,6 +89,8 @@ import_ldtk_level :: (world: *World) {
                         y := cast(float)(layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / cast(float)(TILE_PIXEL_SIZE) + ldtk_entity.__pivot[1];
                         width := cast(float) ldtk_entity.width / cast(float) TILE_PIXEL_SIZE;
                         height := cast(float) ldtk_entity.height / cast(float) TILE_PIXEL_SIZE;
+                        x += width / 2. - 0.5;
+                        y -= height / 2. - 0.5;
                         collider := spawn_entity(world);
                         add_component(world, collider, Position, .{.{x, y}});
                         add_component(world, collider, Shadow_Caster, .{make_bounds(.{0, 0}, .{width, height})});
