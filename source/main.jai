@@ -208,5 +208,3 @@ using Random :: #import "Random";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
-
-
