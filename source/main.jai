@@ -161,7 +161,8 @@ register_all_systems :: () {
     });
 
     add_system(.PreUpdate, update_player_controllers);
-
+    
+    add_system(.OnUpdate, show_inventory_system);
     add_system(.OnUpdate, update_camera_projections);
     add_system(.OnUpdate, update_camera_positions);
     add_system(.OnUpdate, update_positions);
@@ -202,12 +203,10 @@ using Random :: #import "Random";
 #load "gameplay/components.jai";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";
-#load "item.jai";
-#load "inventory.jai";
+#load "gameplay/item.jai";
+#load "gameplay/inventory.jai";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
 
 
-#load "gameplay/item.jai";
-#load "gameplay/inventory.jai";
