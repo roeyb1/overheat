@@ -48,12 +48,12 @@ float3 uchimura(float3 x)
 	return uchimura(x, P, a, m, l, c, b);
 }
 
-float3 accurateLinearToSRGB(in float3 linearCol)
+float3 linear_to_srgb(in float3 linear_color)
 {
-	float3 sRGBLo = linearCol * 12.92f;
-	float3 sRGBHi = (pow(abs(linearCol), 1.0f / 2.4f) * 1.055f) - 0.055f;
-	float3 sRGB = any(linearCol <= 0.0031308f) ? sRGBLo : sRGBHi;
-	return sRGB;
+	float3 srgb_low = linear_color * 12.92f;
+	float3 srgb_high = (pow(abs(linear_color), 1.0f / 2.4f) * 1.055f) - 0.055f;
+	float3 srgb = select((linear_color <= 0.0031308f), srgb_low, srgb_high);
+	return srgb;
 }
 
 
@@ -64,7 +64,7 @@ void main(uint3 thread_id: SV_DispatchThreadID) {
 
     float3 color = scene_color;
     color = uchimura(color);
-	color = accurateLinearToSRGB(color);
+	color = linear_to_srgb(color);
 
     g_rw_textures[g_push_consts.output_image_index][thread_id.xy] = float4(color, 1.f);
 }

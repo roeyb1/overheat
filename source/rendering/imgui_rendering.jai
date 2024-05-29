@@ -24,7 +24,7 @@ init_imgui_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindl
     rhi_set_vertex_attrib_descs(*create_info, attribute_descs);
     rhi_set_color_blend_attachments(*create_info, blend_states);
     rhi_set_dynamic_state(*create_info, .VIEWPORT_BIT | .SCISSOR_BIT);
-    rhi_set_color_attachment_formats(*create_info, .[.B8G8R8A8_UNORM]);
+    rhi_set_color_attachment_formats(*create_info, .[swapchain.format]);
 
     used_bindless_bindings := RHIDescriptorSetLayoutBinding.[
         rhi_bindless_descriptor_set_layout_binding(.TEXTURE, 0, .PIXEL_BIT),
