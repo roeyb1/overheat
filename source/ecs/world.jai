@@ -85,7 +85,7 @@ get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
     return get_component(*world.archetypes[record.archetype_id], record.row, component_type_id(Component_Type));
 }
 
-add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+add_component :: (world: *World, entity: Entity, $Component_Type: Type, $initialize := true) -> *Component_Type {
     record := table_find_pointer(*world.entity_records, entity.raw);
     assert(record != null);
     if record == null then return null;
@@ -100,11 +100,18 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
     record.row = new_row;
     record.archetype_id = to_id;
 
-    return get_component(to, record.row, new_ctid);
+    result := get_component(to, record.row, new_ctid);
+    
+    #if initialize {
+        if type_info(Component_Type).initializer then type_info(Component_Type).initializer(result);
+        else memset(result, 0, type_info(Component_Type).runtime_size);
+    }
+    
+    return result;
 }
 
-add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_value: Component_Type = .{}) -> *Component_Type {
-    result := add_component(world, entity, Component_Type);
+add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_value: Component_Type) -> *Component_Type {
+    result := add_component(world, entity, Component_Type, initialize = false);
     << result = initial_value;
     return result;
 }

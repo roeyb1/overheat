@@ -134,13 +134,8 @@ main :: () {
 }
 
 update_positions :: (world: *World) {
-    for query : Query(*Position, Velocity).{world = world} {
-        positions := query.position;
-        velocities := query.velocity;
-
-        for 0..query.count-1 {
-            positions[it] += velocities[it] * g_delta_time;
-        }
+    for Query(*Position, Velocity).{world = world} {
+        it.position.value += it.velocity.value * g_delta_time;
     }
 } @System
 
