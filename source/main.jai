@@ -166,15 +166,16 @@ register_all_systems :: () {
     add_system(.OnUpdate, update_camera_positions);
     add_system(.OnUpdate, update_positions);
     add_system(.OnUpdate, update_player_state);
+    add_system(.OnUpdate, update_directions);
 
     add_system(.OnValidate, detect_collisions_system);
+    add_system(.OnValidate, update_animation_index); //needs to run before cleanup player controller
 
     add_system(.PostUpdate, update_player_positions_on_network);
     add_system(.PostUpdate, cleanup_player_controllers);
     add_system(.PostUpdate, cleanup_collision_results_system);
     
     add_system(.PreRender, render_imgui);
-    add_system(.PreRender, update_animation_index);
 
     add_system(.OnRender, render_scene);
 
@@ -207,7 +208,7 @@ using Random :: #import "Random";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
-
-#load "animation/animation_state_machine.jai";
+#load "animation/anim_sm_player.jai";
 #load "animation/animation_states.jai";
 #load "animation/animation_data.jai";
+#load "animation/direction.jai";

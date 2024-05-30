@@ -1,9 +1,10 @@
-States :: enum u8 {
-    IDLE;
-    WALKING;
+Anim_State :: enum u8 {
+    CHARACTER_IDLE_TEMPLATE;
+    CHARACTER_WALK_TEMPLATEING;
 }
 
-Anim_State :: struct {
-    current_state: States;
+//has an s or an assertion fails at component_storage
+Anim_State_Component :: struct {
+    using #as value: Anim_State;
 }
 
