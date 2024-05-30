@@ -9,7 +9,7 @@ Direction :: struct{
     using #as value: Directions;
 }
 
-/** swaps the current indecies played on the spritesheet every frame in a loop, the directional modifier represents the direction the sprite faces and is the y index in the spritesheet */
+/** swaps the current indices played on the spritesheet every frame in a loop, the directional modifier represents the direction the sprite faces and is the y index in the spritesheet */
 update_directions:: (world: *World) {
     for Query(*Direction,Velocity).{world = world} {
         if(it.velocity.value.y < 0){

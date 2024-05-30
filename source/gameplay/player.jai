@@ -22,7 +22,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     add_component(*g_world, entity, Move_Speed, .{6});
     add_component(*g_world, entity, Point_Light, .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.});
     add_component(*g_world, entity, Anim_State_Component);
-    add_component(*g_world, entity, Animation, .{CHARACTER_IDLE_TEMPLATE,0,CHARACTER_IDLE_TEMPLATE.frame_duration});
+    add_component(*g_world, entity, Animation, .{CHARACTER_IDLE_DEFINITION,0,CHARACTER_IDLE_DEFINITION.frame_duration});
     add_component(*g_world, entity, Direction);
 
     // if this is a local player:
@@ -33,9 +33,9 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 
 
     sprite := ifx g_client.local_client_id == networking_id {
-        load_spritesheet("assets/players/local_character.png",48, 0, 0,23,4);
+        load_spritesheet("assets/players/player_character1.png",48, 0, 0,23,4);
     } else {
-        load_spritesheet("assets/players/remote_character.png", 48, 0, 0,23,4);
+        load_spritesheet("assets/players/player_character2.png", 48, 0, 0,23,4);
     }
 
     PLAYER_SIZE :: Vector2.{2.3, 2.3};
