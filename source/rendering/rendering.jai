@@ -286,28 +286,33 @@ render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, color_text
     clear_color._float32 = .[g_ambient_color.x, g_ambient_color.y, g_ambient_color.z, 1.];
 
     add_clear_image_pass(rg, lightmap_texture_view, clear_color);
-    for Query(Position, Point_Light).{world = *g_world} {
-        RDG_SCOPED_GPU_LABEL("Point Light");
+    for query : Query(Position, Point_Light).{world = *g_world} {
+        positions := query.position;
+        point_lights := query.point_light;
 
-        // calculate light bounds in screenspace so we can optimize render regions to only render within those bounds
-        light_bounds := make_bounds(it.position, make_vector2(it.point_light.radius));
+        for 0..query.count-1 {
+            RDG_SCOPED_GPU_LABEL("Point Light");
 
-        min_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.min);
-        max_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.max);
-        min_ss.y, max_ss.y = swap(min_ss.y, max_ss.y);
+            // calculate light bounds in screenspace so we can optimize render regions to only render within those bounds
+            light_bounds := make_bounds(positions[it], make_vector2(point_lights[it].radius));
 
-        scissor_offset := min_ss;
-        scissor_extent := max_ss - min_ss;
-        
-        render_rect := RHIRect.{
-            offset = .{clamp(cast(s32) scissor_offset.x, 0, cast(s32) view_data.scene_texture_size.width), clamp(cast(s32) scissor_offset.y, 0, cast(s32) view_data.scene_texture_size.height)},
-            extent = .{max(cast(u32) 1, cast(u32) scissor_extent.x), max(cast(u32) 1, cast(u32) scissor_extent.y)},
-        };
+            min_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.min);
+            max_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.max);
+            min_ss.y, max_ss.y = swap(min_ss.y, max_ss.y);
 
-        if with_shadows {
-            render_shadowmap_pass(rg, view_data, lightmap_texture_view, it.position, render_rect);
+            scissor_offset := min_ss;
+            scissor_extent := max_ss - min_ss;
+            
+            render_rect := RHIRect.{
+                offset = .{clamp(cast(s32) scissor_offset.x, 0, cast(s32) view_data.scene_texture_size.width), clamp(cast(s32) scissor_offset.y, 0, cast(s32) view_data.scene_texture_size.height)},
+                extent = .{max(cast(u32) 1, cast(u32) scissor_extent.x), max(cast(u32) 1, cast(u32) scissor_extent.y)},
+            };
+
+            if with_shadows {
+                render_shadowmap_pass(rg, view_data, lightmap_texture_view, positions[it], render_rect);
+            }
+            render_lightmap_pass(rg, view_data, lightmap_texture_view, positions[it], point_lights[it], render_rect);
         }
-        render_lightmap_pass(rg, view_data, lightmap_texture_view, it.position, it.point_light, render_rect);
     }
 
     render_lighting_pass(rg, view_data, color_texture_view, lightmap_texture_view, lit_image_view);

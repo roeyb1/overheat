@@ -457,10 +457,12 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.networking_id = new_networking_id;
 
-                for Query(Player, Networking_ID, Position).{world = *g_world} {
-                    player_data := array_add(*conn_established.existing_players);
-                    player_data.networking_id = it.networking_id.id;
-                    player_data.position = it.position;
+                for query : Query(Player, Networking_ID, Position).{world = *g_world} {
+                    for 0..query.count-1 {
+                        player_data := array_add(*conn_established.existing_players);
+                        player_data.networking_id = query.networking_id[it].id;
+                        player_data.position = query.position[it];
+                    }
                 }
 
                 networking_send_packet(*new_client, *conn_established);
@@ -581,9 +583,11 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             assert(player_move.networking_id != g_client.local_client_id, 
                 "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
 
-            for Query(Networking_ID, Player, *Position).{world = *g_world} {
-                if it.networking_id.id == player_move.networking_id {
-                    it.position.value = player_move.new_position;
+            for query : Query(Networking_ID, Player, *Position).{world = *g_world} {
+                for 0..query.count-1 {
+                    if query.networking_id[it].id == player_move.networking_id {
+                        query.position[it].value = player_move.new_position;
+                    }
                 }
             }
         case .PLAYER_LEFT;
@@ -591,12 +595,14 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             byte_buffer_read(buffer, *player_left);
 
             player_to_kill: Entity;
-            for Query(Player, Networking_ID, Name).{world = *g_world} {
-                if it.networking_id.id == player_left.networking_id {
-                    player_to_kill = it_index;
+            for query : Query(Player, Networking_ID, Name).{world = *g_world} {
+                for 0..query.count-1 {
+                    if query.networking_id[it].id == player_left.networking_id {
+                        player_to_kill = query.entities[it];
 
-                    log("% has left the game.", it.name.name);
-                    break;
+                        log("% has left the game.", query.name[it].name);
+                        break;
+                    }
                 }
             }
 

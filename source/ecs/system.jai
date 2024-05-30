@@ -227,12 +227,12 @@ test_ecs_systems :: (ctx: *TestContext) {
     }
 
     test_system2 :: (world: *World) {
-        for Query(*Test).{world = world} {
-            entity := it_index;
+        for query : Query(*Test).{world = world} {
+            for 0..query.count-1 {
+                query.test[it].x = 102;
 
-            it.test.x = 102;
-
-            execution_count += 1;
+                execution_count += 1;
+            }
         }
     }
 

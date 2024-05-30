@@ -51,7 +51,7 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
     }();
 
     archetype, archetype_id := get_or_create_archetype(world, CTIDS);
-    row := add_entity(archetype);
+    row := add_entity(archetype, new_entity);
 
     table_add(*world.entity_records, new_entity.raw, .{archetype_id = archetype_id, row = row});
 
@@ -62,18 +62,7 @@ destroy_entity :: (world: *World, entity: Entity) {
     old_record, success := table_find(*world.entity_records, entity.raw);
     if !success then return;
 
-    swapped_row := remove_entity(*world.archetypes[old_record.archetype_id], old_record.row);
-
-    // the record for the element that got swapped into the removed entities place needs to be updated to reflect the new row:
-    if swapped_row >= 0 {
-        for * world.entity_records {
-            record := it;
-            if record.row == swapped_row {
-                record.row = old_record.row;
-                break;
-            }
-        }
-    }
+    remove_entity(*world.archetypes[old_record.archetype_id], old_record.row, *world.entity_records);
 
     array_add(*world.free_entity_indices, entity.index);
 }
@@ -95,7 +84,7 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type, $initial
     from := *world.archetypes[record.archetype_id];
     to, to_id := archetype_plus(world, from.type_ids, new_ctid);
 
-    new_row := move_entity(to, from, record.row);
+    new_row := move_entity(to, from, record.row, entity, *world.entity_records);
 
     record.row = new_row;
     record.archetype_id = to_id;
@@ -126,7 +115,7 @@ remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
     from := *world.archetypes[record.archetype_id];
     to, to_id := archetype_minus(world, from.type_ids, new_ctid);
 
-    new_row := move_entity(to, from, record.row);
+    new_row := move_entity(to, from, record.row, entity, *world.entity_records);
 
     record.row = new_row;
     record.archetype_id = to_id;

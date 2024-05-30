@@ -48,37 +48,54 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 }
 
 update_player_controllers :: (world: *World) {
-    for Query(Local_Player, *Player_Controller, *Velocity, Move_Speed).{world = world} {
-        it.player_controller.move_velocity = .{0, 0};
-        move_len := length(movement_input);
-        // Normalize the input vector to prevent diagonal movement being faster than horizontal
-        if move_len > 1 {
-            movement_input = unit_vector(movement_input);
-            move_len = 1.;
+    for query : Query(Local_Player, *Player_Controller, *Velocity, Move_Speed).{world = world} {
+        player_controllers := query.player_controller;
+        velocities := query.velocity;
+        move_speeds := query.move_speed;
+
+        for 0..query.count-1 {
+            player_controllers[it].move_velocity = .{0, 0};
+            move_len := length(movement_input);
+            // Normalize the input vector to prevent diagonal movement being faster than horizontal
+            if move_len > 1 {
+                movement_input = unit_vector(movement_input);
+                move_len = 1.;
+            }
+
+            player_controllers[it].move_velocity = movement_input * move_speeds[it].speed;
+            velocities[it].value += player_controllers[it].move_velocity;
+
+            movement_input = .{0, 0};
         }
-
-        it.player_controller.move_velocity = movement_input * it.move_speed.speed;
-        it.velocity.value += it.player_controller.move_velocity;
-
-        movement_input = .{0, 0};
     }
 } @System
 
 update_player_positions_on_network :: (world: *World) {
-    for Query(Local_Player, Player_Controller, Position, Networking_ID).{world = world} {
-        if length(it.player_controller.move_velocity) > 0 {
-            player_moved: PlayerMove_Packet = ---;
-            player_moved.networking_id = it.networking_id.id;
-            player_moved.new_position = it.position;
+    for query : Query(Local_Player, Player_Controller, Position, Networking_ID).{world = world} {
+        player_controllers := query.player_controller;
+        positions := query.position;
+        networking_ids := query.networking_id;
 
-            networking_send_packet(*player_moved);;
+        for 0..query.count-1 {
+            if length_squared(player_controllers[it].move_velocity) > 0 {
+                player_moved: PlayerMove_Packet = ---;
+                player_moved.networking_id = networking_ids[it].id;
+                player_moved.new_position = positions[it];
+
+                networking_send_packet(*player_moved);;
+            }
         }
     }
 } @System
 
 cleanup_player_controllers :: (world: *World) {
-    for Query(*Player_Controller, *Velocity).{world = world} {
-        it.velocity.value -= it.player_controller.move_velocity;
+    for query : Query(*Player_Controller, *Velocity).{world = world} {
+        velocities := query.velocity;
+        player_controllers := query.player_controller;
+
+        for 0..query.count-1 {
+            velocities[it].value -= player_controllers[it].move_velocity;
+        }
     }
 } @System
 
