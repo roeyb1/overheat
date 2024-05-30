@@ -255,7 +255,7 @@ test_ecs_systems :: (ctx: *TestContext) {
     test_expect_equals(2, execution_count);
 
     test_expect_equals(102, c2.x);
-} @UnitTest
+} @UnitTes
 
 #scope_file
 

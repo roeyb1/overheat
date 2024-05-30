@@ -5,34 +5,27 @@
 World :: struct {
     /** A list of all currently alive entities */
     entities: [..] Entity;
-
     free_entity_indices: [..] s32;
 
-    /** Storage for all component types. */
-    components: Table(Component_Type_ID, ComponentContainer, given_hash_function=hash_component_id);
+    /** Maps an entity to it's archetype index */
+    entity_records: Table(s64, Entity_Record);
 
-    /** Cached results of queries over component types. Significantly accelerates entity iteration for systems. */
-    cached_queries: Table([] Component_Type_ID, Query_Cache, given_compare_function=compare_query_types);
-
-    /** Debug flag that is set when systems are iterating over the entities. We use this to track if the user tried to add or remove entities while iterating */
-    currently_iterating: bool;
+    archetypes: [..] Archetype;
 }
 
+Entity_Record :: struct {
+    archetype_id: s64;
+    row: s64;
+}
 
-/**
- * Spawn a new entity in ther world. Optionally, you can provide a list of types that this entity should have when it spawns.
- *
- * IMPORTANT: This function should never be called while systems are iterating over queries!
- * 
- * Example:
- * new_entity := spawn_entity(world); // Creates a new entity with no components attached
- *
- * Example 2: 
- * new_entity := spawn_entity(world, Position, Velocity); // Creates a new entity with a default initialized Position and Velocity component
- */
-spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
-    assert(!world.currently_iterating, "Spawning an entity while iterating in a Query is not permitted!");
+is_entity_valid :: (world: *World, entity: Entity) -> bool {
+    if entity.index == INVALID_ENTITY_INDEX then return false;
+    if entity.index >= world.entities.count then return false;
+    if entity.generation != world.entities[entity.index].generation then return false;
+    return true;
+}
 
+spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
     if world.free_entity_indices.count > 0 {
         index := pop(*world.free_entity_indices);
         world.entities[index].generation += 1;
@@ -47,113 +40,135 @@ spawn_entity :: (world: *World, $initial_component_types: ..Type) -> Entity {
 
     #insert #run () -> string {
         builder: String_Builder;
-
-        for 0..initial_component_types.count-1 {
-            print_to_builder(*builder, "add_component(world, new_entity, initial_component_types[%]);\n", it);
+        
+        print_to_builder(*builder, "CTIDS :: Component_Type_ID.[");
+        for 0..Initial_Archetype.count-1 {
+            print_to_builder(*builder, "#run component_type_id(Initial_Archetype[%]), ", it);
         }
-
+        print_to_builder(*builder, "];\n");
+        print_to_builder(*builder, "#run quick_sort(CTIDS, (x) => x.hash);\n");
         return builder_to_string(*builder);
     }();
+
+    archetype, archetype_id := get_or_create_archetype(world, CTIDS);
+    row := add_entity(archetype);
+
+    table_add(*world.entity_records, new_entity.raw, .{archetype_id = archetype_id, row = row});
 
     return new_entity;
 }
 
-/**
- * Destroy and entity in the world.
- *
- * IMPORTANT: This function should never be called while systems are iterating over queries!
- */
 destroy_entity :: (world: *World, entity: Entity) {
-    assert(!world.currently_iterating, "Destroying an entity while iterating in a Query is not permitted!");
+    old_record, success := table_find(*world.entity_records, entity.raw);
+    if !success then return;
 
-    // #todo [roey]: we should be able to accelerate this by storing bitset for each entity to determine what components it has
-    for * world.components {
-        key, value := it_index, it;
-        remove_component(value, entity);
+    swapped_row := remove_entity(*world.archetypes[old_record.archetype_id], old_record.row);
+
+    // the record for the element that got swapped into the removed entities place needs to be updated to reflect the new row:
+    if swapped_row >= 0 {
+        for * world.entity_records {
+            record := it;
+            if record.row == swapped_row {
+                record.row = old_record.row;
+                break;
+            }
+        }
     }
-
-    invalidate_caches_for_entity(world, entity);
 
     array_add(*world.free_entity_indices, entity.index);
-    world.entities[entity.index].index = INVALID_ENTITY_INDEX;
 }
 
-/**
- * Attach a new instance of $component type to the entity.
- *
- * Example:
- * new_entity := spawn_entity(world);
- * position := add_component(world, new_entity, Position); // adds a new Position component to the entity and returns a pointer to it
- *
- * Example 2:
- * position := add_component(world, new_entity, Position, .{10, 10}); // adds a new Position component and gives it the initial value of {10, 10}
- */
+get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+    record, success := table_find(*world.entity_records, entity.raw);
+    if !success then return null;
 
-add_component :: (world: *World, entity: Entity, $component: Type, $initialize := true) -> *component {
-    assert(is_entity_valid(world, entity));
+    return get_component(*world.archetypes[record.archetype_id], record.row, component_type_id(Component_Type));
+}
 
-    type_id :: #run component_type_id(component);
+add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+    record := table_find_pointer(*world.entity_records, entity.raw);
+    assert(record != null);
+    if record == null then return null;
 
-    cc := table_find_pointer(*world.components, type_id);
-    if cc == null {
-        cc = table_add(*world.components, type_id, .{type = type_info(component)});
+    new_ctid := component_type_id(Component_Type);
+
+    from := *world.archetypes[record.archetype_id];
+    to, to_id := archetype_plus(world, from.type_ids, new_ctid);
+
+    new_row := move_entity(to, from, record.row);
+
+    record.row = new_row;
+    record.archetype_id = to_id;
+
+    return get_component(to, record.row, new_ctid);
+}
+
+add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_value: Component_Type = .{}) -> *Component_Type {
+    result := add_component(world, entity, Component_Type);
+    << result = initial_value;
+    return result;
+}
+
+remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
+    record := table_find_pointer(*world.entity_records, entity.raw);
+    assert(record != null);
+    if record == null then return;
+
+    new_ctid := component_type_id(Component_Type);
+
+    from := *world.archetypes[record.archetype_id];
+    to, to_id := archetype_minus(world, from.type_ids, new_ctid);
+
+    new_row := move_entity(to, from, record.row);
+
+    record.row = new_row;
+    record.archetype_id = to_id;
+}
+
+#scope_file
+
+archetype_plus :: (world: *World, ctids: [] Component_Type_ID, plus: Component_Type_ID) -> (*Archetype, s64) {
+    new_types: [..] Component_Type_ID;
+    new_types.allocator = temp;
+    array_copy(*new_types, ctids);
+    array_add(*new_types, plus);
+    quick_sort(new_types, (x) => x.hash);
+
+    archetype, id := get_or_create_archetype(world, new_types);
+    return archetype, id;
+}
+
+archetype_minus :: (world: *World, ctids: [] Component_Type_ID, minus: Component_Type_ID) -> (*Archetype, s64) {
+    new_types: [..] Component_Type_ID;
+    new_types.allocator = temp;
+    array_copy(*new_types, ctids);
+
+    // ordered remove by value
+    {
+        for new_types if it == minus { array_ordered_remove_by_index(*new_types, it_index); break; };
     }
 
-    invalidate_caches_for_type(world, type_id);
-
-    return cast(*component) add_component(cc, entity, initialize);
-}
-/** Same as the other add_component but you can provide an optional default value */
-add_component :: (world: *World, entity: Entity, $component: Type, val: component) -> *component {
-    ptr := add_component(world, entity, component, false);
-    << ptr = val;
-    return ptr;
+    archetype, id := get_or_create_archetype(world, new_types);
+    return archetype, id;
 }
 
-/**
- * Removes the component of the passed type from the entity, if it had that component. 
- *
- * Example:
- * remove_component(world, my_entity, Position); // Removes the Position component from my_entity, if it had it.
- */
-remove_component :: (world: *World, entity: Entity, $component: Type) -> bool {
-    assert(is_entity_valid(world, entity));
-
-    type_id :: #run component_type_id(component);
-
-    cc := table_find_pointer(*world.components, type_id);
-
-    invalidate_caches_for_type(world, type_id);
-
-    if cc != null {
-        return remove_component(cc, entity);
+get_or_create_archetype :: (world: *World, ctids: [] Component_Type_ID) -> (*Archetype, s64) {
+    for * world.archetypes {
+        if archetype_matches_types(it, ctids) {
+            return it, it_index;
+        }
     }
-    return false;
+
+    result := array_add(*world.archetypes);
+    init(result, ctids);
+
+    return result, world.archetypes.count-1;
 }
 
-/**
- * Retrieves the component of a specified type for a given entity, if it has one. Returns a pointer to the component or null if the entity does not have the component.
- *
- * Example:
- * position := get_component(world, my_entity, Position);
- */
-get_component :: (world: *World, entity: Entity, $component: Type) -> *component {
-    assert(is_entity_valid(world, entity));
 
-    cc := table_find_pointer(*world.components, #run component_type_id(component));
+//------------------------- TESTING -------------------------   
 
-    if cc == null then return null;
-
-    return cast(*component) get_component(cc, entity);
-}
-
-is_entity_valid :: (world: *World, entity: Entity) -> bool {
-    if entity.index == INVALID_ENTITY_INDEX then return false;
-    if entity.index >= world.entities.count then return false;
-    if entity.generation != world.entities[entity.index].generation then return false;
-    return true;
-}
-
+#scope_export
 
 test_entity_components :: (ctx: *TestContext) {
     Test :: struct {
@@ -202,45 +217,10 @@ test_entity_components :: (ctx: *TestContext) {
 #load "component_storage.jai";
 #load "entity.jai";
 #load "query.jai";
+#load "archetype.jai";
 
 #scope_file
 
-compare_query_types :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
-    if a.count != b.count then return false;
-    // query type arrays are always sorted, so we can simply check each element with it's pair
-    for 0..a.count-1 {
-        if a[it] != b[it] then return false;
-    }
-    return true;
-}
-
-invalidate_caches_for_type :: (world: *World, type: Component_Type_ID) {
-    for * world.cached_queries {
-        key, value := it_index, it;
-        found := false;
-        for type : key {
-            if value == it { 
-                found = true;
-                break;
-            }
-        }
-        if found then value.dirty = true;
-    }
-}
-
-invalidate_caches_for_entity :: (world: *World, entity: Entity) {
-    for * world.cached_queries {
-        key, value := it_index, it;
-        found := false;
-        for value.cached_entities {
-            if entity == it {
-                found = true;
-                break;
-            }
-        }
-        if found then value.dirty = true;
-    }
-}
 
 #import "Compiler";
 #import "Program_Print";

@@ -2,6 +2,9 @@ Query :: struct ($component_types: ..Type) {
     #insert #run generate_query_members(..component_types);
 
     world: *World;
+    entities: [] Entity;
+
+    count: u32;
 }
 
 Query_Cache :: struct {
@@ -37,46 +40,7 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
 
     assert(query.world != null);
 
-    removed_entities: [..] Entity;
-    removed_entities.allocator = temp;
-
-    query_types := get_component_types_for_query(query);
-    cached_query: *Query_Cache = find_or_add(*query.world.cached_queries, query_types);
-    assert(cached_query != null);
-
-    if cached_query.dirty {
-        cached_query.cached_entities.count = 0;
-        for entity : query.world.entities {
-            // if the query was dirty, rebuilt it as we iterate
-            if entity.index == INVALID_ENTITY_INDEX continue;
-
-            #insert #run () -> string {
-                builder: String_Builder;
-                
-                print_to_builder(*builder, "matches_query := true");
-                for 0..query.component_types.count-1 {
-                    if (cast(*Type_Info) query.component_types[it]).type == .POINTER {
-                        print_to_builder(*builder, " && get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)type_info(query.component_types[%])).pointer_to)) != null", it);
-                    } else {
-                        print_to_builder(*builder, " && get_component(query.world, entity, query.component_types[%]) != null", it);
-                    }
-                }
-                print_to_builder(*builder, ";\n");
-                return builder_to_string(*builder);
-            }();
-            
-            if !matches_query {
-                continue;
-            }
-
-            array_add(*cached_query.cached_entities, entity);
-        }
-        cached_query.dirty = false;
-    }
-
-    assert(cached_query.dirty == false);
-    query.world.currently_iterating = true;
-    for entity : cached_query.cached_entities {
+    for entity, index : query.world.entities {
         #insert #run () -> string {
             builder: String_Builder;
             defer free_buffers(*builder);
@@ -90,18 +54,14 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
                     ti = cast(*Type_Info_Struct) (cast(*Type_Info_Pointer) query.component_types[it]).pointer_to;
                     print_to_builder(
                         *builder, 
-                        "query.% = get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)query.component_types[%]).pointer_to));\n",
+                        "query.% = .[get_component(query.world, entity, #run get_type((cast(*Type_Info_Pointer)query.component_types[%]).pointer_to))];\n",
                         to_lower_copy_new(ti.name),
                         it);
-                    print_to_builder(
-                        *builder, 
-                        "assert(query.% != null);\n",
-                        to_lower_copy_new(ti.name));
                 } else {
                     ti = cast(*Type_Info_Struct) query.component_types[it];
                     print_to_builder(
                         *builder,
-                        "query.% = get_component(query.world, entity, query.component_types[%]);\n",
+                        "query.% = .[get_component(query.world, entity, query.component_types[%])];\n",
                         to_lower_copy_new(ti.name),
                         it);
                 }
@@ -109,24 +69,9 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
             return builder_to_string(*builder);
         }();
 
+        query.entities = .[entity];
         `it := query;
-        `it_index := entity;
-
-        // Additional validation for debug builds:
-        // Store a copy of the query struct before the body of the loop executes so we can check if the user modified any structs.
-        // This can catch potential bugs where the user meant to make a query by-reference but forgot to add the pointer.
-        #if DEBUG {
-            query_before := it;
-        }
-        #insert (remove={ array_add(*removed_entities, entity); }) body;
-        #if DEBUG {
-            assert(bits_equal(*query_before, *it), "Query was modified during system execution! This is probably a bug due to a missing by-reference component. Before %, after %", query_before, it);
-        }
-    }
-    query.world.currently_iterating = false;
-
-    for removed_entities {
-        destroy_entity(query.world, it);
+        `it_index := index;
     }
 }
 
@@ -228,7 +173,7 @@ generate_query_members :: ($component_types: ..Type) -> string #compile_time {
         } else {
             ti = cast(*Type_Info_Struct) component_types[it];
         }
-        print_to_builder(*builder, "%: component_types[%];\n", to_lower_copy_new(ti.name), it);
+        print_to_builder(*builder, "%: [] component_types[%];\n", to_lower_copy_new(ti.name), it);
     }
     return builder_to_string(*builder);
 }
