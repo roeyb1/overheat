@@ -110,7 +110,7 @@ import_ldtk_level :: (world: *World) {
                 str_slice := slice(layer.__tilesetRelPath, index, layer.__tilesetRelPath.count - index);
                 tileset_filename = tprint("assets/%", str_slice);
             }
-            layer_spritesheet := load_spritesheet(tileset_filename, TILE_PIXEL_SIZE, 0, 0);
+            layer_spritesheet := load_spritesheet(tileset_filename, TILE_PIXEL_SIZE, 0, 0, 0, 0);
 
             spawn_entities_for_tiles(world, layer.autoLayerTiles, layer.__gridSize, layer.__cHei, layer_spritesheet, layer_index);
             spawn_entities_for_tiles(world, layer.gridTiles, layer.__gridSize, layer.__cHei, layer_spritesheet, layer_index);

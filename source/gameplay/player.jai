@@ -19,8 +19,11 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     add_component(*g_world, entity, Name, .{sprint("Player_%", networking_id)});
     add_component(*g_world, entity, Position, .{position});
     add_component(*g_world, entity, Networking_ID, .{networking_id});
-    add_component(*g_world, entity, Move_Speed, .{10});
+    add_component(*g_world, entity, Move_Speed, .{6});
     add_component(*g_world, entity, Point_Light, .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.});
+    add_component(*g_world, entity, Anim_State_Component);
+    add_component(*g_world, entity, Animation, .{CHARACTER_IDLE_DEFINITION,0,CHARACTER_IDLE_DEFINITION.frame_duration});
+    add_component(*g_world, entity, Direction);
 
     // if this is a local player:
     if g_client.local_client_id == networking_id {
@@ -30,12 +33,12 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 
 
     sprite := ifx g_client.local_client_id == networking_id {
-        g_local_player_sprite;
+        load_spritesheet("assets/players/player_character1.png",48, 0, 0,23,4);
     } else {
-        g_player_sprite;
+        load_spritesheet("assets/players/player_character2.png", 48, 0, 0,23,4);
     }
 
-    PLAYER_SIZE :: Vector2.{1.5, 1.5};
+    PLAYER_SIZE :: Vector2.{2.3, 2.3};
 
     add_component(*g_world, entity, Sprite, .{sprite, PLAYER_SIZE, 0, 10, 0});
     add_component(*g_world, entity, Collider_AABB, .{aabb = make_bounds(.{0, 0}, PLAYER_SIZE)});
@@ -46,6 +49,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 
 update_player_controllers :: (world: *World) {
     for Query(Local_Player, *Player_Controller, *Velocity, Move_Speed).{world = world} {
+        it.player_controller.move_velocity = .{0, 0};
         move_len := length(movement_input);
         // Normalize the input vector to prevent diagonal movement being faster than horizontal
         if move_len > 1 {
@@ -75,7 +79,6 @@ update_player_positions_on_network :: (world: *World) {
 cleanup_player_controllers :: (world: *World) {
     for Query(*Player_Controller, *Velocity).{world = world} {
         it.velocity.value -= it.player_controller.move_velocity;
-        it.player_controller.move_velocity = .{0, 0};
     }
 } @System
 
