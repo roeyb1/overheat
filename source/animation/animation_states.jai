@@ -1,6 +1,6 @@
 Anim_State :: enum u8 {
-    CHARACTER_IDLE_DEFINITION;
-    CHARACTER_WALK_DEFINITION;
+    IDLE;
+    WALK;
 }
 
 Anim_State_Component :: struct {

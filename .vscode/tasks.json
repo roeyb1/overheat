@@ -69,6 +69,11 @@
             "label": "build (Profiling)",
             "type": "shell",
             "command": "jai ${workspaceFolder}/build.jai - -profile"
+        },
+        {
+            "label": "build (Release)",
+            "type": "shell",
+            "command": "jai ${workspaceFolder}/build.jai - -release"
         }
     ]
 }

@@ -7,15 +7,15 @@ update_player_state :: (world: *World) {
 
         for 0..query.count-1 {
             if anim_states[it].value == {
-                case .CHARACTER_IDLE_DEFINITION;
-                    if (length_squared(velocities[it]) != 0) {
-                        anim_states[it].value = .CHARACTER_WALK_DEFINITION;
+                case .IDLE;
+                    if !equals(length_squared(velocities[it]), 0) {
+                        anim_states[it].value = .WALK;
                         transition_to_state(*anims[it], CHARACTER_WALK_DEFINITION);
                     }
                     break;
-                case .CHARACTER_WALK_DEFINITION;
-                    if (length_squared(velocities[it]) == 0) {
-                        anim_states[it].value = .CHARACTER_IDLE_DEFINITION;
+                case .WALK;
+                    if equals(length_squared(velocities[it]), 0) {
+                        anim_states[it].value = .IDLE;
                         transition_to_state(*anims[it], CHARACTER_IDLE_DEFINITION);
                     }
                     break;

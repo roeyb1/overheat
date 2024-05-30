@@ -62,7 +62,8 @@ get_component :: (archetype: *Archetype, row: s64, ctid: Component_Type_ID) -> *
 
 add_entity :: (archetype: *Archetype, entity: Entity) -> s64 {
     for * archetype.storage {
-        add_row(it);
+        data := add_row(it);
+        memset(data, 0, it.component_size);
     }
     array_add(*archetype.entities, entity);
 
