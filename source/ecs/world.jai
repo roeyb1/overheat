@@ -11,6 +11,9 @@ World :: struct {
     entity_records: Table(s64, Entity_Record);
 
     archetypes: [..] Archetype;
+
+    /** Caches the results of trying to find all archetypes with a subset of components */
+    archetype_cache: Table([] Component_Type_ID, [..] s64, given_compare_function=compare_ctids);
 }
 
 Entity_Record :: struct {
@@ -158,13 +161,34 @@ get_or_create_archetype :: (world: *World, ctids: [] Component_Type_ID) -> (*Arc
     result := array_add(*world.archetypes);
     init(result, ctids);
 
-    return result, world.archetypes.count-1;
+    archetype_id := world.archetypes.count-1;
+
+    for * world.archetype_cache {
+        cached_ctids: [] Component_Type_ID = it_index;
+        cached_archetype_ids: *[..] s64 = it;
+
+        // if this archetype would match the ctids in this cache entry, add it to the cache now:
+        if archetype_contains_types(result, cached_ctids) {
+            array_add(cached_archetype_ids, archetype_id);
+        }
+    }
+
+    return result, archetype_id;
 }
 
 
 //------------------------- TESTING -------------------------   
 
 #scope_export
+
+compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
+    if a.count != b.count then return false;
+    // component type arrays are always sorted, so we can simply check each element with it's pair
+    for 0..a.count-1 {
+        if a[it] != b[it] then return false;
+    }
+    return true;
+}
 
 test_entity_components :: (ctx: *TestContext) {
     Test :: struct {

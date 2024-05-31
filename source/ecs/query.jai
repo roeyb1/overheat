@@ -9,7 +9,7 @@ Query :: struct ($component_types: ..Type) {
 
 /** Returns a compile-time generated (sorted by id) view of a static array of component type ids for this query */
 get_component_types_for_query :: (query: Query) -> [] Component_Type_ID {
-    #insert #run () -> string {
+    #insert #run () -> string #compile_time {
         builder: String_Builder;
         
         print_to_builder(*builder, "result :: Component_Type_ID.[");
@@ -35,13 +35,14 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
 
     types := get_component_types_for_query(query);
 
-    for * archetype, archetype_id : query.world.archetypes {
-        if !archetype_contains_types(archetype, types) then continue;
+    matching_archetypes := find_or_create_cached_archetypes_for_ctids(query.world, types);
+    for archetype_id : matching_archetypes {
+        archetype := *query.world.archetypes[archetype_id];
 
         query.count = archetype.entities.count;
         query.entities = archetype.entities;
 
-        #insert -> string {
+        #insert #run-> string #compile_time {
             builder: String_Builder;
             defer free_buffers(*builder);
 
@@ -65,7 +66,7 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
                 }
             }
             return builder_to_string(*builder);
-        }
+        };
 
         `it := query;
         `it_index := archetype_id;
@@ -86,7 +87,6 @@ generate_query_members :: ($component_types: ..Type) -> string #compile_time {
         ti: *Type_Info_Struct = null;
         if (cast(*Type_Info) component_types[it]).type == .POINTER {
             ti = cast(*Type_Info_Struct) (cast(*Type_Info_Pointer) component_types[it]).pointer_to;
-            //print_to_builder(*builder, "#run component_type_id(#run get_type((cast(*Type_Info_Pointer)type_info(query.component_types[%])).pointer_to)), ", it);
             print_to_builder(*builder, "%: [] #run get_type((cast(*Type_Info_Pointer) component_types[%]).pointer_to);\n", to_lower_copy_new(ti.name), it);
         } else {
             ti = cast(*Type_Info_Struct) component_types[it];
