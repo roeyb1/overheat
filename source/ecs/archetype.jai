@@ -91,7 +91,7 @@ remove_entity :: (archetype: *Archetype, row: s64, entity_records: *Table(s64, E
     }
 }
 
-move_entity :: (dest: *Archetype, source: *Archetype, source_row: s64, entity: Entity, entity_records: *Table(s64, Entity_Record)) -> s64 {
+move_entity :: (dest: *Archetype, source: *Archetype, source_row: s64, entity: Entity, entity_records: *Table(s64, Entity_Record)) -> (dest_row: s64) {
     dest_row := add_entity(dest, entity);
 
     ctids_to_copy := ifx source.type_ids.count > dest.type_ids.count then dest.type_ids else source.type_ids;
@@ -114,7 +114,7 @@ find_or_create_cached_archetypes_for_ctids :: (world: *World, ctids: [] Componen
     archetypes: [..] s64;
     result = table_add(*world.archetype_cache, ctids, archetypes);
     for * world.archetypes {
-        if archetype_contains_types(it, ctids) then array_add(result, it_index);
+        if archetype_contains_types(it, ctids) && it.entities.count > 0 then array_add(result, it_index);
     }
     return << result;
 }

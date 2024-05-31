@@ -86,8 +86,16 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type, $initial
 
     from := *world.archetypes[record.archetype_id];
     to, to_id := archetype_plus(world, from.type_ids, new_ctid);
+    // archetype_plus may have caused the archetypes array to resize, thereby invalidating our pointer. reset it just in case:
+    from = *world.archetypes[record.archetype_id];
 
     new_row := move_entity(to, from, record.row, entity, *world.entity_records);
+    if from.entities.count == 0 {
+        remove_archetype_from_active_cache(world, record.archetype_id);
+    }
+    if to.entities.count == 1 {
+        add_archetype_to_active_cache(world, to, to_id);
+    }
 
     record.row = new_row;
     record.archetype_id = to_id;
@@ -117,8 +125,16 @@ remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
 
     from := *world.archetypes[record.archetype_id];
     to, to_id := archetype_minus(world, from.type_ids, new_ctid);
+    // archetype_minus may have caused the archetypes array to resize, thereby invalidating our pointer. reset it just in case:
+    from = *world.archetypes[record.archetype_id];
 
     new_row := move_entity(to, from, record.row, entity, *world.entity_records);
+    if from.entities.count == 0 {
+        remove_archetype_from_active_cache(world, record.archetype_id);
+    }
+    if to.entities.count == 1 {
+        add_archetype_to_active_cache(world, to, to_id);
+    }
 
     record.row = new_row;
     record.archetype_id = to_id;
@@ -163,17 +179,28 @@ get_or_create_archetype :: (world: *World, ctids: [] Component_Type_ID) -> (*Arc
 
     archetype_id := world.archetypes.count-1;
 
+    return result, archetype_id;
+}
+
+add_archetype_to_active_cache :: (world: *World, archetype: *Archetype, archetype_id: s64) {
     for * world.archetype_cache {
         cached_ctids: [] Component_Type_ID = it_index;
         cached_archetype_ids: *[..] s64 = it;
 
         // if this archetype would match the ctids in this cache entry, add it to the cache now:
-        if archetype_contains_types(result, cached_ctids) {
+        if archetype_contains_types(archetype, cached_ctids) {
             array_add(cached_archetype_ids, archetype_id);
         }
     }
 
-    return result, archetype_id;
+}
+
+remove_archetype_from_active_cache :: (world: *World, archetype_id: s64) {
+    for * world.archetype_cache {
+        cached_archetype_ids: *[..] s64 = it;
+
+        array_unordered_remove_by_value(cached_archetype_ids, archetype_id, stop_after_first=true);
+    }
 }
 
 
