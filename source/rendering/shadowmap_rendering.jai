@@ -113,12 +113,29 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
         view_data := pass_data.view_data;
 
         vertex_buffer_offset: s64 = -1;
+        index_buffer_offset: s64 = -1;
         {
             vertex_dst:, vertex_buffer_offset = rhi_allocate(view_data.vertex_buffer_allocator, size_of(Shadow_Vertex), size_of(Shadow_Vertex) * pass_data.shadow_vertex_data.count);
+            index_dst:, index_buffer_offset = rhi_allocate(view_data.index_buffer_allocator, size_of(u32), size_of(u32) * (pass_data.shadow_vertex_data.count / 4) * 6);
 
             memcpy(vertex_dst,pass_data.shadow_vertex_data.data, size_of(Shadow_Vertex) * pass_data.shadow_vertex_data.count);
 
+            index_ptr: *u32 = cast(*u32) index_dst;
+            // for each quad, add the 6 indices that make it up
+            index_offset := 0;
+            for 0..(pass_data.shadow_vertex_data.count / 4)-1 {
+                triangle_offset := it;
+                index_ptr[index_offset + 0] = cast(u32) (4 * it + 0);
+                index_ptr[index_offset + 1] = cast(u32) (4 * it + 1);
+                index_ptr[index_offset + 2] = cast(u32) (4 * it + 3);
+                index_ptr[index_offset + 3] = cast(u32) (4 * it + 0);
+                index_ptr[index_offset + 4] = cast(u32) (4 * it + 3);
+                index_ptr[index_offset + 5] = cast(u32) (4 * it + 2);
+                index_offset += 6;
+            }
+
             assert(vertex_buffer_offset != -1);
+            assert(index_buffer_offset != -1);
         }
 
         lightmap_buffer_desc := RHIColorAttachmentDesc.{
@@ -151,11 +168,10 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
             rhi_cmd_bind_descriptor_sets(cmd_list, *shadowmap_pipeline, 0, descriptor_sets, .[ xx pass_const_addr ]);
             
             rhi_cmd_bind_vertex_buffers(cmd_list, 0, .[view_data.vertex_buffer_allocator.buffer], .[xx vertex_buffer_offset]);
-            rhi_cmd_bind_index_buffer(cmd_list, quad_index_buffer, 0, .UINT32);
+            rhi_cmd_bind_index_buffer(cmd_list, view_data.index_buffer_allocator.buffer, xx index_buffer_offset, .UINT32);
 
-            for 0..(pass_data.shadow_vertex_data.count / 4)-1 {
-                rhi_cmd_draw_indexed(cmd_list, 6, 1, 0, cast(s32) (it * 4), 0);
-            }
+            num_shadow_quads := cast(u32) pass_data.shadow_vertex_data.count / 4;
+            rhi_cmd_draw_indexed(cmd_list, 6 * num_shadow_quads, 1, 0, 0, 0);
         }
 
         rhi_cmd_end_renderpass(cmd_list);
