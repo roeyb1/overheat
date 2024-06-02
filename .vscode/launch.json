@@ -72,5 +72,22 @@
             "cwd": "${workspaceRoot}/bin/win",
             "preLaunchTask": "build (Profiling)"
         },
+        {
+            "name": "Server - Release",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "overheat.exe",
+            "args": [
+                "-server"
+            ],
+            "console":"integratedTerminal",
+            "logging": {
+                "moduleLoad": true,
+                "trace": true
+            },
+            "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
+            "cwd": "${workspaceRoot}/bin/win",
+            "preLaunchTask": "build (Release)"
+        },
     ]
 }

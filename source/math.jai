@@ -77,3 +77,7 @@ radians :: inline (angle: float) -> float {
 degrees :: inline (angle: float) -> float {
     return (180. / PI) * angle;
 }
+
+equals :: (a: float, b: float, ERROR_MARGIN := 0.0001) -> bool {
+    return abs(a - b) <= ERROR_MARGIN;
+}

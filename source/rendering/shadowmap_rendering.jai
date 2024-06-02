@@ -82,13 +82,17 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
         array_add(shadow_vertex_data, .{ make_vector4(b + 1000 * (b - light_position), 0., 0.) });
     }
 
-    for Query(Shadow_Caster, Position).{world = *g_world} {
-        box := translate(it.shadow_caster.box, it.position);
+    for query : Query(Shadow_Caster, Position).{world = *g_world} {
+        shadow_casters := query.shadow_caster;
+        positions := query.position;
+        for 0..query.count-1 {
+            box := translate(shadow_casters[it].box, positions[it]);
 
-        add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.min.y}, .{box.max.x, box.min.y});
-        add_segment(*shadow_vertex_data, light_position, .{box.max.x, box.min.y}, .{box.max.x, box.max.y});
-        add_segment(*shadow_vertex_data, light_position, .{box.max.x, box.max.y}, .{box.min.x, box.max.y});
-        add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.max.y}, .{box.min.x, box.min.y});
+            add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.min.y}, .{box.max.x, box.min.y});
+            add_segment(*shadow_vertex_data, light_position, .{box.max.x, box.min.y}, .{box.max.x, box.max.y});
+            add_segment(*shadow_vertex_data, light_position, .{box.max.x, box.max.y}, .{box.min.x, box.max.y});
+            add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.max.y}, .{box.min.x, box.min.y});
+        }
     }
 
     // early out if we have no shadow geometry

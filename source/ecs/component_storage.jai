@@ -1,11 +1,5 @@
 /** Stores component data for a single component type in contiguous memory blocks */
-ComponentContainer :: struct {
-    /** Maps the entity id to the position of it's component in storage */
-    indirection: Table(s32, s64);
-
-    /** List of available slots in the contiguous block of memory */
-    free_slots: [..] s64;
-
+Component_Container :: struct {
     /** Pointer to the start of the component memory */
     data: *void = null;
 
@@ -15,12 +9,13 @@ ComponentContainer :: struct {
     /** Maximum number of things we can store before reallocating the data pointer */ 
     size: s64 = 0;
 
-    /** Component data type stored by this container. */
-    type: *Type_Info_Struct;
+    /** Per component size type stored by this container. */
+    component_size: s64;
 }
 
 Component_Type_ID :: struct {
     hash: u32;
+    runtime_size: u32;
     debug_name: string;
 }
 
@@ -33,130 +28,38 @@ component_type_id :: ($c: Type) -> Component_Type_ID {
     assert(type_info(c).type == .STRUCT, "Only struct types are supported as component types!");
     name :: #insert #run sprint("\"%\";", type_info(c).name);
 
-    return .{#run get_hash(type_info(c).name), name};
+    return .{#run get_hash(type_info(c).name), type_info(c).runtime_size, name};
 }
 
 hash_component_id :: (a: Component_Type_ID) -> u32 {
     return a.hash;
 }
 
-add_component :: (cc: *ComponentContainer, entity: Entity, $initialize := true) -> *void {
-    assert(!table_contains(*cc.indirection, entity.index), "Attempted to add a component to an entity that already has one of that type");
+get_component :: (cc: *Component_Container, row: s64) -> *void {
+    return cc.data + cc.component_size * row;
+}
 
-    new_index := -1;
-    if cc.free_slots.count > 0 {
-        new_index = pop(*cc.free_slots);
-    } else {
-        // if we are at capacity:
-        if cc.count == cc.size {
-            if cc.data != null {
-                // We cannot fit the component in the current size of the container, must reallocate:
-                old_alloc_size := cc.size * cc.type.runtime_size;
+add_row :: (cc: *Component_Container) -> *void {
+    if cc.count >= cc.size {
+        GROWTH_FACTOR :: 2;
+        new_size := GROWTH_FACTOR * cc.size;
+        if new_size < 8 then new_size = 8;
+        cc.data = realloc(cc.data, new_size * cc.component_size, cc.size * cc.component_size,, context.allocator);
 
-                // double the previous size when reallocating
-                new_data := alloc(2 * old_alloc_size);
-                memcpy(new_data, cc.data, old_alloc_size);
-
-                free(cc.data);
-                cc.data = new_data;
-                cc.size = cc.size * 2;
-            } else {
-                // cc isn't initialized, allocate our first block with 16 elements worth of storage:
-                INITIAL_COMPONENT_COUNT :: 16;
-                cc.data = alloc(INITIAL_COMPONENT_COUNT * cc.type.runtime_size);
-                cc.count = 0;
-                cc.size = INITIAL_COMPONENT_COUNT;
-            }
-        }
-        new_index = cc.count;
-        cc.count += 1;
+        cc.size = new_size;
     }
 
-    table_add(*cc.indirection, entity.index, new_index);
+    cc.count += 1;
+    
+    return cc.data + (cc.count - 1) * cc.component_size;
+}
 
-    assert(cc.data != null && cc.count > 0);
-    ptr := cc.data + new_index * cc.type.runtime_size;
-
-    #if initialize {
-        if cc.type.initializer then cc.type.initializer(ptr);
-        else memset(ptr, 0, cc.type.runtime_size);
+remove_row :: (cc: *Component_Container, row: s64) {
+    if cc.count > 1 {
+        // swap the removed position with the last element
+        memcpy(cc.data + row * cc.component_size, cc.data + (cc.count-1) * cc.component_size, cc.component_size);
     }
-
-    assert(ptr != null);
-
-    assert(cc.count == (cc.indirection.count + cc.free_slots.count));
-
-    return ptr;
+    cc.count -= 1;
 }
-
-remove_component :: (cc: *ComponentContainer, entity: Entity) -> bool {
-    success, removed_index := table_remove(*cc.indirection, entity.index);
-
-    if !success then return false;
-
-    array_add(*cc.free_slots, removed_index);
-
-    return true;
-}
-
-get_component :: (cc: *ComponentContainer, entity: Entity) -> *void {
-    index, success := table_find(*cc.indirection, entity.index);
-
-    if !success then return null;
-
-    return cc.data + index * cc.type.runtime_size;
-}
-
-test_component_container :: (ctx: *TestContext) {
-    Test :: struct { x: s64; };
-
-    cc: ComponentContainer;
-    cc.type = type_info(Test);
-
-    e1: Entity = .{index = 1, generation = 0};
-
-    c := cast(*Test) add_component(*cc, e1);
-    << c  = .{11};
-    c1 := cast(*Test) get_component(*cc, e1);
-
-    test_expect_equals(11, c1.x);
-
-    success := remove_component(*cc, e1);
-    test_expect_equals(true, success);
-    success = remove_component(*cc, e1);
-    test_expect_equals(false, success);
-
-    c = cast(*Test) add_component(*cc, e1);
-    << c = .{11};
-
-    e2: Entity = .{index = 2, generation = 0};
-    e3: Entity = .{index = 3, generation = 0};
-    c = cast(*Test) add_component(*cc, e2);
-    << c = .{12};
-    c = cast(*Test) add_component(*cc, e3);
-    << c = .{13};
-    c2 := cast(*Test) get_component(*cc, e2);
-    c3 := cast(*Test) get_component(*cc, e3);
-
-    test_expect_equals(12, c2.x);
-    test_expect_equals(13, c3.x);
-
-    remove_component(*cc, e2);
-    c1 = cast(*Test) get_component(*cc, e1);
-    c3 = cast(*Test) get_component(*cc, e3);
-    test_expect_equals(11, c1.x);
-    test_expect_equals(13, c3.x);
-
-    e4: Entity = .{index = 4, generation = 0};
-    c = cast(*Test) add_component(*cc, e4);
-    << c = .{14};
-    c4 := cast(*Test) get_component(*cc, e4);
-    test_expect_equals(14, c4.x);
-} @UnitTest
-
-#scope_file
 
 #import "Hash";
-using Hash_Table :: #import "Hash_Table";
-
-#poke_name Hash_Table operator==;

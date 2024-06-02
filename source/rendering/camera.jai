@@ -18,28 +18,35 @@ compute_screen_projection :: () -> Matrix4 {
 }
 
 update_camera_projections :: (world: *World) {
-    for Query(*Camera).{world = world} {
-        it.camera.projection = compute_screen_projection();
+    for query : Query(*Camera).{world = world} {
+        for 0..query.count-1 {
+            query.camera[it].projection = compute_screen_projection();
+        }
     }
 }
 
 update_camera_positions :: (world: *World) {
     SMOOTH_SPEED :: 15.;
 
-    for Query(*Position, Camera).{world = world} {
-        assert(is_entity_valid(world, it.camera.entity_to_track));
+    for query : Query(*Position, Camera).{world = world} {
+        camera_positions := query.position;
+        camera := query.camera;
 
-        target_location := get_component(*g_world, it.camera.entity_to_track, Position);
-        assert(target_location != null);
+        for 0..query.count-1 {
+            assert(is_entity_valid(world, camera[it].entity_to_track));
 
-        camera_dist_to_target := distance(target_location, it.position);
+            target_location := get_component(*g_world, camera[it].entity_to_track, Position);
+            assert(target_location != null);
 
-        alpha := camera_dist_to_target;
+            camera_dist_to_target := distance(target_location, camera_positions[it]);
 
-        // cubic easing function based on distance. further camera -> accelerate faster
-        speed_factor := 1. - pow(1 - alpha, 3.);
+            alpha := camera_dist_to_target;
 
-        it.position.value = lerp(it.position, target_location, speed_factor * SMOOTH_SPEED * cast(float) g_delta_time);
+            // cubic easing function based on distance. further camera -> accelerate faster
+            speed_factor := 1. - pow(1 - alpha, 3.);
+
+            camera_positions[it].value = lerp(camera_positions[it], target_location, speed_factor * SMOOTH_SPEED * cast(float) g_delta_time);
+        }
     }
 } @System
 
