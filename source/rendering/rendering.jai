@@ -294,7 +294,7 @@ render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, color_text
             RDG_SCOPED_GPU_LABEL("Point Light");
 
             // calculate light bounds in screenspace so we can optimize render regions to only render within those bounds
-            light_bounds := make_bounds(positions[it], make_vector2(point_lights[it].radius));
+            light_bounds := make_aabb(positions[it], make_vector2(point_lights[it].radius));
 
             min_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.min);
             max_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.max);

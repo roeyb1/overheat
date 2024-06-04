@@ -91,9 +91,13 @@ import_ldtk_level :: (world: *World) {
                         height := cast(float) ldtk_entity.height / cast(float) TILE_PIXEL_SIZE;
                         x += width / 2. - 0.5;
                         y -= height / 2. - 0.5;
+                        
+                        bounds := make_aabb(.{0, 0}, .{width, height});
+
                         collider := spawn_entity(world);
                         add_component(world, collider, Position, .{.{x, y}});
-                        add_component(world, collider, Shadow_Caster, .{make_bounds(.{0, 0}, .{width, height})});
+                        add_component(world, collider, Shadow_Caster, .{bounds});
+                        add_component(world, collider, Collider_AABB, .{bounds});
                     }
                 }
             }
@@ -135,12 +139,6 @@ spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32,
         sprite.index = tile.t;
         sprite.flip = tile.f;
         add_component(world, tile_entity, Sprite, sprite);
-
-        // any layer above the custom ground is a collidable layer
-        if layer_index > 1 {
-            collider := add_component(world, tile_entity, Collider_AABB);
-            collider.aabb = make_bounds(.{0, 0}, make_vector2(tile_size));
-        }
     }
 }
 

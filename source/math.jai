@@ -14,10 +14,15 @@ Ray :: struct {
     dir: Vector2;
 }
 
+make_aabb :: inline (center: Vector2, extent: Vector2) -> AABB {
+    half_extent := extent / 2.;
+    return .{min = center - half_extent, max = center + half_extent};
+}
+
 // returns true if the bounding box contains the vector
-is_inside :: (bounds: AABB, vec: Vector2) -> bool {
-    return  (vec.x >= bounds.min.x && vec.x <= bounds.max.x) &&
-            (vec.y >= bounds.min.y && vec.y <= bounds.max.y);
+is_inside :: inline (using box: AABB, vec: Vector2) -> bool {
+    return  (vec.x >= min.x && vec.x <= max.x) &&
+            (vec.y >= min.y && vec.y <= max.y);
 }
 
 intersects :: (a: AABB, b: AABB) -> bool {
@@ -26,20 +31,52 @@ intersects :: (a: AABB, b: AABB) -> bool {
     return true;
 }
 
-make_bounds :: (center: Vector2, extent: Vector2) -> AABB {
-    half_extent := extent / 2.;
-    return .{min = center - half_extent, max = center + half_extent};
+translate:: inline (using box: AABB, translation: Vector2) -> AABB {
+    return .{min = min + translation, max = max + translation };
 }
 
-translate:: (bounds: AABB, translation: Vector2) -> AABB {
-    return .{min = bounds.min + translation, max = bounds.max + translation };
+box_center :: inline (using box: AABB) -> Vector2 {
+    return .{ (min.x + max.x / 2.), (min.y + max.y) / 2. };
 }
 
-get_angle :: (vec: Vector2) -> float {
+box_extent :: inline (using box: AABB) -> Vector2 {
+    return max - min;
+}
+
+closest_point_on_aabb :: (using box: AABB, point: Vector2) -> Vector2, float{
+    min_dist := abs(point.x - min.x);
+    point_on_bounds := Vector2.{min.x, point.y};
+
+    d := abs(max.x - point.x);
+    if d < min_dist {
+        min_dist = d;
+        point_on_bounds = Vector2.{max.x, point.y};
+    }
+    d = abs(max.y - point.y);
+    if d < min_dist {
+        min_dist = d;
+        point_on_bounds = Vector2.{point.x, max.y};
+    }
+    d = abs(min.y - point.y);
+    if d < min_dist {
+        min_dist = d;
+        point_on_bounds = Vector2.{point.x, min.y};
+    }
+
+    return point_on_bounds, min_dist;
+}
+
+minkowsky_difference :: (a: AABB, b: AABB) -> AABB {
+    top_left := a.min - b.max;
+    extent := box_extent(a) + box_extent(b);
+    return make_aabb(top_left + (extent / 2.), extent);
+}
+
+get_angle :: inline (vec: Vector2) -> float {
     return atan2(vec.x, vec.y);
 }
 
-cross_product :: (a: Vector2, b: Vector2) -> float {
+cross_product :: inline (a: Vector2, b: Vector2) -> float {
     return a.x * b.y - b.x * a.y;
 }
 
@@ -78,6 +115,6 @@ degrees :: inline (angle: float) -> float {
     return (180. / PI) * angle;
 }
 
-equals :: (a: float, b: float, ERROR_MARGIN := 0.0001) -> bool {
+equals :: inline (a: float, b: float, ERROR_MARGIN := 0.0001) -> bool {
     return abs(a - b) <= ERROR_MARGIN;
 }

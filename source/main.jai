@@ -166,6 +166,7 @@ register_all_systems :: () {
     });
 
     add_system(.PreUpdate, update_player_controllers);
+    add_system(.PreUpdate, cleanup_collision_results_system);
 
     add_system(.OnUpdate, update_camera_projections);
     add_system(.OnUpdate, update_camera_positions);
@@ -176,9 +177,9 @@ register_all_systems :: () {
     add_system(.OnValidate, detect_collisions_system);
     add_system(.OnValidate, update_animation_index); //needs to run before cleanup player controller
 
+    add_system(.PostUpdate, resolve_collisions);
     add_system(.PostUpdate, update_player_positions_on_network);
     add_system(.PostUpdate, cleanup_player_controllers);
-    add_system(.PostUpdate, cleanup_collision_results_system);
     
     add_system(.PreRender, render_imgui);
 
