@@ -1,5 +1,6 @@
 Collider_AABB :: struct {
     #as using aabb: AABB;
+    blocking: bool;
 }
 
 Hit_Result :: struct {
@@ -9,7 +10,13 @@ Hit_Result :: struct {
 }
 
 Collision_Invoker :: struct {
+    /** List of all hit results which were generated against this entity this frame */
     hits_this_frame: [..] Hit_Result;
+    /** List of all hit results against colliders that are "blocking" which were generated against this entity this frame */
+    blocking_hits_this_frame: [..] Hit_Result;
+
+    //blocking_hits_this_frame.allocator = temp;
+    //hits_this_frame.allocator = temp;
 }
 
 detect_collisions_system :: (world: *World) {
@@ -56,6 +63,9 @@ detect_collisions_system :: (world: *World) {
                 hit_result.other_position = positions[b];
                 hit_result.other_aabb = colliders[b].aabb;
                 array_add(*invoker.hits_this_frame, hit_result);
+                if colliders[b].blocking {
+                    array_add(*invoker.blocking_hits_this_frame, hit_result);
+                }
             }
         }
     }
@@ -69,16 +79,18 @@ resolve_collisions :: (world: *World) {
         colliders := query.collider_aabb;
 
         for 0..query.count-1 {
-            bounds := translate(colliders[it], positions[it]);
+            for *hit : invokers[it].blocking_hits_this_frame {
+                invoker_bounds := translate(colliders[it], positions[it]);
 
-            if invokers[it].hits_this_frame.count > 0 {
-                // only handle the first overlap... for now.
-                overlap := *invokers[it].hits_this_frame[0];
-                overlapper_bounds := translate(overlap.other_aabb, overlap.other_position);
-                minkowsky := minkowsky_difference(bounds, overlapper_bounds);
-                penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
+                overlapper_bounds := translate(hit.other_aabb, hit.other_position);
+                minkowsky := minkowsky_difference(invoker_bounds, overlapper_bounds);
+                // check if there even is still a collision. We may no longer be colliding due to the collision resolution of any previous hits.
+                // We can do this by checking if the minkowsky diff still contains the origin:
+                if is_inside(minkowsky, .{0, 0}) {
+                    penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
 
-                positions[it].value -= penetration_vector;
+                    positions[it].value -= penetration_vector;
+                }
             }
         }
     }
