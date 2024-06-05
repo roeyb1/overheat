@@ -11,6 +11,7 @@ init :: (archetype: *Archetype, ctids: [] Component_Type_ID) {
     for ctid : ctids {
         storage := array_add(*archetype.storage);
         storage.component_size = ctid.runtime_size;
+        storage.initializer = ctid.initializer;
         array_add(*archetype.type_ids, ctid);
     }
     array_reset(*archetype.entities);
@@ -61,8 +62,7 @@ get_component :: (archetype: *Archetype, row: s64, ctid: Component_Type_ID) -> *
 
 add_entity :: (archetype: *Archetype, entity: Entity) -> s64 {
     for * archetype.storage {
-        data := add_row(it);
-        memset(data, 0, it.component_size);
+        add_row(it);
     }
     array_add(*archetype.entities, entity);
 
@@ -96,10 +96,11 @@ move_entity :: (dest: *Archetype, source: *Archetype, source_row: s64, entity: E
 
     ctids_to_copy := ifx source.type_ids.count > dest.type_ids.count then dest.type_ids else source.type_ids;
     for ctid : ctids_to_copy {
-        src_component, size := get_component(source, source_row, ctid);
-        dst_component := get_component(dest, dest_row, ctid);
+        src_component, src_size := get_component(source, source_row, ctid);
+        dst_component, dst_size := get_component(dest, dest_row, ctid);
+        assert(src_size == dst_size);
 
-        memcpy(dst_component, src_component, size);
+        memcpy(dst_component, src_component, src_size);
     }
 
     remove_entity(source, source_row, entity_records);

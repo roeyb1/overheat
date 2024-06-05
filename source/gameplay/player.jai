@@ -14,16 +14,16 @@ Networking_ID :: struct {
 }
 
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
-    entity := spawn_entity(*g_world, Player, Velocity);
+    entity := spawn_entity(*g_world, Player, Velocity, Name, Position, Networking_ID, Move_Speed, Point_Light, Anim_State_Component, Animation, Direction);
 
-    add_component(*g_world, entity, Name, .{sprint("Player_%", networking_id)});
-    add_component(*g_world, entity, Position, .{position});
-    add_component(*g_world, entity, Networking_ID, .{networking_id});
-    add_component(*g_world, entity, Move_Speed, .{6});
-    add_component(*g_world, entity, Point_Light, .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.});
-    add_component(*g_world, entity, Anim_State_Component);
-    add_component(*g_world, entity, Animation, .{CHARACTER_IDLE_DEFINITION,0,CHARACTER_IDLE_DEFINITION.frame_duration});
-    add_component(*g_world, entity, Direction);
+    << get_component(*g_world, entity, Name) = .{sprint("Player_%", networking_id)};
+    << get_component(*g_world, entity, Position) = .{position};
+    << get_component(*g_world, entity, Networking_ID) = .{networking_id};
+    << get_component(*g_world, entity, Move_Speed) =  .{6};
+    << get_component(*g_world, entity, Point_Light) = .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.};
+    anim :=  get_component(*g_world, entity, Animation);
+    << anim = .{CHARACTER_IDLE_DEFINITION,0,CHARACTER_IDLE_DEFINITION.frame_duration};
+
 
     // if this is a local player:
     if g_client.local_client_id == networking_id {

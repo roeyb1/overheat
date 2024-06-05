@@ -40,7 +40,7 @@ main :: () {
 
     last_time = seconds_since_init();
 
-    main_view_camera = spawn_entity(*g_world);
+    main_view_camera = spawn_entity(*g_world, Position, Camera);
     add_component(*g_world, main_view_camera, Position);
     add_component(*g_world, main_view_camera, Camera);
 

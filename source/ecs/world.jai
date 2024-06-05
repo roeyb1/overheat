@@ -49,7 +49,7 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
             print_to_builder(*builder, "#run component_type_id(Initial_Archetype[%]), ", it);
         }
         print_to_builder(*builder, "];\n");
-        print_to_builder(*builder, "#run quick_sort(CTIDS, (x) => x.hash);\n");
+        print_to_builder(*builder, "#run intro_sort(CTIDS, (a, b) => cast, trunc(int)a.hash - cast, trunc(int) b.hash);\n");
         return builder_to_string(*builder);
     }();
 
@@ -74,15 +74,16 @@ get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
     record, success := table_find(*world.entity_records, entity.raw);
     if !success then return null;
 
-    return get_component(*world.archetypes[record.archetype_id], record.row, component_type_id(Component_Type));
+    ctid :: #run component_type_id(Component_Type);
+    return get_component(*world.archetypes[record.archetype_id], record.row, ctid);
 }
 
-add_component :: (world: *World, entity: Entity, $Component_Type: Type, $initialize := true) -> *Component_Type {
+add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
     record := table_find_pointer(*world.entity_records, entity.raw);
     assert(record != null);
     if record == null then return null;
 
-    new_ctid := component_type_id(Component_Type);
+    new_ctid :: #run component_type_id(Component_Type);
 
     from := *world.archetypes[record.archetype_id];
     to, to_id := archetype_plus(world, from.type_ids, new_ctid);
@@ -101,17 +102,16 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type, $initial
     record.archetype_id = to_id;
 
     result := get_component(to, record.row, new_ctid);
-    
-    #if initialize {
-        if type_info(Component_Type).initializer then type_info(Component_Type).initializer(result);
-        else memset(result, 0, type_info(Component_Type).runtime_size);
+    ini :: initializer_of(Component_Type);
+    #if ini {
+        ini(result);
     }
     
     return result;
 }
 
 add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_value: Component_Type) -> *Component_Type {
-    result := add_component(world, entity, Component_Type, initialize = false);
+    result := add_component(world, entity, Component_Type);
     << result = initial_value;
     return result;
 }
@@ -121,7 +121,7 @@ remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
     assert(record != null);
     if record == null then return;
 
-    new_ctid := component_type_id(Component_Type);
+    new_ctid :: #run component_type_id(Component_Type);
 
     from := *world.archetypes[record.archetype_id];
     to, to_id := archetype_minus(world, from.type_ids, new_ctid);
@@ -219,7 +219,7 @@ compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
 
 test_entity_components :: (ctx: *TestContext) {
     Test :: struct {
-        x: u32;
+        x: u32 = 10;
     }
     Test2 :: struct {
         x: u32;
@@ -236,6 +236,8 @@ test_entity_components :: (ctx: *TestContext) {
     c1 := add_component(*world, e1, Test);
     // make sure that accessing the component returns the same pointer that we got when adding
     test_expect_equals(c1, get_component(*world, e1, Test));
+    // make sure the default value is correct
+    test_expect_equals(c1.x, 10);
 
     // do this again a few more times
     c2 := add_component(*world, e2, Test);
@@ -251,9 +253,20 @@ test_entity_components :: (ctx: *TestContext) {
     // now try some removing a component that doesn't exist. This should gracefully do nothing
     remove_component(*world, e1, Test);
 
-    e4 := spawn_entity(*world, Test, Test2);
+    e4 := spawn_entity(*world, Test);
     test_expect_not_equals(null, get_component(*world, e4, Test));
+    test_expect_equals(get_component(*world, e4, Test).x, 10);
+    get_component(*world, e4, Test).x = 11;
+
+    // add a new component to e4, this will trigger an archetype change:
+    add_component(*world, e4, Test2);
+    // ensure the old component is still present and has the expected value
+    test_expect_not_equals(null, get_component(*world, e4, Test));
+    test_expect_equals(get_component(*world, e4, Test).x, 11);
+
     test_expect_not_equals(null, get_component(*world, e4, Test2));
+    // make sure the default value is correct:
+    test_expect_equals(get_component(*world, e4, Test2).x, 0);
 
     destroy_entity(*world, e4);
     e5 := spawn_entity(*world);
@@ -271,3 +284,4 @@ test_entity_components :: (ctx: *TestContext) {
 
 #import "Compiler";
 #import "Program_Print";
+#import "IntroSort";

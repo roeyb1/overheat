@@ -14,9 +14,6 @@ Collision_Invoker :: struct {
     hits_this_frame: [..] Hit_Result;
     /** List of all hit results against colliders that are "blocking" which were generated against this entity this frame */
     blocking_hits_this_frame: [..] Hit_Result;
-
-    //blocking_hits_this_frame.allocator = temp;
-    //hits_this_frame.allocator = temp;
 }
 
 detect_collisions_system :: (world: *World) {
