@@ -106,6 +106,8 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
     #if ini {
         ini(result);
     }
+
+    broadcast_event(world, ECS_EVENT_ON_ADD);
     
     return result;
 }
@@ -138,6 +140,8 @@ remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
 
     record.row = new_row;
     record.archetype_id = to_id;
+
+    broadcast_event(world, ECS_EVENT_ON_REMOVE);
 }
 
 #scope_file
@@ -278,6 +282,7 @@ test_entity_components :: (ctx: *TestContext) {
 #load "entity.jai";
 #load "query.jai";
 #load "archetype.jai";
+#load "event.jai";
 
 #scope_file
 

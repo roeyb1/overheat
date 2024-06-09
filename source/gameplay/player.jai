@@ -21,8 +21,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     << get_component(*g_world, entity, Networking_ID) = .{networking_id};
     << get_component(*g_world, entity, Move_Speed) =  .{6};
     << get_component(*g_world, entity, Point_Light) = .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.};
-    anim :=  get_component(*g_world, entity, Animation);
-    << anim = .{CHARACTER_IDLE_DEFINITION,0,CHARACTER_IDLE_DEFINITION.frame_duration};
+    << get_component(*g_world, entity, Animation) = .{CHARACTER_IDLE_DEFINITION,0,CHARACTER_IDLE_DEFINITION.frame_duration, false};
 
 
     // if this is a local player:
@@ -49,10 +48,11 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 }
 
 update_player_controllers :: (world: *World) {
-    for query : Query(Local_Player, *Player_Controller, *Velocity, Move_Speed).{world = world} {
+    for query : Query(Local_Player, *Player_Controller, *Velocity, Move_Speed, Anim_State_Component).{world = world} {
         player_controllers := query.player_controller;
         velocities := query.velocity;
         move_speeds := query.move_speed;
+        anim_states := query.anim_state_component;
 
         for 0..query.count-1 {
             player_controllers[it].move_velocity = .{0, 0};
@@ -63,8 +63,12 @@ update_player_controllers :: (world: *World) {
                 move_len = 1.;
             }
 
-            player_controllers[it].move_velocity = movement_input * move_speeds[it].speed;
-            velocities[it].value += player_controllers[it].move_velocity;
+            // @todo: is there a better way to block movement while attacking?
+            current_anim_state := cast(Player_Anim_State) anim_states[it].state;
+            if current_anim_state != .ATTACK && current_anim_state != .ATTACK_WIND_UP {
+                player_controllers[it].move_velocity = movement_input * move_speeds[it].speed;
+                velocities[it].value += player_controllers[it].move_velocity;
+            }
 
             movement_input = .{0, 0};
         }
@@ -100,6 +104,10 @@ cleanup_player_controllers :: (world: *World) {
     }
 } @System
 
+
+trigger_player_attack :: (world: *World) {
+    log("Player attacked!");
+}
 
 movement_input: Vector2;
 

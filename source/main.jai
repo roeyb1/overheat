@@ -20,6 +20,8 @@ ExitGame :: (key_state: Key_Current_State) {
 main :: () {
     log_initialize();
 
+    init_ecs_events();
+
     execute_unit_tests();
 
     // set the working direction to be the root of the project (should always two directories up from the executable)
@@ -40,9 +42,15 @@ main :: () {
 
     last_time = seconds_since_init();
 
+    // The following few lines should probably be moved elsewhere. They initialize some specific things which could maybe tied into a global world init function?
     main_view_camera = spawn_entity(*g_world, Position, Camera);
     add_component(*g_world, main_view_camera, Position);
     add_component(*g_world, main_view_camera, Camera);
+
+    EVENT_PLAYER_ATTACK = register_event();
+    EVENT_ON_PLAYER_ANIM_STATE_CHANGED = register_event();
+    register_event_listener(EVENT_ON_PLAYER_ANIM_STATE_CHANGED, on_player_anim_state_changed);
+    register_event_listener(EVENT_PLAYER_ATTACK, trigger_player_attack);
 
     // Only update networking while we attempt to connect to the server and don't yet have a player:
     while g_client.local_client_id == INVALID_NETWORKING_ID {
@@ -166,16 +174,16 @@ register_all_systems :: () {
     });
 
     add_system(.PreUpdate, update_player_controllers);
-    add_system(.PreUpdate, cleanup_collision_results_system);
+    add_system(.PreUpdate, reset_collision_results);
 
     add_system(.OnUpdate, update_camera_projections);
     add_system(.OnUpdate, update_camera_positions);
     add_system(.OnUpdate, update_positions);
-    add_system(.OnUpdate, update_player_state);
+    add_system(.OnUpdate, update_player_anim_state);
     add_system(.OnUpdate, update_directions);
 
     add_system(.OnValidate, detect_collisions_system);
-    add_system(.OnValidate, update_animation_index); //needs to run before cleanup player controller
+    add_system(.OnValidate, update_sprite_for_anim);
 
     add_system(.PostUpdate, resolve_collisions);
     add_system(.PostUpdate, update_player_positions_on_network);
@@ -209,12 +217,12 @@ using Random :: #import "Random";
 #load "ecs/world.jai";
 #load "ecs/system.jai";
 #load "gameplay/components.jai";
+#load "gameplay/direction.jai";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
+#load "animation/sprite_animation.jai";
 #load "animation/anim_sm_player.jai";
-#load "animation/animation_states.jai";
-#load "animation/animation_data.jai";
-#load "animation/direction.jai";
+#load "animation/animation_definitions.jai";

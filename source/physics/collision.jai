@@ -94,7 +94,7 @@ resolve_collisions :: (world: *World) {
 }
 
 /** Reset any hit results that might've been generated last frame. */
-cleanup_collision_results_system :: (world: *World) {
+reset_collision_results :: (world: *World) {
     for query : Query(*Collision_Invoker).{world = world} {
         for 0..query.count-1 {
             query.collision_invoker[it].hits_this_frame.count = 0;
