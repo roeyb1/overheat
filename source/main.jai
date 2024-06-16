@@ -1,8 +1,11 @@
 DEBUG :: true;
 
-g_delta_time: float = 0.013;
-g_smooth_delta_time: float = 0.013;
+// @todo: move this to a singleton component
+g_delta_time: float = 0.007;
+g_smooth_delta_time: float = 0.007;
 last_time: float64;
+
+FIXED_TIMESTEP :: 0.007;
 
 g_should_exit: bool = false;
 
@@ -12,10 +15,6 @@ g_world: World;
 
 g_local_player: Entity;
 main_view_camera: Entity;
-
-ExitGame :: (key_state: Key_Current_State) {
-    g_should_exit = true;
-} @RegisterInputAction
 
 main :: () {
     log_initialize();
@@ -51,9 +50,18 @@ main :: () {
     register_event_listener(EVENT_ON_PLAYER_ANIM_STATE_CHANGED, on_player_anim_state_changed);
     register_event_listener(EVENT_PLAYER_ATTACK, trigger_player_attack);
 
+
+    accumulated_time := 0.0;
+
     // Only update networking while we attempt to connect to the server and don't yet have a player:
     while g_client.local_client_id == INVALID_NETWORKING_ID {
         FrameMark();
+
+        now := seconds_since_init();
+        g_delta_time = cast(float) (now - last_time);
+        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
+        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
+        last_time = now;
 
         hal_input_update();
         window_system_update();
@@ -68,8 +76,6 @@ main :: () {
         ImGui.NewFrame();
 
         execute(*g_world, .Init);
-        execute(*g_world, .OnLoad);
-        execute(*g_world, .PostLoad);
 
         // show connecting popup modal
         if !ImGui.IsPopupOpen("Connecting...") {
@@ -100,6 +106,14 @@ main :: () {
     while true {
         FrameMark();
 
+        now := seconds_since_init();
+        g_delta_time = cast(float) (now - last_time);
+        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
+        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
+        last_time = now;
+
+        accumulated_time += g_delta_time;
+
         hal_input_update();
         window_system_update();
 
@@ -115,12 +129,19 @@ main :: () {
         render_debug_ui();
 
         execute(*g_world, .Init);
+
         execute(*g_world, .OnLoad);
         execute(*g_world, .PostLoad);
-        execute(*g_world, .PreUpdate);
-        execute(*g_world, .OnUpdate);
-        execute(*g_world, .OnValidate);
-        execute(*g_world, .PostUpdate);
+
+        // Run simulation on a fixed timestep for determinism 
+        while accumulated_time >= FIXED_TIMESTEP {
+            execute(*g_world, .PreUpdate);
+            execute(*g_world, .OnUpdate);
+            execute(*g_world, .OnValidate);
+            execute(*g_world, .PostUpdate);
+            accumulated_time -= FIXED_TIMESTEP;
+        }
+
         execute(*g_world, .PreRender);
         execute(*g_world, .OnRender);
 
@@ -137,21 +158,13 @@ main :: () {
     rendering_shutdown();
 }
 
-update_time :: (world: *World) {
-    now := seconds_since_init();
-    g_delta_time = cast(float) (now - last_time);
-    smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
-    g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
-    last_time = now;
-}
-
 update_positions :: (world: *World) {
     for query : Query(*Position, Velocity).{world = world} {
         positions := query.position;
         velocities := query.velocity;
 
         for 0..query.count-1 {
-            positions[it].value += velocities[it].value * g_delta_time;
+            positions[it].value += velocities[it].value * FIXED_TIMESTEP;
         }
     }
 } @System
@@ -169,8 +182,6 @@ render_scene :: (world: *World) {
 
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
-    add_system(.Init, update_time);
-
     add_system(.OnLoad, load_input_system);
 
     add_system(.PostLoad, update_local_player_commands_from_input);
@@ -185,11 +196,11 @@ register_all_systems :: () {
     add_system(.OnUpdate, update_directions);
 
     add_system(.OnValidate, detect_collisions_system);
-    add_system(.OnValidate, update_sprite_for_anim);
 
     add_system(.PostUpdate, resolve_collisions);
     add_system(.PostUpdate, cleanup_player_controllers);
     
+    add_system(.PreRender, update_sprite_for_anim);
     add_system(.PreRender, render_imgui);
 
     add_system(.OnRender, render_scene);
