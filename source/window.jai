@@ -43,5 +43,11 @@ window_system_shutdown :: () {
     SDL_Quit();
 }
 
+get_mouse_cursor_pos :: () -> (x: s32, y: s32) {
+    x, y: s32;
+    SDL_GetMouseState(*x, *y);
+    return x, y;
+}
+
 #scope_file
 #import "SDL";

@@ -58,7 +58,11 @@ worldspace_to_viewspace :: (proj: Matrix4, view: Vector2, x: Vector2) -> Vector2
     return screen;
 }
 
-viewspace_to_worldspace :: (camera: *Camera, v: Vector2) -> Vector2 {
-    assert(false);
-    return .{0, 0};
+viewspace_to_worldspace :: (proj: Matrix4, view: Vector2, screen: Vector2) -> Vector2 {
+    ndc := screen / Vector2.{xx g_window_width, xx g_window_height};
+    clip := ndc * 2. - .{1., 1.};
+    clip.y *= -1;
+    world := inverse(proj) * make_vector4(clip, 0., 1.);
+    world += make_vector4(view, 0, 0);
+    return world.xy;
 }
