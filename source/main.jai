@@ -34,7 +34,6 @@ main :: () {
     imgui_init();
 
     rendering_init();
-    input_map_init();
     networking_init();
 
     load_all_assets();
@@ -56,7 +55,7 @@ main :: () {
     while g_client.local_client_id == INVALID_NETWORKING_ID {
         FrameMark();
 
-        input_system_update();
+        hal_input_update();
         window_system_update();
 
         if g_should_exit {
@@ -64,7 +63,6 @@ main :: () {
         }
 
         networking_update();
-        input_map_update();
 
         rendering_begin_frame();
         ImGui.NewFrame();
@@ -102,7 +100,7 @@ main :: () {
     while true {
         FrameMark();
 
-        input_system_update();
+        hal_input_update();
         window_system_update();
 
         if g_should_exit {
@@ -110,7 +108,6 @@ main :: () {
         }
 
         networking_update();
-        input_map_update();
 
         rendering_begin_frame();
         ImGui.NewFrame();
@@ -137,8 +134,15 @@ main :: () {
     }
 
     networking_shutdown();
-    input_map_shutdown();
     rendering_shutdown();
+}
+
+update_time :: (world: *World) {
+    now := seconds_since_init();
+    g_delta_time = cast(float) (now - last_time);
+    smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
+    g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
+    last_time = now;
 }
 
 update_positions :: (world: *World) {
@@ -165,13 +169,11 @@ render_scene :: (world: *World) {
 
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
-    add_system(System_Phase.OnLoad, (world: *World) {
-        now := seconds_since_init();
-        g_delta_time = cast(float) (now - last_time);
-        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
-        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
-        last_time = now;
-    });
+    add_system(.Init, update_time);
+
+    add_system(.OnLoad, load_input_system);
+
+    add_system(.PostLoad, update_local_player_commands_from_input);
 
     add_system(.PreUpdate, update_player_controllers);
     add_system(.PreUpdate, reset_collision_results);
@@ -186,7 +188,6 @@ register_all_systems :: () {
     add_system(.OnValidate, update_sprite_for_anim);
 
     add_system(.PostUpdate, resolve_collisions);
-    add_system(.PostUpdate, update_player_positions_on_network);
     add_system(.PostUpdate, cleanup_player_controllers);
     
     add_system(.PreRender, render_imgui);
@@ -202,22 +203,24 @@ using Basic :: #import "Basic";
 #import "tracy"(IMPORT_MODE = .CLIENT);
 using Random :: #import "Random";
 
+#import "System";
+
 #load "utils/utils.jai";
 #load "math.jai";
 #load "logging.jai";
 #load "networking.jai";
-#load "window.jai";
+#load "hal/hal_window.jai";
+#load "hal/hal_input.jai";
 #load "imgui.jai";
 #load "rendering/rendering.jai";
 #load "rendering/camera.jai";
-#load "input.jai";
-#load "input_mapping.jai";
 #load "unit_test.jai";
 #load "assets.jai";
 #load "ecs/world.jai";
 #load "ecs/system.jai";
 #load "gameplay/components.jai";
 #load "gameplay/direction.jai";
+#load "gameplay/input.jai";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";
 #load "physics/collision.jai";
