@@ -186,6 +186,8 @@ register_all_systems :: () {
 
     add_system(.PostLoad, update_local_player_commands_from_input);
 
+    add_system(.PreUpdate, broadcast_local_player_commands);
+
     add_system(.PreUpdate, update_player_controllers);
     add_system(.PreUpdate, reset_collision_results);
 

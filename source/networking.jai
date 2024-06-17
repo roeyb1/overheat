@@ -34,9 +34,9 @@ g_client: Client;
 PacketType :: enum u8 #specified {
     INVALID                 :: 0;
     CONNECTION_ESTABLISHED  :: 1;
-    PLAYER_MOVE             :: 2;
-    PLAYER_JOINED           :: 3;
-    PLAYER_LEFT             :: 4;
+    PLAYER_JOINED           :: 2;
+    PLAYER_LEFT             :: 3;
+    PLAYER_COMMANDS         :: 4;
 }
 
 /** Packet sent from the server to the client assigning it a player id. */
@@ -63,11 +63,11 @@ PlayerLeft_Packet :: struct {
     networking_id: u64;
 }
 
-PlayerMove_Packet :: struct {
-    PACKET_TYPE :: PacketType.PLAYER_MOVE;
+Player_Commands_Packet :: struct {
+    PACKET_TYPE :: PacketType.PLAYER_COMMANDS;
 
     networking_id: u64;
-    new_position: Vector2;
+    commands: Player_Commands;
 }
 
 networking_init :: () -> bool {
@@ -472,7 +472,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             {
                 player_joined: PlayerJoined_Packet = ---;
                 player_joined.networking_id = new_networking_id;
-                player_joined.position = .{0, 0};
+                player_joined.position = g_player_start;
                 networking_broadcast(*player_joined);
             }
 
@@ -576,18 +576,20 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             log("New player has joined the game: %", player_joined.networking_id);
 
-        case .PLAYER_MOVE;
-            player_move: PlayerMove_Packet;
-            byte_buffer_read(buffer, *player_move);
+        case .PLAYER_COMMANDS;
+            player_commands_packet: Player_Commands_Packet;
+            byte_buffer_read(buffer, *player_commands_packet);
 
-            assert(player_move.networking_id != g_client.local_client_id, 
+            assert(player_commands_packet.networking_id != g_client.local_client_id, 
                 "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
 
-            for query : Query(Networking_ID, Player, *Position, *Velocity).{world = *g_world} {
+            for query : Query(Networking_ID, *Player_Commands).{world = *g_world} {
+                player_commands := query.player_commands;
+                networking_ids := query.networking_id;
+
                 for 0..query.count-1 {
-                    if query.networking_id[it].id == player_move.networking_id {
-                        query.velocity[it].value = player_move.new_position - query.position[it].value;
-                        query.position[it].value = player_move.new_position;
+                    if networking_ids[it].id == player_commands_packet.networking_id {
+                        player_commands[it] = player_commands_packet.commands;
                     }
                 }
             }
@@ -615,13 +617,12 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
 server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     if packet_type == {
-        case .PLAYER_MOVE;
-            player_move: PlayerMove_Packet;
-            byte_buffer_read(buffer, *player_move);
-            // #todo: we can do something to validate the correctness of the movement, but for now just forward it to all clients:
+        case .PLAYER_COMMANDS;
+            player_commands_packet: Player_Commands_Packet;
+            byte_buffer_read(buffer, *player_commands_packet);
             for * g_server.clients {
                 // let the client be authoritative about its movement, don't send movement packets back to the client they came from
-                if it.networking_id != player_move.networking_id {
+                if it.networking_id != player_commands_packet.networking_id {
                     Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
                 }
             }

@@ -20,7 +20,7 @@ update_player_anim_state :: (world: *World) {
             current_state := cast(Player_Anim_State) anim_states[it].state;
 
             // HACK: if the use_skill flag is set, set the local player to the attack state and then clear the flag. we definitely need better input handling...
-            if player_commands[it].main_attack && get_component(world, query.entities[it], Local_Player) != null && current_state != .ATTACK {
+            if player_commands[it].main_attack && current_state != .ATTACK {
                 anim_states[it].state = xx Player_Anim_State.ATTACK_WIND_UP;
                 transition_to_state(world, *anims[it], CHARACTER_ATTACK_WIND_UP_DEFINITION);
             }

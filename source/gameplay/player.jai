@@ -21,7 +21,19 @@ Player_Commands :: struct {
 }
 
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
-    entity := spawn_entity(*g_world, Player, Velocity, Name, Player_Commands, Position, Networking_ID, Move_Speed, Point_Light, Anim_State_Component, Animation, Direction);
+    entity := spawn_entity(*g_world,
+        Player,
+        Velocity,
+        Name,
+        Player_Commands,
+        Position,
+        Networking_ID,
+        Move_Speed,
+        Point_Light,
+        Anim_State_Component,
+        Animation,
+        Direction,
+        Player_Controller);
 
     << get_component(*g_world, entity, Name) = .{sprint("Player_%", networking_id)};
     << get_component(*g_world, entity, Position) = .{position};
@@ -34,7 +46,6 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     // if this is a local player:
     if g_client.local_client_id == networking_id {
         add_component(*g_world, entity, Local_Player);
-        add_component(*g_world, entity, Player_Controller);
     }
 
 
@@ -55,7 +66,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 }
 
 update_local_player_commands_from_input :: (world: *World) {
-    for query : Query(Local_Player, Player_Commands).{world = world} {
+    for query : Query(Local_Player, *Player_Commands).{world = world} {
         player_commands := query.player_commands;
         for 0..query.count-1 {
             // reset previous frame's command state:
@@ -87,7 +98,7 @@ update_local_player_commands_from_input :: (world: *World) {
 }
 
 update_player_controllers :: (world: *World) {
-    for query : Query(Local_Player, Player_Commands, *Player_Controller, *Velocity, Move_Speed, Anim_State_Component).{world = world} {
+    for query : Query(Player_Commands, *Player_Controller, *Velocity, Move_Speed, Anim_State_Component).{world = world} {
         player_commands := query.player_commands;
         player_controllers := query.player_controller;
         velocities := query.velocity;
@@ -105,6 +116,20 @@ update_player_controllers :: (world: *World) {
         }
     }
 } @System
+
+broadcast_local_player_commands :: (world: *World) {
+    for query : Query(Local_Player, Player_Commands, Networking_ID).{world = world} {
+        player_commands := query.player_commands;
+        networking_ids := query.networking_id;
+
+        for 0..query.count-1 {
+            player_command_packet: Player_Commands_Packet;
+            player_command_packet.networking_id = networking_ids[it].id;
+            player_command_packet.commands = player_commands[it];
+            networking_send_packet(*player_command_packet);
+        }
+    }
+}
 
 cleanup_player_controllers :: (world: *World) {
     for query : Query(*Player_Controller, *Velocity).{world = world} {
