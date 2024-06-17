@@ -141,6 +141,14 @@ handle_window_input_event :: (sdl_event: *SDL_Event) {
             if sdl_event.button.button == SDL_BUTTON_MIDDLE then event.key_code = .MOUSE_BUTTON_MIDDLE;
 
             hal_input_button_states[event.key_code] = ifx sdl_event.button.state == SDL_PRESSED then .START | .DOWN else .END | .DOWN;
+        case SDL_MOUSEBUTTONUP;
+            event.type = .KEYBOARD;
+
+            if sdl_event.button.button == SDL_BUTTON_LEFT   then event.key_code = .MOUSE_BUTTON_LEFT;
+            if sdl_event.button.button == SDL_BUTTON_RIGHT  then event.key_code = .MOUSE_BUTTON_RIGHT;
+            if sdl_event.button.button == SDL_BUTTON_MIDDLE then event.key_code = .MOUSE_BUTTON_MIDDLE;
+
+            hal_input_button_states[event.key_code] = ifx sdl_event.button.state == SDL_PRESSED then .START | .DOWN else .END | .DOWN;
 
         case SDL_TEXTINPUT;
             event.type = .TEXT_INPUT;

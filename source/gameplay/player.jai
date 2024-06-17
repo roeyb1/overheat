@@ -72,16 +72,16 @@ update_local_player_commands_from_input :: (world: *World) {
             // reset previous frame's command state:
             memset(*player_commands[it], 0, size_of(Player_Commands));
 
-            if g_input_states.states[#char "w"] & .DOWN  != 0{
+            if is_button_down(*g_input_states, .MOVE_UP) {
                 player_commands[it].move_vector.y += 1;
             }
-            if g_input_states.states[#char "a"] & .DOWN != 0 {
+            if is_button_down(*g_input_states, .MOVE_LEFT) {
                 player_commands[it].move_vector.x -= 1;
             }
-            if g_input_states.states[#char "s"] & .DOWN != 0 {
+            if is_button_down(*g_input_states, .MOVE_DOWN) {
                 player_commands[it].move_vector.y -= 1;
             }
-            if g_input_states.states[#char "d"] & .DOWN != 0 {
+            if is_button_down(*g_input_states, .MOVE_RIGHT) {
                 player_commands[it].move_vector.x += 1;
             }
 
@@ -90,7 +90,7 @@ update_local_player_commands_from_input :: (world: *World) {
                 player_commands[it].move_vector = unit_vector(player_commands[it].move_vector);
             }
 
-            if g_input_states.states[Key_Code.MOUSE_BUTTON_LEFT] & .START != 0 {
+            if is_button_down(*g_input_states, .MAIN_ATTACK) {
                 player_commands[it].main_attack = true;
             }
         }
