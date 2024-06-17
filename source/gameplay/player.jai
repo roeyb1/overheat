@@ -6,15 +6,34 @@ Local_Player :: struct {}
 
 Player_Controller :: struct {
     // Keep track of the velocity added due to user input
-    move_velocity: Vector2;
+    velocity_from_input: Vector2;
 }
 
 Networking_ID :: struct {
     id: u64;
 }
 
+Player_Commands :: struct {
+    move_vector: Vector2;
+
+    main_attack: bool;
+    secondary_attack: bool;
+}
+
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
-    entity := spawn_entity(*g_world, Player, Velocity, Name, Position, Networking_ID, Move_Speed, Point_Light, Anim_State_Component, Animation, Direction);
+    entity := spawn_entity(*g_world,
+        Player,
+        Velocity,
+        Name,
+        Player_Commands,
+        Position,
+        Networking_ID,
+        Move_Speed,
+        Point_Light,
+        Anim_State_Component,
+        Animation,
+        Direction,
+        Player_Controller);
 
     << get_component(*g_world, entity, Name) = .{sprint("Player_%", networking_id)};
     << get_component(*g_world, entity, Position) = .{position};
@@ -27,7 +46,6 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     // if this is a local player:
     if g_client.local_client_id == networking_id {
         add_component(*g_world, entity, Local_Player);
-        add_component(*g_world, entity, Player_Controller);
     }
 
 
@@ -47,51 +65,71 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     return entity;
 }
 
+update_local_player_commands_from_input :: (world: *World) {
+    for query : Query(Local_Player, *Player_Commands).{world = world} {
+        player_commands := query.player_commands;
+        for 0..query.count-1 {
+            // reset previous frame's command state:
+            memset(*player_commands[it], 0, size_of(Player_Commands));
+
+            if is_button_down(*g_input_states, .MOVE_UP) {
+                player_commands[it].move_vector.y += 1;
+            }
+            if is_button_down(*g_input_states, .MOVE_LEFT) {
+                player_commands[it].move_vector.x -= 1;
+            }
+            if is_button_down(*g_input_states, .MOVE_DOWN) {
+                player_commands[it].move_vector.y -= 1;
+            }
+            if is_button_down(*g_input_states, .MOVE_RIGHT) {
+                player_commands[it].move_vector.x += 1;
+            }
+
+            // Normalize the input vector to prevent diagonal movement being faster than horizontal
+            if length_squared(player_commands[it].move_vector) > 1 {
+                player_commands[it].move_vector = unit_vector(player_commands[it].move_vector);
+            }
+
+            if is_button_down(*g_input_states, .MAIN_ATTACK) {
+                player_commands[it].main_attack = true;
+            }
+        }
+    }
+}
+
 update_player_controllers :: (world: *World) {
-    for query : Query(Local_Player, *Player_Controller, *Velocity, Move_Speed, Anim_State_Component).{world = world} {
+    for query : Query(Player_Commands, *Player_Controller, *Velocity, Move_Speed, Anim_State_Component).{world = world} {
+        player_commands := query.player_commands;
         player_controllers := query.player_controller;
         velocities := query.velocity;
         move_speeds := query.move_speed;
         anim_states := query.anim_state_component;
 
         for 0..query.count-1 {
-            player_controllers[it].move_velocity = .{0, 0};
-            move_len := length(movement_input);
-            // Normalize the input vector to prevent diagonal movement being faster than horizontal
-            if move_len > 1 {
-                movement_input = unit_vector(movement_input);
-                move_len = 1.;
-            }
-
             // @todo: is there a better way to block movement while attacking?
             current_anim_state := cast(Player_Anim_State) anim_states[it].state;
             if current_anim_state != .ATTACK && current_anim_state != .ATTACK_WIND_UP {
-                player_controllers[it].move_velocity = movement_input * move_speeds[it].speed;
-                velocities[it].value += player_controllers[it].move_velocity;
+                velocity_from_input := player_commands[it].move_vector * move_speeds[it].speed;
+                velocities[it].value += velocity_from_input;
+                player_controllers[it].velocity_from_input = velocity_from_input;
             }
-
-            movement_input = .{0, 0};
         }
     }
 } @System
 
-update_player_positions_on_network :: (world: *World) {
-    for query : Query(Local_Player, Player_Controller, Position, Networking_ID).{world = world} {
-        player_controllers := query.player_controller;
-        positions := query.position;
+broadcast_local_player_commands :: (world: *World) {
+    for query : Query(Local_Player, Player_Commands, Networking_ID).{world = world} {
+        player_commands := query.player_commands;
         networking_ids := query.networking_id;
 
         for 0..query.count-1 {
-            if length_squared(player_controllers[it].move_velocity) > 0 {
-                player_moved: PlayerMove_Packet = ---;
-                player_moved.networking_id = networking_ids[it].id;
-                player_moved.new_position = positions[it];
-
-                networking_send_packet(*player_moved);;
-            }
+            player_command_packet: Player_Commands_Packet;
+            player_command_packet.networking_id = networking_ids[it].id;
+            player_command_packet.commands = player_commands[it];
+            networking_send_packet(*player_command_packet);
         }
     }
-} @System
+}
 
 cleanup_player_controllers :: (world: *World) {
     for query : Query(*Player_Controller, *Velocity).{world = world} {
@@ -99,32 +137,15 @@ cleanup_player_controllers :: (world: *World) {
         player_controllers := query.player_controller;
 
         for 0..query.count-1 {
-            velocities[it].value -= player_controllers[it].move_velocity;
+            velocities[it].value -= player_controllers[it].velocity_from_input;
+            player_controllers[it].velocity_from_input = .{0, 0};
         }
     }
 } @System
-
 
 trigger_player_attack :: (world: *World) {
     log("Player attacked!");
 }
 
-movement_input: Vector2;
-
-MovePlayerUp :: (key_state: Key_Current_State) {
-    movement_input.y += 1;
-} @RegisterInputAction
-
-MovePlayerDown :: (key_state: Key_Current_State) {
-    movement_input.y -= 1;
-} @RegisterInputAction
-
-MovePlayerLeft :: (key_state: Key_Current_State) {
-    movement_input.x -= 1;
-} @RegisterInputAction
-
-MovePlayerRight :: (key_state: Key_Current_State) {
-    movement_input.x += 1;
-} @RegisterInputAction
 
 #import "Math";

@@ -84,11 +84,11 @@ mouse_delta_y: int;
 mouse_delta_z: int;
 
 events_this_frame:   [..] Input_Event;
-input_button_states: [NUM_BUTTON_STATES] Key_Current_State;
+hal_input_button_states: [NUM_BUTTON_STATES] Key_Current_State;
 
 NUM_BUTTON_STATES :: #run enum_highest_value(Key_Code) + 1;
 
-input_system_update :: () {
+hal_input_update :: () {
     // clear any input events that were created this frame and reset delta states
     for events_this_frame {
         for file: it.files {
@@ -105,7 +105,7 @@ input_system_update :: () {
     end_mask := ~(Key_Current_State.END | .DOWN | .START);
 
     // @Speed: Could just keep a list of who is not currently set.
-    for * input_button_states {
+    for * hal_input_button_states {
         if (<<it & .END) {
             <<it &= end_mask;
         } else {
@@ -140,7 +140,15 @@ handle_window_input_event :: (sdl_event: *SDL_Event) {
             if sdl_event.button.button == SDL_BUTTON_RIGHT  then event.key_code = .MOUSE_BUTTON_RIGHT;
             if sdl_event.button.button == SDL_BUTTON_MIDDLE then event.key_code = .MOUSE_BUTTON_MIDDLE;
 
-            input_button_states[event.key_code] = ifx sdl_event.button.state == SDL_PRESSED then .START | .DOWN else .END | .DOWN;
+            hal_input_button_states[event.key_code] = ifx sdl_event.button.state == SDL_PRESSED then .START | .DOWN else .END | .DOWN;
+        case SDL_MOUSEBUTTONUP;
+            event.type = .KEYBOARD;
+
+            if sdl_event.button.button == SDL_BUTTON_LEFT   then event.key_code = .MOUSE_BUTTON_LEFT;
+            if sdl_event.button.button == SDL_BUTTON_RIGHT  then event.key_code = .MOUSE_BUTTON_RIGHT;
+            if sdl_event.button.button == SDL_BUTTON_MIDDLE then event.key_code = .MOUSE_BUTTON_MIDDLE;
+
+            hal_input_button_states[event.key_code] = ifx sdl_event.button.state == SDL_PRESSED then .START | .DOWN else .END | .DOWN;
 
         case SDL_TEXTINPUT;
             event.type = .TEXT_INPUT;
@@ -156,7 +164,7 @@ handle_window_input_event :: (sdl_event: *SDL_Event) {
             event.key_pressed = (sdl_event.type == SDL_KEYDOWN);
             event.repeat = sdl_event.key.repeat != 0;
 
-            input_button_states[event.key_code] = ifx event.key_pressed then .START | .DOWN else .END | .DOWN;
+            hal_input_button_states[event.key_code] = ifx event.key_pressed then .START | .DOWN else .END | .DOWN;
 
             kmod := SDL_GetModState();
             event.modifier_flags.shift_pressed = ((kmod & KMOD_SHIFT) != 0);
@@ -172,7 +180,7 @@ handle_window_input_event :: (sdl_event: *SDL_Event) {
 }
 
 release_all_keys :: () {
-    for * input_button_states {
+    for * hal_input_button_states {
         << it = Key_Current_State.NONE;
     }
 }
@@ -224,24 +232,24 @@ sdl_sym_to_key_code :: (sdl_sym: SDL_Keycode) -> Key_Code {
 
 update_modifier_keys :: inline (mods: Modifier_Flags) {
     // If a modifier key wasn't already pressed, ensure that it is in the .START | .DOWN states
-    if mods.shift_pressed && !(input_button_states[Key_Code.SHIFT] & .DOWN) {
-        input_button_states[Key_Code.SHIFT] = .START | .DOWN;
-    } else if !mods.shift_pressed && (input_button_states[Key_Code.SHIFT] & .DOWN) {
-        input_button_states[Key_Code.SHIFT] |= .END;
+    if mods.shift_pressed && !(hal_input_button_states[Key_Code.SHIFT] & .DOWN) {
+        hal_input_button_states[Key_Code.SHIFT] = .START | .DOWN;
+    } else if !mods.shift_pressed && (hal_input_button_states[Key_Code.SHIFT] & .DOWN) {
+        hal_input_button_states[Key_Code.SHIFT] |= .END;
     }
-    if mods.ctrl_pressed && !(input_button_states[Key_Code.CTRL] & .DOWN) {
-        input_button_states[Key_Code.CTRL] = .START | .DOWN;
-    } else if !mods.ctrl_pressed && (input_button_states[Key_Code.CTRL] & .DOWN) {
-        input_button_states[Key_Code.CTRL] |= .END;
+    if mods.ctrl_pressed && !(hal_input_button_states[Key_Code.CTRL] & .DOWN) {
+        hal_input_button_states[Key_Code.CTRL] = .START | .DOWN;
+    } else if !mods.ctrl_pressed && (hal_input_button_states[Key_Code.CTRL] & .DOWN) {
+        hal_input_button_states[Key_Code.CTRL] |= .END;
     }
-    if mods.alt_pressed && !(input_button_states[Key_Code.ALT] & .DOWN) {
-        input_button_states[Key_Code.ALT] = .START | .DOWN;
-    } else if !mods.alt_pressed && (input_button_states[Key_Code.ALT] & .DOWN) {
-        input_button_states[Key_Code.ALT] |= .END;
+    if mods.alt_pressed && !(hal_input_button_states[Key_Code.ALT] & .DOWN) {
+        hal_input_button_states[Key_Code.ALT] = .START | .DOWN;
+    } else if !mods.alt_pressed && (hal_input_button_states[Key_Code.ALT] & .DOWN) {
+        hal_input_button_states[Key_Code.ALT] |= .END;
     }
-    if mods.super_pressed && !(input_button_states[Key_Code.SUPER] & .DOWN) {
-        input_button_states[Key_Code.SUPER] = .START | .DOWN;
-    } else if !mods.super_pressed && (input_button_states[Key_Code.SUPER] & .DOWN) {
-        input_button_states[Key_Code.SUPER] |= .END;
+    if mods.super_pressed && !(hal_input_button_states[Key_Code.SUPER] & .DOWN) {
+        hal_input_button_states[Key_Code.SUPER] = .START | .DOWN;
+    } else if !mods.super_pressed && (hal_input_button_states[Key_Code.SUPER] & .DOWN) {
+        hal_input_button_states[Key_Code.SUPER] |= .END;
     }
 }
