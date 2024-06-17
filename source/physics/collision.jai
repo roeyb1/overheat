@@ -67,7 +67,7 @@ detect_collisions_system :: (world: *World) {
         }
     }
 
-} @System
+} @System @OnValidate
 
 resolve_collisions :: (world: *World) {
     for query : Query(Collision_Invoker, *Position, Collider_AABB).{world = world} {
@@ -91,7 +91,7 @@ resolve_collisions :: (world: *World) {
             }
         }
     }
-}
+} @System @PostUpdate
 
 /** Reset any hit results that might've been generated last frame. */
 reset_collision_results :: (world: *World) {
@@ -100,5 +100,5 @@ reset_collision_results :: (world: *World) {
             query.collision_invoker[it].hits_this_frame.count = 0;
         }
     }
-} @System
+} @System @PreUpdate
 

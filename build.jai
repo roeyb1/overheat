@@ -391,6 +391,9 @@ message_loop :: (w: Workspace) {
                     if has_note(header, "RunWhenReady") {
                         array_add(*procedures_to_run, header);
                     }
+                    if has_note(header, "System") {
+                        array_add(*system_functions, header);
+                    }
                 }
                 
             case .PHASE;
@@ -407,6 +410,10 @@ message_loop :: (w: Workspace) {
                     if !generated_unit_test_actions {
                         generate_unit_test_actions(message.workspace);
                         generated_unit_test_actions = true;
+                    }
+                    if !generated_system_functions {
+                        generate_system_functions(message.workspace);
+                        generated_system_functions = true;
                     }
                 }
             }
@@ -450,6 +457,7 @@ has_note :: (header: *Code_Procedure_Header, note: string) -> bool {
 UNIT_TEST_INSERT :: #string DONE
     array_add(*g_unit_tests, .{"%1", %2});
 DONE
+
 generate_unit_test_actions :: (w: Workspace) {
     builder: String_Builder;
     defer free_buffers(*builder);
@@ -466,14 +474,36 @@ generate_unit_test_actions :: (w: Workspace) {
     add_build_string(build_string, w);
 }
 
-key_mapped_actions: [..] *Code_Procedure_Header;
-generated_keymap_actions := false;
+generate_system_functions :: (w: Workspace) {
+    builder: String_Builder;
+    defer free_buffers(*builder);
+
+    print_to_builder(*builder, "register_system_functions :: () {\n");
+    for system_functions {
+        // System second arg MUST be a phase
+        assert(it.notes.count > 1);
+        assert(it.notes[0].text == "System");
+
+        // @todo: add compile time check that it is a valid system phase
+        print_to_builder(*builder, "\tadd_system(.%1, %2);\n", it.notes[1].text, it.name);
+    }
+    print_to_builder(*builder, "\tbuild_system_dependency_graphs();\n");
+    print_to_builder(*builder, "}\n");
+
+    build_string := builder_to_string(*builder);
+    defer free(build_string);
+
+    add_build_string(build_string, w);
+}
 
 unit_test_functions: [..] *Code_Procedure_Header;
 generated_unit_test_actions := false;
 
 procedures_to_run: [..] *Code_Procedure_Header;
 has_run_procedures := false;
+
+system_functions: [..] *Code_Procedure_Header;
+generated_system_functions := false;
 
 
 is_absolute_path :: (path: string) -> bool { // This routine is probably not as correct as we'd like. We'd like to put in a better one! But maybe we will stop doing the cwd thing, or do it differently; hard to say.

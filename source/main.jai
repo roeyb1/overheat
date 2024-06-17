@@ -28,7 +28,7 @@ main :: () {
     working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
     set_working_directory(working_dir);
 
-    register_all_systems();
+    register_system_functions();
 
     window_system_init();
     imgui_init();
@@ -167,59 +167,26 @@ update_positions :: (world: *World) {
             positions[it].value = positions[it] + velocities[it] * FIXED_TIMESTEP;
         }
     }
-} @System
+} @System @OnUpdate
 
 render_imgui :: (world: *World) {
     ImGui.Render();
-}@System
+} @System @PreRender
 
 render_scene :: (world: *World) {
     pos := get_component(world, main_view_camera, Position);
     cam := get_component(world, main_view_camera, Camera);
 
     render_scene(cam.projection, pos);
-}@System
-
-// #todo [roey]: generate this function at compile time?
-register_all_systems :: () {
-
-    add_system(.OnLoad, load_input_system);
-
-    add_system(.PostLoad, update_local_player_commands_from_input);
+} @System @OnRender
 
 
-    add_system(.PreUpdate, reset_interped_position_overrides);
-    add_system(.PreUpdate, set_previous_interp_positions);
-    add_system(.PreUpdate, broadcast_local_player_commands);
-    add_system(.PreUpdate, update_player_controllers);
-    add_system(.PreUpdate, reset_collision_results);
-
-    add_system(.OnUpdate, update_positions);
-    add_system(.OnUpdate, update_player_anim_state);
-    add_system(.OnUpdate, update_directions);
-
-    add_system(.OnValidate, detect_collisions_system);
-
-    add_system(.PostUpdate, resolve_collisions);
-    add_system(.PostUpdate, cleanup_player_controllers);
-    add_system(.PostUpdate, set_current_interped_positions);
-    
-    add_system(.PreRender, update_interped_positions);
-    add_system(.PreRender, update_camera_projections);
-    add_system(.PreRender, update_camera_positions);
-    add_system(.PreRender, update_sprite_for_anim);
-    add_system(.PreRender, render_imgui);
-
-    add_system(.OnRender, render_scene);
-
-    build_system_dependency_graphs();
-}
-
-
+#placeholder register_system_functions;
 
 using Basic :: #import "Basic";
-#import "tracy"(IMPORT_MODE = .CLIENT);
 using Random :: #import "Random";
+
+#import "tracy"(IMPORT_MODE = .CLIENT);
 
 #import "System";
 

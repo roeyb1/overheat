@@ -97,7 +97,7 @@ update_local_player_commands_from_input :: (world: *World) {
             }
         }
     }
-}
+} @System @PostLoad
 
 update_player_controllers :: (world: *World) {
     for query : Query(Player_Commands, *Player_Controller, *Velocity, Move_Speed, Anim_State_Component).{world = world} {
@@ -110,14 +110,16 @@ update_player_controllers :: (world: *World) {
         for 0..query.count-1 {
             // @todo: is there a better way to block movement while attacking?
             current_anim_state := cast(Player_Anim_State) anim_states[it].state;
-            if current_anim_state != .ATTACK && current_anim_state != .ATTACK_WIND_UP {
-                velocity_from_input := player_commands[it].move_vector * move_speeds[it].speed;
-                velocities[it].value += velocity_from_input;
-                player_controllers[it].velocity_from_input = velocity_from_input;
+            velocity_from_input := player_commands[it].move_vector * move_speeds[it].speed;
+            if current_anim_state == .ATTACK || current_anim_state == .ATTACK_WIND_UP {
+                velocity_from_input = .{0, 0};
             }
+            // update only by the delta in the velocity, since we already have change from last frame in the velocity component
+            velocities[it].value += (velocity_from_input - player_controllers[it].velocity_from_input);
+            player_controllers[it].velocity_from_input = velocity_from_input;
         }
     }
-} @System
+} @System @PreUpdate
 
 broadcast_local_player_commands :: (world: *World) {
     for query : Query(Local_Player, Player_Commands, Networking_ID).{world = world} {
@@ -131,23 +133,11 @@ broadcast_local_player_commands :: (world: *World) {
             networking_send_packet(*player_command_packet);
         }
     }
-}
-
-cleanup_player_controllers :: (world: *World) {
-    for query : Query(*Player_Controller, *Velocity).{world = world} {
-        velocities := query.velocity;
-        player_controllers := query.player_controller;
-
-        for 0..query.count-1 {
-            velocities[it].value -= player_controllers[it].velocity_from_input;
-            player_controllers[it].velocity_from_input = .{0, 0};
-        }
-    }
-} @System
+} @System @OnUpdate
 
 trigger_player_attack :: (world: *World) {
     log("Player attacked!");
-}
+} @Event
 
 
 #import "Math";

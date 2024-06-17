@@ -47,4 +47,4 @@ load_input_system :: (world: *World) {
     for 0..g_input_states.states.count-1 {
         g_input_states.states[it] = hal_input_button_states[it];
     }
-} @System
+} @System @OnLoad

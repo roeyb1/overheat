@@ -25,4 +25,4 @@ update_directions:: (world: *World) {
             } 
         }
     }
-} @System
+} @System @PostUpdate
