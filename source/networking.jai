@@ -461,7 +461,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                     for 0..query.count-1 {
                         player_data := array_add(*conn_established.existing_players);
                         player_data.networking_id = query.networking_id[it].id;
-                        player_data.position = query.position[it].current;
+                        player_data.position = query.position[it];
                     }
                 }
 

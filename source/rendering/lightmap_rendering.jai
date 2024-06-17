@@ -104,7 +104,7 @@ destroy_lightmap_pipeline :: () {
 render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_image_view: RDGResourceViewHandle, light_position: Position, point_light: Point_Light, render_rect: RHIRect) {
     light_data := Point_Light_Data.{
         color = point_light.color,
-        position = light_position.interp,
+        position = light_position,
         radius = point_light.radius,
         intensity = point_light.intensity,
     };

@@ -1,7 +1,5 @@
 Position :: struct {
-    previous: Vector2;
-    current: Vector2;
-    interp: Vector2;
+    using #as value: Vector2;
 }
 
 Velocity :: struct {

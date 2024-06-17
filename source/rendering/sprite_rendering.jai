@@ -270,7 +270,7 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
             positions := query.position;
             for 0..query.count-1 {
                 if sprites[it].z_order >= min_sprite_z_layer && sprites[it].z_order < max_sprite_z_layer {
-                    add_sprite_draw(out_draws, sprites[it], positions[it].interp);
+                    add_sprite_draw(out_draws, sprites[it], positions[it]);
                 }
             }
         }
