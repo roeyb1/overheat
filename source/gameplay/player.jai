@@ -36,7 +36,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         Player_Controller);
 
     << get_component(*g_world, entity, Name) = .{sprint("Player_%", networking_id)};
-    << get_component(*g_world, entity, Position) = .{position};
+    << get_component(*g_world, entity, Position) = .{position, position, position };
     << get_component(*g_world, entity, Networking_ID) = .{networking_id};
     << get_component(*g_world, entity, Move_Speed) =  .{6};
     << get_component(*g_world, entity, Point_Light) = .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.};

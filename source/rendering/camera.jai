@@ -38,14 +38,14 @@ update_camera_positions :: (world: *World) {
             target_location := get_component(*g_world, camera[it].entity_to_track, Position);
             assert(target_location != null);
 
-            camera_dist_to_target := distance(target_location, camera_positions[it]);
+            camera_dist_to_target := distance(target_location.current, camera_positions[it].current);
 
             alpha := camera_dist_to_target;
 
             // cubic easing function based on distance. further camera -> accelerate faster
             speed_factor := 1. - pow(1 - alpha, 3.);
 
-            camera_positions[it].value = lerp(camera_positions[it], target_location, speed_factor * SMOOTH_SPEED * cast(float) FIXED_TIMESTEP);
+            camera_positions[it].current = lerp(camera_positions[it].current, target_location.current, speed_factor * SMOOTH_SPEED * cast(float) FIXED_TIMESTEP);
         }
     }
 } @System

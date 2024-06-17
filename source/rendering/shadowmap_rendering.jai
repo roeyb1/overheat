@@ -86,7 +86,7 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
         shadow_casters := query.shadow_caster;
         positions := query.position;
         for 0..query.count-1 {
-            box := translate(shadow_casters[it].box, positions[it]);
+            box := translate(shadow_casters[it].box, positions[it].interp);
 
             add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.min.y}, .{box.max.x, box.min.y});
             add_segment(*shadow_vertex_data, light_position, .{box.max.x, box.min.y}, .{box.max.x, box.max.y});

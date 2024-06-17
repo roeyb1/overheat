@@ -45,11 +45,11 @@ detect_collisions_system :: (world: *World) {
     }
 
     for a: 0..invoker_entities.count-1 {
-        a_translated_aabb := translate(invoker_colliders[a], invoker_positions[a]);
+        a_translated_aabb := translate(invoker_colliders[a], invoker_positions[a].current);
         for b : 0..entities.count-1 {
             if invoker_entities[a] == entities[b] then continue;
 
-            b_translated_aabb := translate(colliders[b], positions[b]);
+            b_translated_aabb := translate(colliders[b], positions[b].current);
 
             if intersects(a_translated_aabb, b_translated_aabb) {
                 invoker := get_component(world, invoker_entities[a], Collision_Invoker);
@@ -57,7 +57,7 @@ detect_collisions_system :: (world: *World) {
 
                 hit_result: Hit_Result;
                 hit_result.other = entities[b];
-                hit_result.other_position = positions[b];
+                hit_result.other_position = positions[b].current;
                 hit_result.other_aabb = colliders[b].aabb;
                 array_add(*invoker.hits_this_frame, hit_result);
                 if colliders[b].blocking {
@@ -77,7 +77,7 @@ resolve_collisions :: (world: *World) {
 
         for 0..query.count-1 {
             for *hit : invokers[it].blocking_hits_this_frame {
-                invoker_bounds := translate(colliders[it], positions[it]);
+                invoker_bounds := translate(colliders[it], positions[it].current);
 
                 overlapper_bounds := translate(hit.other_aabb, hit.other_position);
                 minkowsky := minkowsky_difference(invoker_bounds, overlapper_bounds);
@@ -86,7 +86,7 @@ resolve_collisions :: (world: *World) {
                 if is_inside(minkowsky, .{0, 0}) {
                     penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
 
-                    positions[it].value -= penetration_vector;
+                    positions[it].current -= penetration_vector;
                 }
             }
         }

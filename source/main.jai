@@ -1,11 +1,12 @@
 DEBUG :: true;
 
 // @todo: move this to a singleton component
-g_delta_time: float = 0.007;
-g_smooth_delta_time: float = 0.007;
+g_delta_time: float = 0.032;
+g_smooth_delta_time: float = 0.032;
 last_time: float64;
+g_interp_alpha: float = 0.;
 
-FIXED_TIMESTEP :: 0.007;
+FIXED_TIMESTEP :: 0.032;
 
 g_should_exit: bool = false;
 
@@ -98,7 +99,7 @@ main :: () {
     {
         camera := get_component(*g_world, main_view_camera, Camera);
         cam_pos := get_component(*g_world, main_view_camera, Position);
-        cam_pos.value = g_player_start;
+        << cam_pos = .{ g_player_start, g_player_start, g_player_start };
         camera.entity_to_track = g_local_player;
     }
     
@@ -141,6 +142,7 @@ main :: () {
             execute(*g_world, .PostUpdate);
             accumulated_time -= FIXED_TIMESTEP;
         }
+        g_interp_alpha = accumulated_time / FIXED_TIMESTEP;
 
         execute(*g_world, .PreRender);
         execute(*g_world, .OnRender);
@@ -164,7 +166,26 @@ update_positions :: (world: *World) {
         velocities := query.velocity;
 
         for 0..query.count-1 {
-            positions[it].value += velocities[it].value * FIXED_TIMESTEP;
+            positions[it].current = positions[it].current + velocities[it].value * FIXED_TIMESTEP;
+        }
+    }
+} @System
+
+store_previous_positions :: (world: *World) {
+    for query : Query(*Position).{world = world} {
+        positions := query.position;
+
+        for 0..query.count-1 {
+            positions[it].previous = positions[it].current;
+        }
+    }
+}
+update_interp_positions :: (world: *World) {
+    for query : Query(*Position).{world = world} {
+        positions := query.position;
+
+        for 0..query.count-1 {
+            positions[it].interp = positions[it].current * g_interp_alpha + positions[it].previous * (1. - g_interp_alpha);
         }
     }
 } @System
@@ -177,17 +198,19 @@ render_scene :: (world: *World) {
     pos := get_component(world, main_view_camera, Position);
     cam := get_component(world, main_view_camera, Camera);
 
-    render_scene(cam.projection, pos);
+    render_scene(cam.projection, pos.interp);
 }@System
 
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
+
     add_system(.OnLoad, load_input_system);
 
     add_system(.PostLoad, update_local_player_commands_from_input);
 
     add_system(.PreUpdate, broadcast_local_player_commands);
 
+    add_system(.PreUpdate, store_previous_positions);
     add_system(.PreUpdate, update_player_controllers);
     add_system(.PreUpdate, reset_collision_results);
 
@@ -202,6 +225,7 @@ register_all_systems :: () {
     add_system(.PostUpdate, resolve_collisions);
     add_system(.PostUpdate, cleanup_player_controllers);
     
+    add_system(.PreRender, update_interp_positions);
     add_system(.PreRender, update_sprite_for_anim);
     add_system(.PreRender, render_imgui);
 
