@@ -4,8 +4,7 @@ Interp_Position :: struct {
 }
 
 set_previous_interp_positions :: (world: *World) {
-    for query : Query(*Position, *Interp_Position).{world = world} {
-        positions := query.position;
+    for query : Query(*Interp_Position).{world = world} {
         interp_positions := query.interp_position;
 
         for 0..query.count-1 {
