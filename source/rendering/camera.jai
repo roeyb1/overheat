@@ -18,9 +18,11 @@ compute_screen_projection :: () -> Matrix4 {
 }
 
 update_camera_projections :: (world: *World) {
-    for query : Query(*Camera).{world = world} {
-        for 0..query.count-1 {
-            query.camera[it].projection = compute_screen_projection();
+    if g_window_resized_this_frame {
+        for query : Query(*Camera).{world = world} {
+            for 0..query.count-1 {
+                query.camera[it].projection = compute_screen_projection();
+            }
         }
     }
 }

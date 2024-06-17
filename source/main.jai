@@ -1,11 +1,12 @@
 DEBUG :: true;
 
 // @todo: move this to a singleton component
-g_delta_time: float = 0.007;
-g_smooth_delta_time: float = 0.007;
+g_delta_time: float = 0.016;
+g_smooth_delta_time: float = 0.016;
 last_time: float64;
+g_interp_alpha: float = 0.;
 
-FIXED_TIMESTEP :: 0.007;
+FIXED_TIMESTEP :: 0.016;
 
 g_should_exit: bool = false;
 
@@ -42,8 +43,6 @@ main :: () {
 
     // The following few lines should probably be moved elsewhere. They initialize some specific things which could maybe tied into a global world init function?
     main_view_camera = spawn_entity(*g_world, Position, Camera);
-    add_component(*g_world, main_view_camera, Position);
-    add_component(*g_world, main_view_camera, Camera);
 
     EVENT_PLAYER_ATTACK = register_event();
     EVENT_ON_PLAYER_ANIM_STATE_CHANGED = register_event();
@@ -98,7 +97,7 @@ main :: () {
     {
         camera := get_component(*g_world, main_view_camera, Camera);
         cam_pos := get_component(*g_world, main_view_camera, Position);
-        cam_pos.value = g_player_start;
+        << cam_pos = .{ g_player_start };
         camera.entity_to_track = g_local_player;
     }
     
@@ -141,6 +140,7 @@ main :: () {
             execute(*g_world, .PostUpdate);
             accumulated_time -= FIXED_TIMESTEP;
         }
+        g_interp_alpha = accumulated_time / FIXED_TIMESTEP;
 
         execute(*g_world, .PreRender);
         execute(*g_world, .OnRender);
@@ -164,7 +164,7 @@ update_positions :: (world: *World) {
         velocities := query.velocity;
 
         for 0..query.count-1 {
-            positions[it].value += velocities[it].value * FIXED_TIMESTEP;
+            positions[it].value = positions[it] + velocities[it] * FIXED_TIMESTEP;
         }
     }
 } @System
@@ -182,17 +182,18 @@ render_scene :: (world: *World) {
 
 // #todo [roey]: generate this function at compile time?
 register_all_systems :: () {
+
     add_system(.OnLoad, load_input_system);
 
     add_system(.PostLoad, update_local_player_commands_from_input);
 
-    add_system(.PreUpdate, broadcast_local_player_commands);
 
+    add_system(.PreUpdate, reset_interped_position_overrides);
+    add_system(.PreUpdate, set_previous_interp_positions);
+    add_system(.PreUpdate, broadcast_local_player_commands);
     add_system(.PreUpdate, update_player_controllers);
     add_system(.PreUpdate, reset_collision_results);
 
-    add_system(.OnUpdate, update_camera_projections);
-    add_system(.OnUpdate, update_camera_positions);
     add_system(.OnUpdate, update_positions);
     add_system(.OnUpdate, update_player_anim_state);
     add_system(.OnUpdate, update_directions);
@@ -201,7 +202,11 @@ register_all_systems :: () {
 
     add_system(.PostUpdate, resolve_collisions);
     add_system(.PostUpdate, cleanup_player_controllers);
+    add_system(.PostUpdate, set_current_interped_positions);
     
+    add_system(.PreRender, update_interped_positions);
+    add_system(.PreRender, update_camera_projections);
+    add_system(.PreRender, update_camera_positions);
     add_system(.PreRender, update_sprite_for_anim);
     add_system(.PreRender, render_imgui);
 
@@ -232,6 +237,7 @@ using Random :: #import "Random";
 #load "ecs/world.jai";
 #load "ecs/system.jai";
 #load "gameplay/components.jai";
+#load "gameplay/position_interp.jai";
 #load "gameplay/direction.jai";
 #load "gameplay/input.jai";
 #load "gameplay/player.jai";

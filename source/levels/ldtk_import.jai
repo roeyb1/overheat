@@ -82,7 +82,7 @@ import_ldtk_level :: (world: *World) {
                         x := cast(float) (ldtk_entity.__worldX / xx layer.__gridSize);
                         y := cast(float) ((layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / layer.__gridSize);
                         light := spawn_entity(world);
-                        add_component(world, light, Position, .{.{x, y}});
+                        add_component(world, light, Position, .{.{x,y}});
                         add_component(world, light, Point_Light, .{intensity = 2., color = .{ 255. / 255., 115. / 255., 23. / 255.}, radius = 10.});
                     } else if ldtk_entity.__identifier == "collider" {
                         x := (cast(float) ldtk_entity.__worldX / cast(float) TILE_PIXEL_SIZE) - ldtk_entity.__pivot[0];
@@ -95,7 +95,7 @@ import_ldtk_level :: (world: *World) {
                         bounds := make_aabb(.{0, 0}, .{width, height});
 
                         collider := spawn_entity(world);
-                        add_component(world, collider, Position, .{.{x, y}});
+                        add_component(world, collider, Position, .{.{x,y} });
                         add_component(world, collider, Shadow_Caster, .{bounds});
                         add_component(world, collider, Collider_AABB, .{bounds, true});
                     }
@@ -130,7 +130,7 @@ spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32,
 
         tile_entity := spawn_entity(world);
 
-        pos := add_component(world, tile_entity, Position, .{value = .{x, y}});
+        pos := add_component(world, tile_entity, Position, .{.{x, y}});
 
         sprite: Sprite;
         sprite.sheet = layer_spritesheet;
