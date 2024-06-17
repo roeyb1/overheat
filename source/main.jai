@@ -1,12 +1,12 @@
 DEBUG :: true;
 
 // @todo: move this to a singleton component
-g_delta_time: float = 0.032;
-g_smooth_delta_time: float = 0.032;
+g_delta_time: float = 0.016;
+g_smooth_delta_time: float = 0.016;
 last_time: float64;
 g_interp_alpha: float = 0.;
 
-FIXED_TIMESTEP :: 0.032;
+FIXED_TIMESTEP :: 0.016;
 
 g_should_exit: bool = false;
 
