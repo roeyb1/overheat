@@ -479,6 +479,9 @@ generate_system_functions :: (w: Workspace) {
     defer free_buffers(*builder);
 
     print_to_builder(*builder, "register_system_functions :: () {\n");
+
+    // shuffle the system functions to try to surface bugs that depend on specific system ordering:
+    shuffle(system_functions);
     for system_functions {
         // System second arg MUST be a phase
         assert(it.notes.count > 1);
@@ -519,6 +522,17 @@ is_absolute_path :: (path: string) -> bool { // This routine is probably not as 
     }
 
     return false;
+}
+
+shuffle :: (array: [] $T) {
+    Random :: #import "Random";
+    
+    if array.count < 2 return;
+
+    for i: 0..array.count-1 {
+        j := Random.random_get() % cast(u64)(array.count-1);
+        Swap(*array[i], *array[j]);
+    }
 }
 
 #import "Basic";

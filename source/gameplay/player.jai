@@ -1,24 +1,24 @@
 #scope_export 
 
-Player :: struct {}
+Player :: struct {} @Component
 
-Local_Player :: struct {}
+Local_Player :: struct {} @Component
 
 Player_Controller :: struct {
     // Keep track of the velocity added due to user input
     velocity_from_input: Vector2;
-}
+} @Component
 
 Networking_ID :: struct {
     id: u64;
-}
+} @Component
 
 Player_Commands :: struct {
     move_vector: Vector2;
 
     main_attack: bool;
     secondary_attack: bool;
-}
+} @Component
 
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
     entity := spawn_entity(*g_world,

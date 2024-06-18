@@ -14,7 +14,7 @@ Input_States :: struct {
     mouse_delta_x: int;
     mouse_delta_y: int;
     mouse_delta_z: int;
-}
+} @SingletonComponent
 
 // @todo: turn this into a singleton component
 g_input_states: Input_States;

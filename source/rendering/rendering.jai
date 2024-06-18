@@ -7,7 +7,7 @@ Sprite :: struct {
     z_order: u16 = 0;
 
     flip: u32 = 0;
-}
+} @Component
 
 // Copy over the sprite data required for rendering so we don't need to directly reference it
 Sprite_Draw_Cmd :: struct {

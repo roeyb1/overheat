@@ -7,7 +7,7 @@ Directions :: enum u32 {
 
 Direction :: struct{
     using #as value: Directions;
-}
+} @Component
 
 update_directions:: (world: *World) {
     for query : Query(*Direction, Velocity).{world = world} {

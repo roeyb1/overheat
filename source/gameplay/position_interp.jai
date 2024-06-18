@@ -1,17 +1,7 @@
 Interp_Position :: struct {
     previous: Vector2;
     current: Vector2;
-}
-
-set_previous_interp_positions :: (world: *World) {
-    for query : Query(*Interp_Position).{world = world} {
-        interp_positions := query.interp_position;
-
-        for 0..query.count-1 {
-            interp_positions[it].previous = interp_positions[it].current;
-        }
-    }
-} @System @PreUpdate
+} @Component
 
 reset_interped_position_overrides :: (world: *World) {
     for query : Query(*Position, Interp_Position).{world = world} {
@@ -30,6 +20,7 @@ set_current_interped_positions :: (world: *World) {
         interp_positions := query.interp_position;
 
         for 0..query.count-1 {
+            interp_positions[it].previous = interp_positions[it].current;
             interp_positions[it].current = positions[it];
         }
     }

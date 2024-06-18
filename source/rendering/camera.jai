@@ -5,7 +5,7 @@ Camera :: struct {
 
     // (Usually the player)
     entity_to_track: Entity;
-}
+} @Component
 
 // #todo: we probably want this value to vary so that the window size can't just show you more of the world.
 // The number of tiles visible should mostly remain a constant value
