@@ -434,18 +434,21 @@ copy_module_libraries_to_target :: (target_options: Build_Options) {
 
     push_allocator(temp);
 
-    // this is a kind of shitty way to do this, ideally we would just look into the /win/ directories directly
     module_directories := dir_list("modules", recursive=false);
     for module : module_directories {
         os_names := string.["win", "linux", "mac"];
         
-        for os_name : os_names {
-            module_lib_dir_name := tprint("%/%", module, os_name);
-            if is_directory(module_lib_dir_name) {
-                copy_directory(module_lib_dir_name, target_options.output_path);
+        os_name := "win";
+        module_lib_dir_name := tprint("%/%", module, os_name);
+        if is_directory(module_lib_dir_name) {
+
+            module_binary_list := file_list(module_lib_dir_name);
+            for binary : module_binary_list {
+                if ends_with(binary, ".dll") {
+                    copy_file(binary, tprint("%/%", target_options.output_path, path_filename(binary)));
+                }
             }
         }
-
     }
 }
 
