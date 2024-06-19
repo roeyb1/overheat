@@ -16,6 +16,8 @@ World :: struct {
     archetype_cache: Table([] Component_Type_ID, [..] s64, given_compare_function=compare_ctids);
 
     singletons: Singleton_Storage;
+
+    within_query_loop: bool;
 }
 
 Entity_Record :: struct {
@@ -31,6 +33,8 @@ is_entity_valid :: (world: *World, entity: Entity) -> bool {
 }
 
 spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
+    assert(!world.within_query_loop, "Spawning an entity while iterating a query is not yet a supported operation!");
+
     if world.free_entity_indices.count > 0 {
         index := pop(*world.free_entity_indices);
         world.entities[index].generation += 1;
@@ -64,6 +68,8 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
 }
 
 destroy_entity :: (world: *World, entity: Entity) {
+    assert(!world.within_query_loop, "Destroying an entity while iterating a query is not yet a supported operation!");
+
     old_record, success := table_find(*world.entity_records, entity.raw);
     if !success then return;
 
@@ -81,6 +87,8 @@ get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
 }
 
 add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+    assert(!world.within_query_loop, "Adding components to an entity while iterating a query is not yet a supported operation!");
+
     record := table_find_pointer(*world.entity_records, entity.raw);
     assert(record != null);
     if record == null then return null;
@@ -121,6 +129,8 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_
 }
 
 remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
+    assert(!world.within_query_loop, "Removing components from an entity while iterating a query is not yet a supported operation!");
+
     record := table_find_pointer(*world.entity_records, entity.raw);
     assert(record != null);
     if record == null then return;
