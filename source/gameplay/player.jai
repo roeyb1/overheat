@@ -1,24 +1,24 @@
 #scope_export 
 
-Player :: struct {} @Component
+Player :: struct @Component {}
 
-Local_Player :: struct {} @Component
+Local_Player :: struct @Component {}
 
-Player_Controller :: struct {
+Player_Controller :: struct @Component {
     // Keep track of the velocity added due to user input
     velocity_from_input: Vector2;
-} @Component
+}
 
-Networking_ID :: struct {
+Networking_ID :: struct @Component {
     id: u64;
-} @Component
+}
 
-Player_Commands :: struct {
+Player_Commands :: struct @Component {
     move_vector: Vector2;
 
     main_attack: bool;
     secondary_attack: bool;
-} @Component
+}
 
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
     entity := spawn_entity(*g_world,
@@ -69,21 +69,23 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 
 update_local_player_commands_from_input :: (world: *World) {
     for query : Query(Local_Player, *Player_Commands).{world = world} {
+        input_states := get_singleton(world, Input_States);
         player_commands := query.player_commands;
+
         for 0..query.count-1 {
             // reset previous frame's command state:
             memset(*player_commands[it], 0, size_of(Player_Commands));
 
-            if is_button_down(*g_input_states, .MOVE_UP) {
+            if is_button_down(input_states, .MOVE_UP) {
                 player_commands[it].move_vector.y += 1;
             }
-            if is_button_down(*g_input_states, .MOVE_LEFT) {
+            if is_button_down(input_states, .MOVE_LEFT) {
                 player_commands[it].move_vector.x -= 1;
             }
-            if is_button_down(*g_input_states, .MOVE_DOWN) {
+            if is_button_down(input_states, .MOVE_DOWN) {
                 player_commands[it].move_vector.y -= 1;
             }
-            if is_button_down(*g_input_states, .MOVE_RIGHT) {
+            if is_button_down(input_states, .MOVE_RIGHT) {
                 player_commands[it].move_vector.x += 1;
             }
 
@@ -92,7 +94,7 @@ update_local_player_commands_from_input :: (world: *World) {
                 player_commands[it].move_vector = unit_vector(player_commands[it].move_vector);
             }
 
-            if is_button_down(*g_input_states, .MAIN_ATTACK) {
+            if is_button_down(input_states, .MAIN_ATTACK) {
                 player_commands[it].main_attack = true;
             }
         }

@@ -14,6 +14,8 @@ World :: struct {
 
     /** Caches the results of trying to find all archetypes with a subset of components */
     archetype_cache: Table([] Component_Type_ID, [..] s64, given_compare_function=compare_ctids);
+
+    singletons: Singleton_Storage;
 }
 
 Entity_Record :: struct {

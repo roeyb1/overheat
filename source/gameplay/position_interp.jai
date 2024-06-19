@@ -1,7 +1,7 @@
-Interp_Position :: struct {
+Interp_Position :: struct @Component {
     previous: Vector2;
     current: Vector2;
-} @Component
+}
 
 reset_interped_position_overrides :: (world: *World) {
     for query : Query(*Position, Interp_Position).{world = world} {

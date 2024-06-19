@@ -8,16 +8,13 @@ Gameplay_Inputs :: enum {
     SECONDARY_ATTACK;
 }
 
-Input_States :: struct {
+Input_States :: struct @SingletonComponent {
     states: [NUM_BUTTON_STATES] Key_Current_State;
     
     mouse_delta_x: int;
     mouse_delta_y: int;
     mouse_delta_z: int;
-} @SingletonComponent
-
-// @todo: turn this into a singleton component
-g_input_states: Input_States;
+}
 
 is_button_down :: (input_states: *Input_States, gameplay_input: Gameplay_Inputs) -> bool {
     return get_button_state(input_states, gameplay_input) & .DOWN != 0;
@@ -44,7 +41,9 @@ get_button_state :: (input_states: *Input_States, gameplay_input: Gameplay_Input
 
 load_input_system :: (world: *World) {
     // load the HAL inputs into the ecs.
-    for 0..g_input_states.states.count-1 {
-        g_input_states.states[it] = hal_input_button_states[it];
+    input_states := get_singleton(world, Input_States);
+
+    for 0..input_states.states.count-1 {
+        input_states.states[it] = hal_input_button_states[it];
     }
 } @System @OnLoad

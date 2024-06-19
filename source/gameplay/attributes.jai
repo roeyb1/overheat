@@ -1,3 +1,3 @@
-Move_Speed :: struct {
+Move_Speed :: struct @Component {
     speed: float;
-} @Component
+}

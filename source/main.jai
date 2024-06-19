@@ -203,6 +203,7 @@ using Random :: #import "Random";
 #load "assets.jai";
 #load "ecs/world.jai";
 #load "ecs/system.jai";
+#load "ecs/singleton.jai";
 #load "gameplay/components.jai";
 #load "gameplay/position_interp.jai";
 #load "gameplay/direction.jai";

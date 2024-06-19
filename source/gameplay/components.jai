@@ -1,11 +1,11 @@
-Position :: struct {
+Position :: struct @Component {
     using #as value: Vector2;
-} @Component
+}
 
-Velocity :: struct {
+Velocity :: struct @Component {
     using #as value: Vector2;
-} @Component
+}
 
-Name :: struct {
+Name :: struct @Component {
     name: string;
-} @Component
+}

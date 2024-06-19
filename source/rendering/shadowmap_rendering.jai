@@ -1,6 +1,6 @@
-Shadow_Caster :: struct {
+Shadow_Caster :: struct @Component {
     box: AABB;
-} @Component
+}
 
 init_shadowmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
     // Store lightmap data in a higher precision, non-linear format for higher dynamic range

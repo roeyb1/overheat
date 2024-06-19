@@ -1,13 +1,13 @@
-Animation :: struct {
+Animation :: struct @Component {
     definition: Animation_Definition;
     current_frame: u32;
     time_till_switch: float;
     finished: bool = false;
-} @Component
+}
 
-Anim_State_Component :: struct {
+Anim_State_Component :: struct @Component {
     state: u8;
-} @Component
+}
 
 /** A system that iterates over all animations and their corresponding sprites and switches the flip book index if the duration of the current frame has elapsed */
 update_sprite_for_anim :: (world: *World) {

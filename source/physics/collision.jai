@@ -1,7 +1,7 @@
-Collider_AABB :: struct {
+Collider_AABB :: struct @Component {
     #as using aabb: AABB;
     blocking: bool;
-} @Component
+}
 
 Hit_Result :: struct {
     other: Entity;
@@ -9,12 +9,12 @@ Hit_Result :: struct {
     other_aabb: AABB;
 }
 
-Collision_Invoker :: struct {
+Collision_Invoker :: struct @Component {
     /** List of all hit results which were generated against this entity this frame */
     hits_this_frame: [..] Hit_Result;
     /** List of all hit results against colliders that are "blocking" which were generated against this entity this frame */
     blocking_hits_this_frame: [..] Hit_Result;
-} @Component
+}
 
 detect_collisions_system :: (world: *World) {
     // @Speed this can be optimized with AABB trees
