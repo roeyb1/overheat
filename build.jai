@@ -109,6 +109,7 @@ build :: () {
 
     enable_rhi_validation := false;
     enable_vulkan_debug := false;
+    enable_shader_comp := false;
 
     intercept_flags: Intercept_Flags;
 
@@ -135,7 +136,8 @@ build :: () {
 
             case "-vkdebug";
                 enable_vulkan_debug = true;
-
+            case "-compileshaders";
+                enable_shader_comp = true;
             case "-release";
                 set_optimization(*options, .OPTIMIZED);
                 options.stack_trace = false;
@@ -345,9 +347,9 @@ build :: () {
     copy_module_libraries_to_target(options);
 
     // compile shaders in the build step
-    {
+    if enable_shader_comp {
         shader_dir := "assets/shaders";
-        if !compile_shaders(shader_dir, debug_symbols=true) {
+        if !compile_shaders(shader_dir, debug_symbols=enable_vulkan_debug) {
             compiler_set_workspace_status(.FAILED);
             exit(1);
         }
@@ -556,6 +558,7 @@ Available Command-Line Arguments:
 
 -rhivalidation   Enables RHI validation layers if available. Mildly impacts performance
 -vkdebug         Enables vulkan gpu debug callbacks. Severely impacts performance.
+-compileshaders  Enables shader recompilation during executable build.
 -debugger        If there is a crash in compile-time execution, drop into the interactive debugger.
 -debug_for       Enable debugging of for_expansion macros. (Otherwise the debugger will never step into them to make stepping through for loops more convenient.)
 -import_dir arg  Add this directory to the list of directories searched by #import. Can be
