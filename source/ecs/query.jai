@@ -32,7 +32,6 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .POINTER)); // we don't handle the pointer flag either.
 
     assert(query.world != null);
-    query.world.within_query_loop = true;
 
     types := get_component_types_for_query(query);
 
@@ -74,7 +73,6 @@ for_expansion :: (query: Query, body: Code, flags: For_Flags) #expand {
 
         #insert body;
     }
-    query.world.within_query_loop = false;
 }
 
 

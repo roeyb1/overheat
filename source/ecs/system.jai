@@ -180,6 +180,7 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
     wait_count.allocator = temp;
     array_copy(*wait_count, scheduler.wait_count_template);
 
+    world.should_defer = true;
     while systems_to_run.count > 0 {
         found_one = false;
 
@@ -204,6 +205,8 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
 
         assert(found_one || systems_to_run.count == 0);
     }
+    world.should_defer = false;
+    process_deferred_operations(world);
 }
 
 add_system_ :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[], debug_name: string = "") {
