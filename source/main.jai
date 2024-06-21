@@ -167,21 +167,18 @@ update_positions :: (world: *World) {
             positions[it].value = positions[it] + velocities[it] * FIXED_TIMESTEP;
         }
     }
-} @System @OnUpdate
+} @System(OnUpdate) @Write() @Read()
 
 render_imgui :: (world: *World) {
     ImGui.Render();
-} @System @PreRender
+} @System(PreRender) @Write() @Read()
 
 render_scene :: (world: *World) {
     pos := get_component(world, main_view_camera, Position);
     cam := get_component(world, main_view_camera, Camera);
 
     render_scene(cam.projection, pos);
-} @System @OnRender
-
-
-#placeholder register_system_functions;
+} @System(OnRender) @Write() @Read()
 
 using Basic :: #import "Basic";
 using Random :: #import "Random";

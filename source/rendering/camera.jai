@@ -25,7 +25,7 @@ update_camera_projections :: (world: *World) {
             }
         }
     }
-} @System @PreRender
+} @System(PreRender) @Write() @Read()
 
 update_camera_positions :: (world: *World) {
     SMOOTH_SPEED :: 15.;
@@ -50,7 +50,7 @@ update_camera_positions :: (world: *World) {
             camera_positions[it].value = lerp(camera_positions[it], target_location, speed_factor * SMOOTH_SPEED * cast(float) FIXED_TIMESTEP);
         }
     }
-} @System @PreRender
+} @System(PreRender) @Write() @Read()
 
 worldspace_to_viewspace :: (proj: Matrix4, view: Vector2, x: Vector2) -> Vector2 {
     clip := (proj * make_vector4(x - view, 0., 1.)).xy; // result in NDC centered at 0, 0

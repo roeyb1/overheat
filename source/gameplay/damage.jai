@@ -24,4 +24,4 @@ modify_health :: (world: *World) {
             }
         }
     }
-} @System @OnValidate
+} @System(OnValidate) @Read(Health_Change_Queue) @Write(Health)

@@ -34,6 +34,26 @@ component_type_id :: ($c: Type) -> Component_Type_ID {
     return .{hash, ti.runtime_size, ti.name, ti.initializer};
 }
 
+/** Returns a compile-time generated (sorted by id) view of a static array of component type ids */
+component_type_ids :: ($component_types: ..Type) -> [] Component_Type_ID {
+    #insert #run () -> string #compile_time {
+        builder: String_Builder;
+        
+        print_to_builder(*builder, "result :: Component_Type_ID.[");
+        for 0..component_types.count-1 {
+            if (cast(*Type_Info) component_types[it]).type == .POINTER {
+                print_to_builder(*builder, "#run component_type_id(#run get_type((cast(*Type_Info_Pointer)type_info(component_types[%])).pointer_to)), ", it);
+            } else {
+                print_to_builder(*builder, "#run component_type_id(component_types[%]), ", it);
+            }
+        }
+        print_to_builder(*builder, "];\n");
+        print_to_builder(*builder, "#run quick_sort(result, (x) => x.hash);\n");
+        return builder_to_string(*builder);
+    }();
+    return result;
+}
+
 get_component :: (cc: *Component_Container, row: s64) -> *void {
     return cc.data + cc.component_size * row;
 }

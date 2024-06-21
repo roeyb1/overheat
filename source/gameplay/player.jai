@@ -99,7 +99,7 @@ update_local_player_commands_from_input :: (world: *World) {
             }
         }
     }
-} @System @PostLoad
+} @System(PostLoad) @Write() @Read()
 
 update_player_controllers :: (world: *World) {
     for query : Query(Player_Commands, *Player_Controller, *Velocity, Move_Speed, Anim_State_Component).{world = world} {
@@ -121,7 +121,7 @@ update_player_controllers :: (world: *World) {
             player_controllers[it].velocity_from_input = velocity_from_input;
         }
     }
-} @System @PreUpdate
+} @System(PreUpdate) @Write() @Read()
 
 broadcast_local_player_commands :: (world: *World) {
     for query : Query(Local_Player, Player_Commands, Networking_ID).{world = world} {
@@ -135,7 +135,7 @@ broadcast_local_player_commands :: (world: *World) {
             networking_send_packet(*player_command_packet);
         }
     }
-} @System @OnUpdate
+} @System(OnUpdate) @Write() @Read()
 
 trigger_player_attack :: (world: *World) {
     log("Player attacked!");

@@ -52,7 +52,7 @@ update_player_anim_state :: (world: *World) {
             }
         }
     }
-} @System @OnUpdate
+} @System(OnUpdate) @Write() @Read()
 
 on_player_anim_state_changed :: (world: *World) {
     for query : Query(Player, *Anim_State_Component, *Animation, Velocity).{world = world} {

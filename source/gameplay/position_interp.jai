@@ -12,7 +12,7 @@ reset_interped_position_overrides :: (world: *World) {
             positions[it].value = interp_positions[it].current;
         }
     }
-} @System @PreUpdate
+} @System(PreUpdate) @Write() @Read()
 
 set_previous_interped_positions :: (world: *World) {
     for query : Query(Position, *Interp_Position).{world = world} {
@@ -22,7 +22,7 @@ set_previous_interped_positions :: (world: *World) {
             interp_positions[it].previous = interp_positions[it].current;
         }
     }
-} @System @PreUpdate
+} @System(PreUpdate) @Write() @Read()
 
 set_current_interped_positions :: (world: *World) {
     for query : Query(Position, *Interp_Position).{world = world} {
@@ -33,7 +33,7 @@ set_current_interped_positions :: (world: *World) {
             interp_positions[it].current = positions[it];
         }
     }
-} @System @PostUpdate
+} @System(PostUpdate) @Write() @Read()
 
 update_interped_positions :: (world: *World) {
     for query : Query(*Position, Interp_Position).{world = world} {
@@ -44,4 +44,4 @@ update_interped_positions :: (world: *World) {
             positions[it].value = lerp(interp_positions[it].previous, interp_positions[it].current, g_interp_alpha);
         }
     }
-} @System @PreRender
+} @System(PreRender) @Write() @Read()

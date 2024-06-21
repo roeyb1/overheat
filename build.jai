@@ -393,7 +393,7 @@ message_loop :: (w: Workspace) {
                     if has_note(header, "RunWhenReady") {
                         array_add(*procedures_to_run, header);
                     }
-                    if has_note(header, "System") {
+                    if has_note_substr(header, "System") {
                         array_add(*system_functions, header);
                     }
                 }
@@ -459,6 +459,11 @@ has_note :: (header: *Code_Procedure_Header, note: string) -> bool {
     return false;
 }
 
+has_note_substr :: (header: *Code_Procedure_Header, note_substr: string) -> bool {
+    for header.notes  if contains(it.text, note_substr)  return true;
+    return false;
+}
+
 UNIT_TEST_INSERT :: #string DONE
     array_add(*g_unit_tests, .{"%1", %2});
 DONE
@@ -479,29 +484,68 @@ generate_unit_test_actions :: (w: Workspace) {
     add_build_string(build_string, w);
 }
 
-generate_system_functions :: (w: Workspace) {
-    builder: String_Builder;
-    defer free_buffers(*builder);
 
-    print_to_builder(*builder, "register_system_functions :: () {\n");
+sbprint :: print_to_builder;
+        
+generate_system_functions :: (w: Workspace) {
+    sb: String_Builder;
+    defer free_buffers(*sb);
+
+    parse_system_phase :: (str: string) -> bool, string {
+        found, left, right := split_from_left(str, #char "(");
+        assert(found);
+        if left != "System" {
+            return false, "";
+        }
+
+        // remove the closing parenthesis and return the view:
+        right.count -= 1;
+        return true, right;
+    }
+
+    parse_read_types :: (str: string) -> bool, string {
+        found, left, right := split_from_left(str, #char "(");
+        assert(found);
+        if left != "Read" {
+            return false, "";
+        }
+        // remove the closing parenthesis before splitting
+        right.count -= 1;
+        return true, right;
+    }
+    parse_write_types :: (str: string) -> bool, string {
+        found, left, right := split_from_left(str, #char "(");
+        assert(found);
+        if left != "Write" {
+            return false, "";
+        }
+        // remove the closing parenthesis before splitting
+        right.count -= 1;
+        return true, right;
+    }
 
     // shuffle the system functions to try to surface bugs that depend on specific system ordering:
     shuffle(system_functions);
+
+    sbprint(*sb, "ALL_SYSTEMS :: System_Def.[\n");
     for system_functions {
-        // System second arg MUST be a phase
-        assert(it.notes.count > 1);
-        assert(it.notes[0].text == "System");
+        // need at least three notes: @System(Phase); @Read(..), @Write(..)
+        assert(it.notes.count >= 3);
 
-        // @todo: add compile time check that it is a valid system phase
-        print_to_builder(*builder, "\tadd_system(.%1, %2);\n", it.notes[1].text, it.name);
+        phase_valid, phase := parse_system_phase(it.notes[0].text);
+        assert(phase_valid, "System phase note is not in the correct syntax! (%, %)", it.name, it_index);
+
+        read_valid, read := parse_read_types(it.notes[1].text);
+        assert(read_valid, "System read note is not in the correct syntax! (%, %)", it.name, it_index);
+
+        write_valid, write := parse_write_types(it.notes[2].text);
+        assert(write_valid, "System write note is not in the correct syntax! (%, %)", it.name, it_index);
+
+        sbprint(*sb, "\t.{func = %1, debug_name = \"%2\", phase = .%3, component_reads = #run component_type_ids(%4), component_writes = #run component_type_ids(%5)}, \n", it.name, it.name, phase, read, write);
     }
-    print_to_builder(*builder, "\tbuild_system_dependency_graphs();\n");
-    print_to_builder(*builder, "}\n");
+    sbprint(*sb, "];");
 
-    build_string := builder_to_string(*builder);
-    defer free(build_string);
-
-    add_build_string(build_string, w);
+    add_build_string(builder_to_string(*sb), w);
 }
 
 unit_test_functions: [..] *Code_Procedure_Header;
