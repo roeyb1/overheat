@@ -61,6 +61,16 @@ System_Phase :: enum u32{
     OnRender;
 }
 
+System_Def :: struct {
+    func: System_Func;
+    debug_name: string;
+
+    phase: System_Phase;
+
+    component_reads: [] Component_Type_ID;
+    component_writes: [] Component_Type_ID;
+}
+
 System_Scheduler :: struct {
     systems: [..] System;
 
@@ -78,24 +88,9 @@ System_Scheduler :: struct {
 
 system_groups: [NUM_SYSTEM_PHASES] System_Scheduler;
 
-add_system :: (phase: System_Phase, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[], $call := #caller_code) {
+add_system :: (phase: System_Phase, func: System_Func, debug_name: string) {
     scheduler := *system_groups[phase];
-    debug_name := #run -> string {
-        nodes := compiler_get_nodes(call);
-
-        assert(nodes.kind == .PROCEDURE_CALL);
-
-        proc_call := cast(*Code_Procedure_Call) nodes;
-
-        if proc_call.arguments_sorted[1].kind != .IDENT {
-            return "(anon)";
-        }
-
-        ident := cast(*Code_Ident) proc_call.arguments_sorted[1];
-
-        return ident.name;
-    };
-    add_system_(scheduler, func, run_after, run_before, debug_name);
+    add_system_(scheduler, func, debug_name);
 }
 
 execute :: (world: *World, phase: System_Phase) {
@@ -111,6 +106,16 @@ build_system_dependency_graphs :: () {
 }
 
 NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
+
+/** List of all system definitions, generated at compile time. */
+#placeholder ALL_SYSTEMS;
+
+register_system_functions :: () {
+    for ALL_SYSTEMS {
+        add_system(it.phase, it.func, it.debug_name);
+    }
+    build_system_dependency_graphs();
+}
 
 #scope_file
 
@@ -180,6 +185,7 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
     wait_count.allocator = temp;
     array_copy(*wait_count, scheduler.wait_count_template);
 
+    world.should_defer = true;
     while systems_to_run.count > 0 {
         found_one = false;
 
@@ -204,17 +210,16 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
 
         assert(found_one || systems_to_run.count == 0);
     }
+    world.should_defer = false;
+    process_deferred_operations(world);
 }
 
-add_system_ :: (scheduler: *System_Scheduler, func: System_Func, run_after: [] System_Func = .[], run_before: [] System_Func = .[], debug_name: string = "") {
+add_system_ :: (scheduler: *System_Scheduler, func: System_Func, debug_name: string = "") {
     system := array_add(*scheduler.systems);
     system.func = func;
     system.debug_name = debug_name;
 
     log("Registered system: %", system.debug_name);
-
-    array_copy(*system.run_before, run_before);
-    array_copy(*system.run_after, run_after);
 }
 
 #scope_export

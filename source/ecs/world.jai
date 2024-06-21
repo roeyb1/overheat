@@ -17,7 +17,9 @@ World :: struct {
 
     singletons: Singleton_Storage;
 
-    within_query_loop: bool;
+    should_defer: bool;
+
+    deferred_ops: [..] Deferred_ECS_Operation;
 }
 
 Entity_Record :: struct {
@@ -33,7 +35,7 @@ is_entity_valid :: (world: *World, entity: Entity) -> bool {
 }
 
 spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
-    assert(!world.within_query_loop, "Spawning an entity while iterating a query is not yet a supported operation!");
+    assert(!world.should_defer, "Spawning an entity while iterating a query is not yet a supported operation!");
 
     if world.free_entity_indices.count > 0 {
         index := pop(*world.free_entity_indices);
@@ -68,7 +70,10 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
 }
 
 destroy_entity :: (world: *World, entity: Entity) {
-    assert(!world.within_query_loop, "Destroying an entity while iterating a query is not yet a supported operation!");
+    if world.should_defer {
+        array_add(*world.deferred_ops, .{type = .DESTROY, entity = entity});
+        return;
+    }
 
     old_record, success := table_find(*world.entity_records, entity.raw);
     if !success then return;
@@ -87,7 +92,7 @@ get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
 }
 
 add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
-    assert(!world.within_query_loop, "Adding components to an entity while iterating a query is not yet a supported operation!");
+    assert(!world.should_defer, "Adding components to an entity while iterating a query is not yet a supported operation!");
 
     record := table_find_pointer(*world.entity_records, entity.raw);
     assert(record != null);
@@ -129,7 +134,7 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_
 }
 
 remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
-    assert(!world.within_query_loop, "Removing components from an entity while iterating a query is not yet a supported operation!");
+    assert(!world.should_defer, "Removing components from an entity while iterating a query is not yet a supported operation!");
 
     record := table_find_pointer(*world.entity_records, entity.raw);
     assert(record != null);
@@ -295,6 +300,7 @@ test_entity_components :: (ctx: *TestContext) {
 #load "query.jai";
 #load "archetype.jai";
 #load "event.jai";
+#load "defer.jai";
 
 #scope_file
 

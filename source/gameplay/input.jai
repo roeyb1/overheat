@@ -46,4 +46,4 @@ load_input_system :: (world: *World) {
     for 0..input_states.states.count-1 {
         input_states.states[it] = hal_input_button_states[it];
     }
-} @System @OnLoad
+} @System(OnLoad) @Write(Input_States) @Read()

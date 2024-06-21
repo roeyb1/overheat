@@ -25,4 +25,4 @@ update_directions:: (world: *World) {
             } 
         }
     }
-} @System @PostUpdate
+} @System(PostUpdate) @Write(Direction) @Read(Velocity)

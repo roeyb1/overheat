@@ -19,10 +19,9 @@ modify_health :: (world: *World) {
             // reset the queue for next frame
             health_change_queues[it].changes.count = 0;
 
-            // @todo: kill the entity if health is negative
             if health_components[it].value <= 0 {
-
+                destroy_entity(world, query.entities[it]);
             }
         }
     }
-} @System @OnValidate
+} @System(OnValidate) @Write(Health) @Read(Health_Change_Queue)

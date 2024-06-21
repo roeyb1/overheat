@@ -40,4 +40,4 @@ update_sprite_for_anim :: (world: *World) {
             sprites[it].index = anim_def.frames[anims[it].current_frame] + directional_modifier;
         }
     }
-} @System @PreRender
+} @System(PreRender) @Write(Animation,Sprite) @Read(Direction)
