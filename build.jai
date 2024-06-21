@@ -535,11 +535,12 @@ generate_system_functions :: (w: Workspace) {
         phase_valid, phase := parse_system_phase(it.notes[0].text);
         assert(phase_valid, "System phase note is not in the correct syntax! (%, %)", it.name, it_index);
 
-        read_valid, read := parse_read_types(it.notes[1].text);
-        assert(read_valid, "System read note is not in the correct syntax! (%, %)", it.name, it_index);
+        write_valid, write := parse_write_types(it.notes[1].text);
+        assert(write_valid, "System write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[1].text);
 
-        write_valid, write := parse_write_types(it.notes[2].text);
-        assert(write_valid, "System write note is not in the correct syntax! (%, %)", it.name, it_index);
+        read_valid, read := parse_read_types(it.notes[2].text);
+        assert(read_valid, "System read note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[2].text);
+
 
         sbprint(*sb, "\t.{func = %1, debug_name = \"%2\", phase = .%3, component_reads = #run component_type_ids(%4), component_writes = #run component_type_ids(%5)}, \n", it.name, it.name, phase, read, write);
     }

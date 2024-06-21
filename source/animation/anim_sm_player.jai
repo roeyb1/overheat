@@ -52,7 +52,7 @@ update_player_anim_state :: (world: *World) {
             }
         }
     }
-} @System(OnUpdate) @Write() @Read()
+} @System(OnUpdate) @Write(Anim_State_Component,Animation) @Read(Player,Player_Commands,Velocity)
 
 on_player_anim_state_changed :: (world: *World) {
     for query : Query(Player, *Anim_State_Component, *Animation, Velocity).{world = world} {
@@ -66,7 +66,7 @@ on_player_anim_state_changed :: (world: *World) {
             }
         }
     }
-} @Event
+} @Event @Write(Anim_State_Component,Animation) @Read(Player,Velocity)
 
 #scope_file
 
