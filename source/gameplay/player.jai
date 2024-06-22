@@ -67,73 +67,67 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     return entity;
 }
 
-update_local_player_commands_from_input :: (world: *World) {
-    for query : Query(Local_Player, *Player_Commands).{world = world} {
-        input_states := get_singleton(world, Input_States);
-        player_commands := query.player_commands;
+update_local_player_commands_from_input :: (q: Query) {
+    player_commands := query_get(q, Player_Commands);
+    input_states := get_singleton(q.world, Input_States);
 
-        for 0..query.count-1 {
-            // reset previous frame's command state:
-            memset(*player_commands[it], 0, size_of(Player_Commands));
+    for 0..q.count-1 {
+        // reset previous frame's command state:
+        memset(*player_commands[it], 0, size_of(Player_Commands));
 
-            if is_button_down(input_states, .MOVE_UP) {
-                player_commands[it].move_vector.y += 1;
-            }
-            if is_button_down(input_states, .MOVE_LEFT) {
-                player_commands[it].move_vector.x -= 1;
-            }
-            if is_button_down(input_states, .MOVE_DOWN) {
-                player_commands[it].move_vector.y -= 1;
-            }
-            if is_button_down(input_states, .MOVE_RIGHT) {
-                player_commands[it].move_vector.x += 1;
-            }
+        if is_button_down(input_states, .MOVE_UP) {
+            player_commands[it].move_vector.y += 1;
+        }
+        if is_button_down(input_states, .MOVE_LEFT) {
+            player_commands[it].move_vector.x -= 1;
+        }
+        if is_button_down(input_states, .MOVE_DOWN) {
+            player_commands[it].move_vector.y -= 1;
+        }
+        if is_button_down(input_states, .MOVE_RIGHT) {
+            player_commands[it].move_vector.x += 1;
+        }
 
-            // Normalize the input vector to prevent diagonal movement being faster than horizontal
-            if length_squared(player_commands[it].move_vector) > 1 {
-                player_commands[it].move_vector = unit_vector(player_commands[it].move_vector);
-            }
+        // Normalize the input vector to prevent diagonal movement being faster than horizontal
+        if length_squared(player_commands[it].move_vector) > 1 {
+            player_commands[it].move_vector = unit_vector(player_commands[it].move_vector);
+        }
 
-            if is_button_down(input_states, .MAIN_ATTACK) {
-                player_commands[it].main_attack = true;
-            }
+        if is_button_down(input_states, .MAIN_ATTACK) {
+            player_commands[it].main_attack = true;
         }
     }
 } @System(PostLoad) @Write(Player_Commands) @Read(Local_Player)
 
-update_player_controllers :: (world: *World) {
-    for query : Query(Player_Commands, *Player_Controller, *Velocity, Move_Speed, Anim_State_Component).{world = world} {
-        player_commands := query.player_commands;
-        player_controllers := query.player_controller;
-        velocities := query.velocity;
-        move_speeds := query.move_speed;
-        anim_states := query.anim_state_component;
+update_player_controllers :: (q: Query) {
+    player_commands := query_get(q, Player_Commands);
+    player_controllers := query_get(q, Player_Controller);
+    velocities := query_get(q, Velocity);
+    move_speeds := query_get(q, Move_Speed);
+    anim_states := query_get(q, Anim_State_Component);
 
-        for 0..query.count-1 {
-            // @todo: is there a better way to block movement while attacking?
-            current_anim_state := cast(Player_Anim_State) anim_states[it].state;
-            velocity_from_input := player_commands[it].move_vector * move_speeds[it].speed;
-            if current_anim_state == .ATTACK || current_anim_state == .ATTACK_WIND_UP {
-                velocity_from_input = .{0, 0};
-            }
-            // update only by the delta in the velocity, since we already have change from last frame in the velocity component
-            velocities[it].value += (velocity_from_input - player_controllers[it].velocity_from_input);
-            player_controllers[it].velocity_from_input = velocity_from_input;
+    for 0..q.count-1 {
+        // @todo: is there a better way to block movement while attacking?
+        current_anim_state := cast(Player_Anim_State) anim_states[it].state;
+        velocity_from_input := player_commands[it].move_vector * move_speeds[it].speed;
+        if current_anim_state == .ATTACK || current_anim_state == .ATTACK_WIND_UP {
+            velocity_from_input = .{0, 0};
         }
+        // update only by the delta in the velocity, since we already have change from last frame in the velocity component
+        velocities[it].value += (velocity_from_input - player_controllers[it].velocity_from_input);
+        player_controllers[it].velocity_from_input = velocity_from_input;
     }
 } @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed,Anim_State_Component)
 
-broadcast_local_player_commands :: (world: *World) {
-    for query : Query(Local_Player, Player_Commands, Networking_ID).{world = world} {
-        player_commands := query.player_commands;
-        networking_ids := query.networking_id;
+broadcast_local_player_commands :: (q: Query) {
+    player_commands := query_get(q, Player_Commands);
+    networking_ids := query_get(q, Networking_ID);
 
-        for 0..query.count-1 {
-            player_command_packet: Player_Commands_Packet;
-            player_command_packet.networking_id = networking_ids[it].id;
-            player_command_packet.commands = player_commands[it];
-            networking_send_packet(*player_command_packet);
-        }
+    for 0..q.count-1 {
+        player_command_packet: Player_Commands_Packet;
+        player_command_packet.networking_id = networking_ids[it].id;
+        player_command_packet.commands = player_commands[it];
+        networking_send_packet(*player_command_packet);
     }
 } @System(OnUpdate) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
 

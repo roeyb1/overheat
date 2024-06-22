@@ -1,4 +1,4 @@
-System_Func :: #type (world: *World);
+System_Func :: #type (q: Query);
 
 /**
  * Every system must be placed into a specific phase to ensure that systems that 
@@ -69,6 +69,7 @@ System_Def :: struct {
 
     component_reads: [] Component_Type_ID;
     component_writes: [] Component_Type_ID;
+    archetype: [..] Component_Type_ID;
 }
 
 System_Scheduler :: struct {
@@ -88,9 +89,16 @@ System_Scheduler :: struct {
 
 system_groups: [NUM_SYSTEM_PHASES] System_Scheduler;
 
-add_system :: (phase: System_Phase, func: System_Func, debug_name: string) {
+add_system :: (phase: System_Phase, def: *System_Def) {
     scheduler := *system_groups[phase];
-    add_system_(scheduler, func, debug_name);
+    system := array_add(*scheduler.systems);
+    system.def = def;
+
+    array_append(*def.archetype, def.component_writes);
+    array_append(*def.archetype, def.component_reads);
+    quick_sort(def.archetype, (x) => x.hash);
+
+    log("Registered system: %", system.debug_name);
 }
 
 execute :: (world: *World, phase: System_Phase) {
@@ -111,8 +119,8 @@ NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
 #placeholder ALL_SYSTEMS;
 
 register_system_functions :: () {
-    for ALL_SYSTEMS {
-        add_system(it.phase, it.func, it.debug_name);
+    for * ALL_SYSTEMS {
+        add_system(it.phase, it);
     }
     build_system_dependency_graphs();
 }
@@ -120,9 +128,7 @@ register_system_functions :: () {
 #scope_file
 
 System :: struct {
-    func: System_Func;
-
-    debug_name: string;
+    using def: *System_Def;
 
     run_before: [..] System_Func;
     run_after: [..] System_Func;
@@ -194,7 +200,7 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
 
             // if the system is runnable now:
             if wait_count[system_index] == 0 {
-                scheduler.systems[system_index].func(world);
+                execute_system(scheduler.systems[system_index], world);
 
                 // signal to dependents that we finished:
                 for dependent : scheduler.dependencies[system_index] {
@@ -214,59 +220,65 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
     process_deferred_operations(world);
 }
 
-add_system_ :: (scheduler: *System_Scheduler, func: System_Func, debug_name: string = "") {
-    system := array_add(*scheduler.systems);
-    system.func = func;
-    system.debug_name = debug_name;
+execute_system :: (sys: System, world: *World) {
+    query: Query;
+    query.world = world;
 
-    log("Registered system: %", system.debug_name);
+    archtype_ids := find_or_create_cached_archetypes_for_ctids(world, sys.archetype);
+
+    for archtype_ids {
+        archetype := *world.archetypes[it];
+        query.current_archetype = archetype;
+        query.entities = archetype.entities;
+        query.count = archetype.entities.count;
+
+        sys.def.func(query);
+    }
 }
 
 #scope_export
 
-// =========================================== TESTING ===========================================
+ECS_Iter :: struct {
+    world: *World;
+    archetype: [] Component_Type_ID;
 
-test_ecs_systems :: (ctx: *TestContext) {
-    test_system :: (world: *World) {
-        execution_count += 1;
-    }
-
-    test_system2 :: (world: *World) {
-        for query : Query(*Test).{world = world} {
-            for 0..query.count-1 {
-                query.test[it].x = 102;
-
-                execution_count += 1;
-            }
-        }
-    }
-
-    scheduler: System_Scheduler;
-    add_system_(*scheduler, test_system);
-    add_system_(*scheduler, test_system2);
-
-    world: World;
-
-    e1 := spawn_entity(*world);
-    e2 := spawn_entity(*world);
-
-    c2 := add_component(*world, e2, Test);
-    c2.x = 101;
-
-    build_dependency_graph(*scheduler);
-
-    execute_(*world, *scheduler);
-
-    test_expect_equals(2, execution_count);
-
-    test_expect_equals(102, c2.x);
-} @UnitTes
-
-#scope_file
-
-
-Test :: struct {
-    x: u32;
+    archetype_ids: [] s64;
 }
 
-execution_count: u32 = 0;
+make_iter :: (world: *World, $component_types: ..Type) -> ECS_Iter {
+    #insert -> string {
+        sb: String_Builder;
+        sbprint(*sb, "archetype :: Component_Type_ID.[");
+        for component_types {
+            sbprint(*sb, "#run component_type_id(%),", it);
+        }
+        sbprint(*sb, "];");
+        return builder_to_string(*sb);
+    }
+
+    iter: ECS_Iter;
+    iter.world = world;
+    iter.archetype = archetype;
+    iter.archetype_ids = find_or_create_cached_archetypes_for_ctids(world, iter.archetype);
+    return iter;
+}
+
+for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {
+    #assert(!(flags & .REVERSE)); // We don't handle the reverse flag.
+    #assert(!(flags & .POINTER)); // We don't handle the pointer flag.
+
+    query: Query;
+    query.world = iter.world;
+
+    for arch_id, arch_index : iter.archetype_ids {
+        archetype := *iter.world.archetypes[arch_id];
+        query.current_archetype = archetype;
+        query.entities = archetype.entities;
+        query.count = archetype.entities.count;
+
+        `it := query;
+        `it_index := arch_index;
+
+        #insert body;
+    }
+}

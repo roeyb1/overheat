@@ -17,38 +17,36 @@ compute_screen_projection :: () -> Matrix4 {
     return orthographic_projection_matrix(-scaled_window_half_width, scaled_window_half_width, -scaled_window_half_height, scaled_window_half_height, -1, 1);
 }
 
-update_camera_projections :: (world: *World) {
+update_camera_projections :: (q: Query) {
     if g_window_resized_this_frame {
-        for query : Query(*Camera).{world = world} {
-            for 0..query.count-1 {
-                query.camera[it].projection = compute_screen_projection();
-            }
+        cameras := query_get(q, Camera);
+
+        for 0..q.count-1 {
+            cameras[it].projection = compute_screen_projection();
         }
     }
 } @System(PreRender) @Write(Camera) @Read()
 
-update_camera_positions :: (world: *World) {
+update_camera_positions :: (q: Query) {
     SMOOTH_SPEED :: 15.;
 
-    for query : Query(*Position, Camera).{world = world} {
-        camera_positions := query.position;
-        camera := query.camera;
+    camera_positions := query_get(q, Position);
+    camera := query_get(q, Camera);
 
-        for 0..query.count-1 {
-            assert(is_entity_valid(world, camera[it].entity_to_track));
+    for 0..q.count-1 {
+        assert(is_entity_valid(q.world, camera[it].entity_to_track));
 
-            target_location := get_component(*g_world, camera[it].entity_to_track, Position);
-            assert(target_location != null);
+        target_location := get_component(q.world, camera[it].entity_to_track, Position);
+        assert(target_location != null);
 
-            camera_dist_to_target := distance(target_location, camera_positions[it]);
+        camera_dist_to_target := distance(target_location, camera_positions[it]);
 
-            alpha := camera_dist_to_target;
+        alpha := camera_dist_to_target;
 
-            // cubic easing function based on distance. further camera -> accelerate faster
-            speed_factor := 1. - pow(1 - alpha, 3.);
+        // cubic easing function based on distance. further camera -> accelerate faster
+        speed_factor := 1. - pow(1 - alpha, 3.);
 
-            camera_positions[it].value = lerp(camera_positions[it], target_location, speed_factor * SMOOTH_SPEED * cast(float) FIXED_TIMESTEP);
-        }
+        camera_positions[it].value = lerp(camera_positions[it], target_location, speed_factor * SMOOTH_SPEED * cast(float) FIXED_TIMESTEP);
     }
 } @System(PreRender) @Write(Position) @Read(Camera)
 

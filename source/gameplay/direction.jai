@@ -9,20 +9,19 @@ Direction :: struct @Component {
     using #as value: Directions;
 }
 
-update_directions:: (world: *World) {
-    for query : Query(*Direction, Velocity).{world = world} {
-        velocities := query.velocity;
-        directions := query.direction;
-        for 0..query.count-1 {
-            if velocities[it].y < 0 {
-                directions[it].value = Directions.Down;
-            } else if velocities[it].y > 0 {
-                directions[it].value = Directions.Up;
-            } else if velocities[it].x < 0 {
-                directions[it].value = Directions.Left;
-            } else if velocities[it].x > 0 {
-                directions[it].value = Directions.Right;
-            } 
-        }
+update_directions:: (q: Query) {
+    velocities := query_get(q, Velocity);
+    directions := query_get(q, Direction);
+
+    for 0..q.count-1 {
+        if velocities[it].y < 0 {
+            directions[it].value = Directions.Down;
+        } else if velocities[it].y > 0 {
+            directions[it].value = Directions.Up;
+        } else if velocities[it].x < 0 {
+            directions[it].value = Directions.Left;
+        } else if velocities[it].x > 0 {
+            directions[it].value = Directions.Right;
+        } 
     }
 } @System(PostUpdate) @Write(Direction) @Read(Velocity)

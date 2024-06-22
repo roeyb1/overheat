@@ -158,24 +158,22 @@ main :: () {
     rendering_shutdown();
 }
 
-update_positions :: (world: *World) {
-    for query : Query(*Position, Velocity).{world = world} {
-        positions := query.position;
-        velocities := query.velocity;
+update_positions :: (q: Query) {
+    positions := query_get(q, Position);
+    velocities := query_get(q, Velocity);
 
-        for 0..query.count-1 {
-            positions[it].value = positions[it] + velocities[it] * FIXED_TIMESTEP;
-        }
+    for 0..q.count-1 {
+        positions[it].value = positions[it] + velocities[it] * FIXED_TIMESTEP;
     }
 } @System(OnUpdate) @Write(Position) @Read(Velocity)
 
-render_imgui :: (world: *World) {
+render_imgui :: (q: Query) {
     ImGui.Render();
 } @System(PreRender) @Write() @Read()
 
-render_scene :: (world: *World) {
-    pos := get_component(world, main_view_camera, Position);
-    cam := get_component(world, main_view_camera, Camera);
+render_scene :: (q: Query) {
+    pos := get_component(q.world, main_view_camera, Position);
+    cam := get_component(q.world, main_view_camera, Camera);
 
     render_scene(cam.projection, pos);
 } @System(OnRender) @Write() @Read(Position,Camera)

@@ -23,4 +23,6 @@ array_append :: (arr: *[..] $T, to_append: [] T) {
     }
 }
 
+sbprint :: print_to_builder;
+
 #load "handle_manager.jai";

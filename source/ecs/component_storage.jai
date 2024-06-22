@@ -35,7 +35,7 @@ component_type_id :: ($c: Type) -> Component_Type_ID {
 }
 
 /** Returns a compile-time generated (sorted by id) view of a static array of component type ids */
-component_type_ids :: ($component_types: ..Type) -> [] Component_Type_ID {
+component_type_ids :: ($component_types: [] Type) -> [] Component_Type_ID {
     #insert #run () -> string #compile_time {
         builder: String_Builder;
         

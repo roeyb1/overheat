@@ -16,7 +16,8 @@ Collision_Invoker :: struct @Component {
     blocking_hits_this_frame: [..] Hit_Result;
 }
 
-detect_collisions_system :: (world: *World) {
+/*
+detect_collisions_system :: (query: Query) {
     // @Speed this can be optimized with AABB trees
     entities: [..] Entity;
     entities.allocator = temp;
@@ -67,37 +68,36 @@ detect_collisions_system :: (world: *World) {
         }
     }
 } @System(OnValidate) @Write(Collision_Invoker) @Read(Position,Collider_AABB)
+*/
 
-resolve_collisions :: (world: *World) {
-    for query : Query(Collision_Invoker, *Position, Collider_AABB).{world = world} {
-        invokers := query.collision_invoker;
-        positions := query.position;
-        colliders := query.collider_aabb;
+resolve_collisions :: (q: Query) {
+    invokers := query_get(q, Collision_Invoker);
+    positions := query_get(q, Position);
+    colliders := query_get(q, Collider_AABB);
 
-        for 0..query.count-1 {
-            for *hit : invokers[it].blocking_hits_this_frame {
-                invoker_bounds := translate(colliders[it], positions[it]);
+    for 0..q.count-1 {
+        for *hit : invokers[it].blocking_hits_this_frame {
+            invoker_bounds := translate(colliders[it], positions[it]);
 
-                overlapper_bounds := translate(hit.other_aabb, hit.other_position);
-                minkowsky := minkowsky_difference(invoker_bounds, overlapper_bounds);
-                // check if there even is still a collision. We may no longer be colliding due to the collision resolution of any previous hits.
-                // We can do this by checking if the minkowsky diff still contains the origin:
-                if is_inside(minkowsky, .{0, 0}) {
-                    penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
+            overlapper_bounds := translate(hit.other_aabb, hit.other_position);
+            minkowsky := minkowsky_difference(invoker_bounds, overlapper_bounds);
+            // check if there even is still a collision. We may no longer be colliding due to the collision resolution of any previous hits.
+            // We can do this by checking if the minkowsky diff still contains the origin:
+            if is_inside(minkowsky, .{0, 0}) {
+                penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
 
-                    positions[it].value -= penetration_vector;
-                }
+                positions[it].value -= penetration_vector;
             }
         }
     }
 } @System(PostUpdate) @Write(Position) @Read(Collision_Invoker,Collider_AABB)
 
 /** Reset any hit results that might've been generated last frame. */
-reset_collision_results :: (world: *World) {
-    for query : Query(*Collision_Invoker).{world = world} {
-        for 0..query.count-1 {
-            query.collision_invoker[it].hits_this_frame.count = 0;
-        }
+reset_collision_results :: (q: Query) {
+    invokers := query_get(q, Collision_Invoker);
+
+    for 0..q.count-1 {
+        invokers[it].hits_this_frame.count = 0;
     }
 } @System(PreUpdate) @Write(Collision_Invoker) @Read()
 

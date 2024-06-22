@@ -265,10 +265,10 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
 
     // collect all the draws for this frame
     {
-        for query : Query(Sprite, Position).{world = *g_world} {
-            sprites := query.sprite;
-            positions := query.position;
-            for 0..query.count-1 {
+        for q : make_iter(*g_world, Position, Sprite) {
+            positions := query_get(q, Position);
+            sprites := query_get(q, Sprite);
+            for 0..q.count-1 {
                 if sprites[it].z_order >= min_sprite_z_layer && sprites[it].z_order < max_sprite_z_layer {
                     add_sprite_draw(out_draws, sprites[it], positions[it]);
                 }
