@@ -97,7 +97,7 @@ update_local_player_commands_from_input :: (q: Query) {
             player_commands[it].main_attack = true;
         }
     }
-} @System(PostLoad) @Write(Player_Commands) @Read(Local_Player)
+} @System(PostLoad) @Write(Player_Commands) @Read(Local_Player,Input_States)
 
 update_player_controllers :: (q: Query) {
     player_commands := query_get(q, Player_Commands);

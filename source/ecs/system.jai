@@ -96,6 +96,12 @@ add_system :: (phase: System_Phase, def: *System_Def) {
 
     array_append(*def.archetype, def.component_writes);
     array_append(*def.archetype, def.component_reads);
+
+    // remove any singleton components from the archetype so we can still declare them in the component usages but they don't get included in the archetype iterators:
+    for ctid : def.archetype {
+        if ctid.is_singleton remove ctid;
+    }
+
     quick_sort(def.archetype, (x) => x.hash);
 
     log("Registered system: %", system.debug_name);
@@ -224,15 +230,24 @@ execute_system :: (sys: System, world: *World) {
     query: Query;
     query.world = world;
 
-    archtype_ids := find_or_create_cached_archetypes_for_ctids(world, sys.archetype);
-
-    for archtype_ids {
-        archetype := *world.archetypes[it];
-        query.current_archetype = archetype;
-        query.entities = archetype.entities;
-        query.count = archetype.entities.count;
+    // special case systems with no components to iterate over. These should only execute one single time and don't have an archetype
+    if sys.archetype.count == 0 {
+        query.current_archetype = null;
+        query.entities = .[];
+        query.count = 1;
 
         sys.def.func(query);
+    } else {
+        archtype_ids := find_or_create_cached_archetypes_for_ctids(world, sys.archetype);
+
+        for archtype_ids {
+            archetype := *world.archetypes[it];
+            query.current_archetype = archetype;
+            query.entities = archetype.entities;
+            query.count = archetype.entities.count;
+
+            sys.def.func(query);
+        }
     }
 }
 

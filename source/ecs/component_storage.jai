@@ -19,6 +19,7 @@ Component_Type_ID :: struct {
     runtime_size: s64;
     debug_name: string;
     initializer: (*void);
+    is_singleton: bool;
 }
 
 operator== :: (a: Component_Type_ID, b: Component_Type_ID) -> bool {
@@ -30,8 +31,10 @@ component_type_id :: ($c: Type) -> Component_Type_ID {
     assert(type_info(c).type == .STRUCT, "Only struct types are supported as component types!");
 
     ti :: type_info(c);
+    is_singleton := has_note(ti, "SingletonComponent");
     hash :: #run fnv1a_hash(ti.name.data, ti.name.count, h = 5381);
-    return .{hash, ti.runtime_size, ti.name, ti.initializer};
+
+    return .{hash, ti.runtime_size, ti.name, ti.initializer, is_singleton};
 }
 
 /** Returns a compile-time generated (sorted by id) view of a static array of component type ids */

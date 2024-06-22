@@ -46,4 +46,4 @@ load_input_system :: (q: Query) {
     for 0..input_states.states.count-1 {
         input_states.states[it] = hal_input_button_states[it];
     }
-} @System(OnLoad) @Write() @Read()
+} @System(OnLoad) @Write(Input_States) @Read()
