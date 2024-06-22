@@ -1,4 +1,3 @@
-
 show_system_graph := false;
 show_imgui_demo_window := false;
 show_stats := false;
@@ -141,24 +140,18 @@ visualize_system_execution :: () {
                         ImGui.TableNextRow();
                         ImGui.TableNextColumn();
                         if ctid_index < it.def.component_reads.count {
-                            ImGui.Text("%", it.def.component_reads[ctid_index].debug_name);
+                            ImGui.Text("%", it.def.component_reads[ctid_index].name);
                         } else {
                             ImGui.Text("");
                         }
                         ImGui.TableNextColumn();
                         if ctid_index < it.def.component_writes.count {
-                            ImGui.Text("%", it.def.component_writes[ctid_index].debug_name);
+                            ImGui.Text("%", it.def.component_writes[ctid_index].name);
                         } else {
                             ImGui.Text("");
                         }
 
                     }
-
-
-                    for ctid : it.def.component_writes {
-                        //ImGui.Text("Write(%)", ctid.debug_name);
-                    }
-
 
                     ImGui.EndTable();
                 }

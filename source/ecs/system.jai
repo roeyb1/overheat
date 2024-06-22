@@ -146,6 +146,18 @@ build_dependency_graph :: (scheduler: *System_Scheduler) {
         return false, -1;
     }
 
+    for * system : scheduler.systems {
+        for ctid : system.component_writes {
+            for * other : scheduler.systems {
+                if system == other then continue;
+                other_reads_ctid := array_find(other.component_reads, ctid, compare_ctid);
+                if other_reads_ctid {
+                    array_add(*system.run_before, other.func);
+                }
+            }
+        }
+    }
+
     // Reset any existing data:
     assert(scheduler.dependencies.count == scheduler.wait_count_template.count);
     for 0..scheduler.dependencies.count-1 {
@@ -220,7 +232,9 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
             }
         }
 
-        assert(found_one || systems_to_run.count == 0);
+        if !ensure(found_one || systems_to_run.count == 0, "System executor deadlocked! Is there a cyclic dependency in the system graph?") {
+            break;
+        }
     }
     world.should_defer = false;
     process_deferred_operations(world);

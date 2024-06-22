@@ -17,12 +17,16 @@ Component_Container :: struct {
 Component_Type_ID :: struct {
     hash: u64;
     runtime_size: s64;
-    debug_name: string;
+    name: string;
     initializer: (*void);
     is_singleton: bool;
 }
 
 operator== :: (a: Component_Type_ID, b: Component_Type_ID) -> bool {
+    return compare_ctid(a, b);
+}
+
+compare_ctid :: (a: Component_Type_ID, b: Component_Type_ID) -> bool {
     return a.hash == b.hash;
 }
 

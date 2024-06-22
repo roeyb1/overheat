@@ -13,13 +13,12 @@ reset_interped_position_overrides :: (q: Query) {
 } @System(PreUpdate) @Write(Position) @Read(Interp_Position)
 
 set_previous_interped_positions :: (q: Query) {
-    positions := query_get(q, Position);
     interp_positions := query_get(q, Interp_Position);
 
     for 0..q.count-1 {
         interp_positions[it].previous = interp_positions[it].current;
     }
-} @System(PreUpdate) @Write(Interp_Position) @Read(Position)
+} @System(PreUpdate) @Write(Interp_Position) @Read()
 
 set_current_interped_positions :: (q: Query) {
     positions := query_get(q, Position);

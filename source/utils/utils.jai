@@ -28,7 +28,25 @@ has_note :: (ti: *Type_Info_Struct, note: string) -> bool {
     return false;
 }
 
+array_find :: (arr: [] $T, val: T, pred: (a: T, b: T) -> bool) -> bool, s64 {
+    for v : arr if pred(v, val) then return true, it_index;
+    return false, -1;
+}
+
+#if ENABLE_ENSURE {
+    ensure :: inline (val: bool, msg: string = "", args: ..Any) -> bool {
+        if !val {
+            log_error("Ensure condition failed: %", tprint(msg, ..args));
+            debug_break();
+        }
+        return val;
+    }
+} else {
+    ensure :: inline (val: bool, msg: string = "", args: ..Any) -> bool { return val; }
+}
 
 sbprint :: print_to_builder;
 
 #load "handle_manager.jai";
+
+ENABLE_ENSURE :: true;
