@@ -1,74 +1,54 @@
 Collider_AABB :: struct @Component {
     #as using aabb: AABB;
-    blocking: bool;
 }
 
 Hit_Result :: struct {
     other: Entity;
-    other_position: Vector2;
-    other_aabb: AABB;
+    other_bounds: AABB;
 }
 
 Collision_Invoker :: struct @Component {
     /** List of all hit results which were generated against this entity this frame */
     hits_this_frame: [..] Hit_Result;
-    /** List of all hit results against colliders that are "blocking" which were generated against this entity this frame */
-    blocking_hits_this_frame: [..] Hit_Result;
 }
 
-/*
-detect_collisions_system :: (query: Query) {
-    // @Speed this can be optimized with AABB trees
+Collision_Spatial :: struct @SingletonComponent {
+    // @Speed this will be optimized with an AABB tree
+    bounds: [..] AABB;
     entities: [..] Entity;
-    entities.allocator = temp;
-    positions: [..] Position;
-    positions.allocator = temp;
-    colliders: [..] Collider_AABB;
-    colliders.allocator = temp;
+}
 
-    for query : Query(Position, Collider_AABB).{world = world} {
-        array_append(*entities, query.entities);
-        array_append(*positions, query.position);
-        array_append(*colliders, query.collider_aabb);
+build_collision_spatial :: (q: Query) {
+    spatial := get_singleton(q.world, Collision_Spatial);
+
+    colliders := query_get(q, Collider_AABB);
+    positions := query_get(q, Position);
+
+    // rebuild the spatial from scratch every frame.
+    // #todo: only update the pieces that changed using events
+    spatial.entities.count = 0;
+    spatial.bounds.count = 0;
+
+    array_append(*spatial.entities, q.entities);
+    for 0..q.count-1 {
+        array_add(*spatial.bounds, translate(colliders[it], positions[it]));
     }
+} @System(OnValidate) @Write(Collision_Spatial) @Read(Position,Collider_AABB)
 
-    invoker_entities: [..] Entity;
-    invoker_entities.allocator = temp;
-    invoker_positions: [..] Position;
-    invoker_positions.allocator = temp;
-    invoker_colliders: [..] Collider_AABB;
-    invoker_colliders.allocator = temp;
+detect_collisions :: (q: Query) {
+    invokers := query_get(q, Collision_Invoker);
+    positions := query_get(q, Position);
+    colliders := query_get(q, Collider_AABB);
 
-    for query : Query(Position, *Collision_Invoker, Collider_AABB).{world = world} {
-        array_append(*invoker_entities, query.entities);
-        array_append(*invoker_positions, query.position);
-        array_append(*invoker_colliders, query.collider_aabb);
+    spatial := get_singleton(q.world, Collision_Spatial);
+
+    for 0..q.count-1 {
+        translated_aabb := translate(colliders[it], positions[it]);
+        hits := find_hits_in_bounds(spatial, translated_aabb, q.entities[it]);
+
+        array_append(*invokers[it].hits_this_frame, hits);
     }
-
-    for a: 0..invoker_entities.count-1 {
-        a_translated_aabb := translate(invoker_colliders[a], invoker_positions[a]);
-        for b : 0..entities.count-1 {
-            if invoker_entities[a] == entities[b] then continue;
-
-            b_translated_aabb := translate(colliders[b], positions[b]);
-
-            if intersects(a_translated_aabb, b_translated_aabb) {
-                invoker := get_component(world, invoker_entities[a], Collision_Invoker);
-                assert(invoker != null);
-
-                hit_result: Hit_Result;
-                hit_result.other = entities[b];
-                hit_result.other_position = positions[b];
-                hit_result.other_aabb = colliders[b].aabb;
-                array_add(*invoker.hits_this_frame, hit_result);
-                if colliders[b].blocking {
-                    array_add(*invoker.blocking_hits_this_frame, hit_result);
-                }
-            }
-        }
-    }
-} @System(OnValidate) @Write(Collision_Invoker) @Read(Position,Collider_AABB)
-*/
+} @System(OnValidate) @Write(Collision_Invoker) @Read(Position,Collider_AABB,Collision_Spatial)
 
 resolve_collisions :: (q: Query) {
     invokers := query_get(q, Collision_Invoker);
@@ -76,11 +56,10 @@ resolve_collisions :: (q: Query) {
     colliders := query_get(q, Collider_AABB);
 
     for 0..q.count-1 {
-        for *hit : invokers[it].blocking_hits_this_frame {
+        for *hit : invokers[it].hits_this_frame {
             invoker_bounds := translate(colliders[it], positions[it]);
 
-            overlapper_bounds := translate(hit.other_aabb, hit.other_position);
-            minkowsky := minkowsky_difference(invoker_bounds, overlapper_bounds);
+            minkowsky := minkowsky_difference(invoker_bounds, hit.other_bounds);
             // check if there even is still a collision. We may no longer be colliding due to the collision resolution of any previous hits.
             // We can do this by checking if the minkowsky diff still contains the origin:
             if is_inside(minkowsky, .{0, 0}) {
@@ -101,3 +80,18 @@ reset_collision_results :: (q: Query) {
     }
 } @System(PreUpdate) @Write(Collision_Invoker) @Read()
 
+
+find_hits_in_bounds :: (spatial: *Collision_Spatial, bounds: AABB, self: Entity) -> [..] Hit_Result {
+    result: [..] Hit_Result;
+    result.allocator = temp;
+
+    for other : spatial.bounds {
+        if intersects(bounds, other) && spatial.entities[it_index] != self {
+            hit: *Hit_Result = array_add(*result);
+            hit.other = spatial.entities[it_index];
+            hit.other_bounds = other;
+        }
+    }
+
+    return result;
+}
