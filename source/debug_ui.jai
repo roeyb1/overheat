@@ -109,7 +109,7 @@ visualize_system_execution :: () {
                 node_depths[it] = 0;
             }
 
-            ImNodes.PushColorStyle(.NodeBackground, PHASE_COLORS[phase_index]);
+            ImNodes.PushColorStyle(.TitleBar, PHASE_COLORS[phase_index]);
 
             for scheduler.systems {
                 system_index := it_index;
@@ -117,7 +117,9 @@ visualize_system_execution :: () {
             
                 ImNodes.BeginNode(node_index);
 
+                ImNodes.BeginNodeTitleBar();
                 ImGui.Text("%", scheduler.systems[system_index].debug_name);
+                ImNodes.EndNodeTitleBar();
 
                 ImNodes.BeginInputAttribute(input_offset + node_index, .TriangleFilled);
                 ImNodes.EndInputAttribute();
@@ -127,6 +129,40 @@ visualize_system_execution :: () {
                     ImNodes.BeginOutputAttribute(output_offset + node_index, .TriangleFilled);
                     ImNodes.EndOutputAttribute();
                 }
+
+                if ImGui.BeginTable(temp_c_string(tprint("Components##%", node_index)), 2, .SizingFixedFit | .BordersInnerV) {
+                        ImGui.TableNextRow();
+                        ImGui.TableNextColumn();
+                        ImGui.Text("READS");
+                        ImGui.TableNextColumn();
+                        ImGui.Text("WRITES");
+
+                    for ctid_index : 0..max(it.def.component_reads.count, it.def.component_writes.count)-1 {
+                        ImGui.TableNextRow();
+                        ImGui.TableNextColumn();
+                        if ctid_index < it.def.component_reads.count {
+                            ImGui.Text("%", it.def.component_reads[ctid_index].debug_name);
+                        } else {
+                            ImGui.Text("");
+                        }
+                        ImGui.TableNextColumn();
+                        if ctid_index < it.def.component_writes.count {
+                            ImGui.Text("%", it.def.component_writes[ctid_index].debug_name);
+                        } else {
+                            ImGui.Text("");
+                        }
+
+                    }
+
+
+                    for ctid : it.def.component_writes {
+                        //ImGui.Text("Write(%)", ctid.debug_name);
+                    }
+
+
+                    ImGui.EndTable();
+                }
+                
 
                 ImNodes.EndNode();
 
