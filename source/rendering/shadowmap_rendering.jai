@@ -82,10 +82,11 @@ render_shadowmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap
         array_add(shadow_vertex_data, .{ make_vector4(b + 1000 * (b - light_position), 0., 0.) });
     }
 
-    for query : Query(Shadow_Caster, Position).{world = *g_world} {
-        shadow_casters := query.shadow_caster;
-        positions := query.position;
-        for 0..query.count-1 {
+    for q : make_iter(*g_world, Position, Shadow_Caster) {
+        positions := query_get(q, Position);
+        shadow_casters := query_get(q, Shadow_Caster);
+
+        for 0..q.count-1 {
             box := translate(shadow_casters[it].box, positions[it]);
 
             add_segment(*shadow_vertex_data, light_position, .{box.min.x, box.min.y}, .{box.max.x, box.min.y});

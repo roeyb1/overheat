@@ -527,7 +527,7 @@ generate_system_functions :: (w: Workspace) {
     // shuffle the system functions to try to surface bugs that depend on specific system ordering:
     shuffle(system_functions);
 
-    sbprint(*sb, "ALL_SYSTEMS :: System_Def.[\n");
+    sbprint(*sb, "ALL_SYSTEMS := System_Def.[\n");
     for system_functions {
         // need at least three notes: @System(Phase); @Read(..), @Write(..)
         assert(it.notes.count >= 3);
@@ -542,7 +542,7 @@ generate_system_functions :: (w: Workspace) {
         assert(read_valid, "System read note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[2].text);
 
 
-        sbprint(*sb, "\t.{func = %1, debug_name = \"%2\", phase = .%3, component_reads = #run component_type_ids(%4), component_writes = #run component_type_ids(%5)}, \n", it.name, it.name, phase, read, write);
+        sbprint(*sb, "\t.{func = %1, debug_name = \"%2\", phase = .%3, component_reads = #run component_type_ids(.[%4]), component_writes = #run component_type_ids(.[%5])}, \n", it.name, it.name, phase, read, write);
     }
     sbprint(*sb, "];");
 

@@ -23,4 +23,12 @@ array_append :: (arr: *[..] $T, to_append: [] T) {
     }
 }
 
+has_note :: (ti: *Type_Info_Struct, note: string) -> bool {
+    for ti.notes  if it == note  return true;
+    return false;
+}
+
+
+sbprint :: print_to_builder;
+
 #load "handle_manager.jai";

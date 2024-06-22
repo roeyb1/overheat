@@ -286,11 +286,12 @@ render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, color_text
     clear_color._float32 = .[g_ambient_color.x, g_ambient_color.y, g_ambient_color.z, 1.];
 
     add_clear_image_pass(rg, lightmap_texture_view, clear_color);
-    for query : Query(Position, Point_Light).{world = *g_world} {
-        positions := query.position;
-        point_lights := query.point_light;
 
-        for 0..query.count-1 {
+    for q : make_iter(*g_world, Position, Point_Light) {
+        positions := query_get(q, Position);
+        point_lights := query_get(q, Point_Light);
+
+        for 0..q.count-1 {
             RDG_SCOPED_GPU_LABEL("Point Light");
 
             // calculate light bounds in screenspace so we can optimize render regions to only render within those bounds

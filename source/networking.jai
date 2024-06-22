@@ -457,11 +457,14 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.networking_id = new_networking_id;
 
-                for query : Query(Player, Networking_ID, Position).{world = *g_world} {
-                    for 0..query.count-1 {
+                for q : make_iter(*g_world, Player, Networking_ID, Position) {
+                    networking_ids := query_get(q, Networking_ID);
+                    positions := query_get(q, Position);
+
+                    for 0..q.count-1 {
                         player_data := array_add(*conn_established.existing_players);
-                        player_data.networking_id = query.networking_id[it].id;
-                        player_data.position = query.position[it];
+                        player_data.networking_id = networking_ids[it].id;
+                        player_data.position = positions[it];
                     }
                 }
 
@@ -583,11 +586,11 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             assert(player_commands_packet.networking_id != g_client.local_client_id, 
                 "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
 
-            for query : Query(Networking_ID, *Player_Commands).{world = *g_world} {
-                player_commands := query.player_commands;
-                networking_ids := query.networking_id;
+            for q : make_iter(*g_world, Networking_ID, Player_Commands) {
+                player_commands := query_get(q, Player_Commands);
+                networking_ids := query_get(q, Networking_ID);
 
-                for 0..query.count-1 {
+                for 0..q.count-1 {
                     if networking_ids[it].id == player_commands_packet.networking_id {
                         player_commands[it] = player_commands_packet.commands;
                     }
@@ -598,12 +601,16 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             byte_buffer_read(buffer, *player_left);
 
             player_to_kill: Entity;
-            for query : Query(Player, Networking_ID, Name).{world = *g_world} {
-                for 0..query.count-1 {
-                    if query.networking_id[it].id == player_left.networking_id {
-                        player_to_kill = query.entities[it];
 
-                        log("% has left the game.", query.name[it].name);
+            for q : make_iter(*g_world, Networking_ID, Player, Name) {
+                networking_ids := query_get(q, Networking_ID);
+                names := query_get(q, Name);
+
+                for 0..q.count-1 {
+                    if networking_ids[it].id == player_left.networking_id {
+                        player_to_kill = q.entities[it];
+
+                        log("% has left the game.", names[it].name);
                         break;
                     }
                 }
