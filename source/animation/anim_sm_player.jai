@@ -53,18 +53,18 @@ update_player_anim_state :: (q: Query) {
 } @System(OnUpdate) @Write(Anim_State_Component,Animation) @Read(Player,Player_Commands,Velocity)
 
 on_player_anim_state_changed :: (world: *World) {
-    /*
-    velocities := query_get(q, Velocity);
-    anim_states := query_get(q, Anim_State_Component);
-    anims := query_get(q, Animation);
+    for q : make_iter(world, Velocity, Anim_State_Component, Animation) {
+        velocities := query_get(q, Velocity);
+        anim_states := query_get(q, Anim_State_Component);
+        anims := query_get(q, Animation);
 
-    for 0..q.count-1 {
-        current_state := cast(Player_Anim_State) anim_states[it].state;
-        if current_state == .ATTACK {
-            broadcast_event(q.world, EVENT_PLAYER_ATTACK);
+        for 0..q.count-1 {
+            current_state := cast(Player_Anim_State) anim_states[it].state;
+            if current_state == .ATTACK {
+                broadcast_event(q.world, EVENT_PLAYER_ATTACK);
+            }
         }
     }
-    */
 } @Event @Write(Anim_State_Component,Animation) @Read(Player,Velocity)
 
 #scope_file

@@ -3,23 +3,14 @@
  * A game may create multiple worlds, if needed, but there should only be one global game world which represents the main game state.
  */
 World :: struct {
-    /** A list of all currently alive entities */
-    entities: [..] Entity;
-    free_entity_indices: [..] s32;
-
-    /** Maps an entity to it's archetype index */
-    entity_records: Table(s64, Entity_Record);
-
-    archetypes: [..] Archetype;
-
-    /** Caches the results of trying to find all archetypes with a subset of components */
-    archetype_cache: Table([] Component_Type_ID, [..] s64, given_compare_function=compare_ctids);
+    stage: Stage;
+    deferred_stage: Stage;
 
     singletons: Singleton_Storage;
 
-    should_defer: bool;
-
     deferred_ops: [..] Deferred_ECS_Operation;
+
+    should_defer: bool = false;
 }
 
 Entity_Record :: struct {
@@ -29,101 +20,62 @@ Entity_Record :: struct {
 
 is_entity_valid :: (world: *World, entity: Entity) -> bool {
     if entity.index == INVALID_ENTITY_INDEX then return false;
-    if entity.index >= world.entities.count then return false;
-    if entity.generation != world.entities[entity.index].generation then return false;
+    if entity.index >= world.stage.entities.count then return false;
+    if entity.generation != world.stage.entities[entity.index].generation then return false;
     return true;
 }
 
 spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
-    assert(!world.should_defer, "Spawning an entity while iterating a query is not yet a supported operation!");
-
-    if world.free_entity_indices.count > 0 {
-        index := pop(*world.free_entity_indices);
-        world.entities[index].generation += 1;
-        world.entities[index].index = index;
-
-        return .{index = index, generation = world.entities[index].generation};
-    }
-
-    new_entity := array_add(*world.entities);
-    new_entity.generation = 0;
-    new_entity.index = cast(s32) world.entities.count-1;
-
     #insert #run () -> string {
-        builder: String_Builder;
+        sb: String_Builder;
         
-        print_to_builder(*builder, "CTIDS :: Component_Type_ID.[");
+        sbprint(*sb, "CTIDS :: Component_Type_ID.[");
         for 0..Initial_Archetype.count-1 {
-            print_to_builder(*builder, "#run component_type_id(Initial_Archetype[%]), ", it);
+            sbprint(*sb, "#run component_type_id(Initial_Archetype[%]), ", it);
         }
-        print_to_builder(*builder, "];\n");
-        print_to_builder(*builder, "#run intro_sort(CTIDS, (a, b) => cast, trunc(int)a.hash - cast, trunc(int) b.hash);\n");
-        return builder_to_string(*builder);
+        sbprint(*sb, "];\n");
+        sbprint(*sb, "#run intro_sort(CTIDS, (a, b) => cast, trunc(int)a.hash - cast, trunc(int) b.hash);\n");
+        return builder_to_string(*sb);
     }();
 
-    archetype, archetype_id := get_or_create_archetype(world, CTIDS);
-    row := add_entity(archetype, new_entity);
+    if world.should_defer {
+        entity := add_entity(*world.deferred_stage, CTIDS);
+        entity.deferred = true;
+        return entity;
+    }
 
-    table_add(*world.entity_records, new_entity.raw, .{archetype_id = archetype_id, row = row});
-
-    return new_entity;
+    return add_entity(*world.stage, CTIDS);
 }
 
 destroy_entity :: (world: *World, entity: Entity) {
     if world.should_defer {
-        array_add(*world.deferred_ops, .{type = .DESTROY, entity = entity});
+        if entity.deferred {
+            remove_entity(*world.deferred_stage, entity);
+        } else {
+            array_add(*world.deferred_ops, .{type = .DESTROY, entity = entity});
+        }
+
         return;
     }
 
-    old_record, success := table_find(*world.entity_records, entity.raw);
-    if !success then return;
-
-    remove_entity(*world.archetypes[old_record.archetype_id], old_record.row, *world.entity_records);
-
-    array_add(*world.free_entity_indices, entity.index);
+    remove_entity(*world.stage, entity);
 }
 
 get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
-    record, success := table_find(*world.entity_records, entity.raw);
-    if !success then return null;
-
-    ctid :: #run component_type_id(Component_Type);
-    return get_component(*world.archetypes[record.archetype_id], record.row, ctid);
+    if entity.deferred {
+        return get_component(*world.deferred_stage, entity, Component_Type);
+    }
+    return get_component(*world.stage, entity, Component_Type);
 }
 
 add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
-    assert(!world.should_defer, "Adding components to an entity while iterating a query is not yet a supported operation!");
-
-    record := table_find_pointer(*world.entity_records, entity.raw);
-    assert(record != null);
-    if record == null then return null;
-
-    new_ctid :: #run component_type_id(Component_Type);
-
-    from := *world.archetypes[record.archetype_id];
-    to, to_id := archetype_plus(world, from.type_ids, new_ctid);
-    // archetype_plus may have caused the archetypes array to resize, thereby invalidating our pointer. reset it just in case:
-    from = *world.archetypes[record.archetype_id];
-
-    new_row := move_entity(to, from, record.row, entity, *world.entity_records);
-    if from.entities.count == 0 {
-        remove_archetype_from_active_cache(world, record.archetype_id);
+    if entity.deferred {
+        return add_component(*world.deferred_stage, entity, Component_Type);
     }
-    if to.entities.count == 1 {
-        add_archetype_to_active_cache(world, to, to_id);
-    }
-
-    record.row = new_row;
-    record.archetype_id = to_id;
-
-    result := get_component(to, record.row, new_ctid);
-    ini :: initializer_of(Component_Type);
-    #if ini {
-        ini(result);
-    }
-
-    broadcast_event(world, ECS_EVENT_ON_ADD);
     
+    result := add_component(*world.stage, entity, Component_Type);
+    // @todo: when to fire the add event if something was deferred?
+    broadcast_event(world, ECS_EVENT_ON_ADD);
     return result;
 }
 
@@ -134,100 +86,16 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_
 }
 
 remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
-    assert(!world.should_defer, "Removing components from an entity while iterating a query is not yet a supported operation!");
-
-    record := table_find_pointer(*world.entity_records, entity.raw);
-    assert(record != null);
-    if record == null then return;
-
-    new_ctid :: #run component_type_id(Component_Type);
-
-    from := *world.archetypes[record.archetype_id];
-    to, to_id := archetype_minus(world, from.type_ids, new_ctid);
-    // archetype_minus may have caused the archetypes array to resize, thereby invalidating our pointer. reset it just in case:
-    from = *world.archetypes[record.archetype_id];
-
-    new_row := move_entity(to, from, record.row, entity, *world.entity_records);
-    if from.entities.count == 0 {
-        remove_archetype_from_active_cache(world, record.archetype_id);
+    if entity.deferred {
+        remove_component(*world.deferred_stage, entity, Component_Type);
+        return;
     }
-    if to.entities.count == 1 {
-        add_archetype_to_active_cache(world, to, to_id);
-    }
+    
+    remove_component(*world.stage, entity, Component_Type);
 
-    record.row = new_row;
-    record.archetype_id = to_id;
-
+    // @todo: when to fire the add event if something was deferred?
     broadcast_event(world, ECS_EVENT_ON_REMOVE);
 }
-
-#scope_file
-
-archetype_plus :: (world: *World, ctids: [] Component_Type_ID, plus: Component_Type_ID) -> (*Archetype, s64) {
-    new_types: [..] Component_Type_ID;
-    new_types.allocator = temp;
-    array_copy(*new_types, ctids);
-    array_add(*new_types, plus);
-    quick_sort(new_types, (x) => x.hash);
-
-    archetype, id := get_or_create_archetype(world, new_types);
-    return archetype, id;
-}
-
-archetype_minus :: (world: *World, ctids: [] Component_Type_ID, minus: Component_Type_ID) -> (*Archetype, s64) {
-    new_types: [..] Component_Type_ID;
-    new_types.allocator = temp;
-    array_copy(*new_types, ctids);
-
-    // ordered remove by value
-    {
-        for new_types if it == minus { array_ordered_remove_by_index(*new_types, it_index); break; };
-    }
-
-    archetype, id := get_or_create_archetype(world, new_types);
-    return archetype, id;
-}
-
-get_or_create_archetype :: (world: *World, ctids: [] Component_Type_ID) -> (*Archetype, s64) {
-    for * world.archetypes {
-        if archetype_matches_types(it, ctids) {
-            return it, it_index;
-        }
-    }
-
-    result := array_add(*world.archetypes);
-    init(result, ctids);
-
-    archetype_id := world.archetypes.count-1;
-
-    return result, archetype_id;
-}
-
-add_archetype_to_active_cache :: (world: *World, archetype: *Archetype, archetype_id: s64) {
-    for * world.archetype_cache {
-        cached_ctids: [] Component_Type_ID = it_index;
-        cached_archetype_ids: *[..] s64 = it;
-
-        // if this archetype would match the ctids in this cache entry, add it to the cache now:
-        if archetype_contains_types(archetype, cached_ctids) {
-            array_add(cached_archetype_ids, archetype_id);
-        }
-    }
-
-}
-
-remove_archetype_from_active_cache :: (world: *World, archetype_id: s64) {
-    for * world.archetype_cache {
-        cached_archetype_ids: *[..] s64 = it;
-
-        array_unordered_remove_by_value(cached_archetype_ids, archetype_id, stop_after_first=true);
-    }
-}
-
-
-//------------------------- TESTING -------------------------   
-
-#scope_export
 
 compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
     if a.count != b.count then return false;
@@ -237,6 +105,9 @@ compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
     }
     return true;
 }
+
+//------------------------- TESTING -------------------------   
+
 
 test_entity_components :: (ctx: *TestContext) {
     Test :: struct {
@@ -301,6 +172,7 @@ test_entity_components :: (ctx: *TestContext) {
 #load "archetype.jai";
 #load "event.jai";
 #load "defer.jai";
+#load "stage.jai";
 
 #scope_file
 
