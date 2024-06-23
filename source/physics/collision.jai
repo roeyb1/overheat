@@ -18,16 +18,21 @@ Collision_Spatial :: struct @SingletonComponent {
     entities: [..] Entity;
 }
 
-build_collision_spatial :: (q: Query) {
+reset_collision_spatial :: (q: Query) {
     spatial := get_singleton(q.world, Collision_Spatial);
-
-    colliders := query_get(q, Collider_AABB);
-    positions := query_get(q, Position);
 
     // rebuild the spatial from scratch every frame.
     // #todo: only update the pieces that changed using events
     spatial.entities.count = 0;
     spatial.bounds.count = 0;
+
+} @System(PreUpdate) @Write(Collision_Spatial) @Read()
+
+build_collision_spatial :: (q: Query) {
+    spatial := get_singleton(q.world, Collision_Spatial);
+
+    colliders := query_get(q, Collider_AABB);
+    positions := query_get(q, Position);
 
     array_append(*spatial.entities, q.entities);
     for 0..q.count-1 {
