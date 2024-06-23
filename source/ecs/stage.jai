@@ -13,22 +13,19 @@ Stage :: struct {
 }
 
 add_entity :: (stage: *Stage, ctids: [] Component_Type_ID) -> Entity {
-    /*
-    // @todo: re-enable free-entity-index reuse
+    new_entity: Entity;
     if stage.free_entity_indices.count > 0 {
         index := pop(*stage.free_entity_indices);
-        stage.entities[index].generation += 1;
         stage.entities[index].index = index;
 
-        return .{index = index, generation = stage.entities[index].generation};
+        new_entity = .{index = index, generation = stage.entities[index].generation};
+    } else {
+        new_entity = array_add(*stage.entities);
+        new_entity.generation = 0;
+        new_entity.index = cast(s32) stage.entities.count-1;
     }
-    */
-
-    new_entity := array_add(*stage.entities);
-    new_entity.generation = 0;
-    new_entity.index = cast(s32) stage.entities.count-1;
     new_entity.deferred = false;
-    raw := new_entity.raw;
+
     assert(new_entity.index != INVALID_ENTITY_INDEX);
 
     archetype, archetype_id := get_or_create_archetype(stage, ctids);
@@ -42,6 +39,9 @@ add_entity :: (stage: *Stage, ctids: [] Component_Type_ID) -> Entity {
 remove_entity :: (stage: *Stage, entity: Entity) {
     old_record, success := table_find(*stage.entity_records, entity.raw);
     if !success then return;
+
+    // increment the generation number so we can check old entity indexes against it to see if it was destroyed.
+    stage.entities[entity.index].generation += 1;
 
     remove_entity(*stage.archetypes[old_record.archetype_id], old_record.row, *stage.entity_records);
 
@@ -88,15 +88,18 @@ add_component :: (stage: *Stage, entity: Entity, $Component_Type: Type) -> *Comp
     return result;
 }
 
-remove_component :: (stage: *Stage, entity: Entity, $Component_Type: Type) {
+remove_component :: (stage: *Stage, entity: Entity, remove_ctid: Component_Type_ID) -> bool {
     record := table_find_pointer(*stage.entity_records, entity.raw);
     assert(record != null);
-    if record == null then return;
-
-    new_ctid :: #run component_type_id(Component_Type);
+    if record == null then return false;
 
     from := *stage.archetypes[record.archetype_id];
-    to, to_id := archetype_minus(stage, from.type_ids, new_ctid);
+
+    if !has_component_type(from, remove_ctid) {
+        return false;
+    }
+
+    to, to_id := archetype_minus(stage, from.type_ids, remove_ctid);
     // archetype_minus may have caused the archetypes array to resize, thereby invalidating our pointer. reset it just in case:
     from = *stage.archetypes[record.archetype_id];
 
@@ -110,6 +113,7 @@ remove_component :: (stage: *Stage, entity: Entity, $Component_Type: Type) {
 
     record.row = new_row;
     record.archetype_id = to_id;
+    return true;
 }
 
 archetype_plus :: (stage: *Stage, ctids: [] Component_Type_ID, plus: Component_Type_ID) -> (*Archetype, s64) {

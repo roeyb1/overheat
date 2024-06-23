@@ -20,8 +20,10 @@ Entity_Record :: struct {
 
 is_entity_valid :: (world: *World, entity: Entity) -> bool {
     if entity.index == INVALID_ENTITY_INDEX then return false;
-    if entity.index >= world.stage.entities.count then return false;
-    if entity.generation != world.stage.entities[entity.index].generation then return false;
+    stage := ifx entity.deferred then *world.deferred_stage else *world.stage;
+
+    if entity.index >= stage.entities.count then return false;
+    if entity.generation != stage.entities[entity.index].generation then return false;
     return true;
 }
 
@@ -47,7 +49,7 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
         entity := add_entity(*world.deferred_stage, sorted_ctids);
         entity.deferred = true;
 
-        array_add(*world.deferred_ops, .{.SPAWN, entity});
+        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}});
         return entity;
     }
 
@@ -96,20 +98,26 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_
     return result;
 }
 
-remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
+remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> bool {
     if entity.deferred {
-        remove_component(*world.deferred_stage, entity, Component_Type);
-        return;
+        return remove_component(*world.deferred_stage, entity, ctid);
     }
 
     if world.should_defer {
-        assert(false, "Adding components to an entity is not yet supported while iterating queries");
+        array_add(*world.deferred_ops, .{.REMOVE_COMPONENT, entity, ctid});
+        // @todo: this should return true if the entity actually has the component type
+        return true; 
     }
     
-    remove_component(*world.stage, entity, Component_Type);
+    removed := remove_component(*world.stage, entity, ctid);
 
     // @todo: when to fire the add event if something was deferred?
     broadcast_event(world, ECS_EVENT_ON_REMOVE);
+    return removed;
+}
+
+remove_component :: (world: *World, entity: Entity, $Component_Type: Type) -> bool {
+    return remove_component(world, entity, #run component_type_id(Component_Type));
 }
 
 //------------------------- TESTING -------------------------   
@@ -147,8 +155,8 @@ test_entity_components :: (ctx: *TestContext) {
 
     test_expect_equals(null, get_component(*world, e1, Test));
 
-    // now try some removing a component that doesn't exist. This should gracefully do nothing
-    remove_component(*world, e1, Test);
+    // now try some removing a component that doesn't exist. This should gracefully do nothing and return false
+    test_expect_equals(false, remove_component(*world, e1, Test));
 
     e4 := spawn_entity(*world, Test);
     test_expect_not_equals(null, get_component(*world, e4, Test));
