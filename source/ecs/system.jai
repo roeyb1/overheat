@@ -55,6 +55,8 @@ System_Phase :: enum u32{
      */
     PreRender;
 
+    OnUIRender;
+
     /**
      * Rendering happens here!
      */

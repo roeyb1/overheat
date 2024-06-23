@@ -37,7 +37,7 @@ main :: () {
     networking_init();
 
     load_all_assets();
-    import_ldtk_level(*g_world);
+    //import_ldtk_level(*g_world);
 
     last_time = seconds_since_init();
 
@@ -89,6 +89,7 @@ main :: () {
         }
 
         execute(*g_world, .PreRender);
+        execute(*g_world, .OnUIRender);
         execute(*g_world, .OnRender);
 
         rendering_end_frame();
@@ -147,6 +148,7 @@ main :: () {
         g_interp_alpha = accumulated_time / FIXED_TIMESTEP;
 
         execute(*g_world, .PreRender);
+        execute(*g_world, .OnUIRender);
         execute(*g_world, .OnRender);
 
 
@@ -212,3 +214,5 @@ using Random :: #import "Random";
 #load "animation/sprite_animation.jai";
 #load "animation/anim_sm_player.jai";
 #load "animation/animation_definitions.jai";
+#load "skills/skills.jai";
+#load "skills/ui_skills.jai";

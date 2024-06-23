@@ -26,6 +26,7 @@ process_deferred_operations :: (world: *World) {
                 // It's possible that the entity was destoyed in the staging world before we could copy it to the main world, very unlikely though
                 if is_entity_valid(world, it.entity) {
                     copy_entity_between_deferred(world, it.entity);
+                    remove_entity(*world.deferred_stage, it.entity);
                 }
             case .REMOVE_COMPONENT;
                 // it's possible that the entity was destroyed before component removal was queued

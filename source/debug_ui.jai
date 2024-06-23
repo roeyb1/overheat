@@ -52,6 +52,7 @@ visualize_system_execution :: () {
         #run ImGui.IM_COL32(20, 123, 127),
         #run ImGui.IM_COL32(102, 92, 17),
         #run ImGui.IM_COL32(53, 72, 78),
+        #run ImGui.IM_COL32(132, 20, 178),
         #run ImGui.IM_COL32(120, 30, 10),
     ];
     #assert(PHASE_COLORS.count == NUM_SYSTEM_PHASES);
