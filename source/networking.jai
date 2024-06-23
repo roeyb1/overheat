@@ -608,16 +608,13 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
                 for 0..q.count-1 {
                     if networking_ids[it].id == player_left.networking_id {
-                        player_to_kill = q.entities[it];
+                        destroy_entity(*g_world, q.entities[it]);
 
                         log("% has left the game.", names[it].name);
                         break;
                     }
                 }
             }
-
-            assert(is_entity_valid(*g_world, player_to_kill));
-            destroy_entity(*g_world, player_to_kill);
         case;
     }
 }
