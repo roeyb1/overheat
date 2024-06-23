@@ -2,6 +2,7 @@ Deferred_ECS_Op_Type :: enum {
     DESTROY;
     SPAWN;
     REMOVE_COMPONENT;
+    ADD_COMPONENT;
 }
 
 Deferred_ECS_Operation :: struct {
@@ -10,13 +11,16 @@ Deferred_ECS_Operation :: struct {
 
     // used for component add/remove operations
     type_id: Component_Type_ID;
+    // new component data is allocated from the temp allocator and will be copied into the entity when the op is processed.
+    component_data: *void;
 }
 
 process_deferred_operations :: (world: *World) {
     assert(world.should_defer == false);
 
     for world.deferred_ops {
-        if it.type == {
+        assert(it.entity.deferred == false, "Deferred operations should not ever be queued for deferred entities. There's a bug somewhere. Op: (%)", it);
+        if #complete it.type == {
             case .DESTROY;
                 destroy_entity(world, it.entity);
             case .SPAWN;
@@ -26,14 +30,18 @@ process_deferred_operations :: (world: *World) {
                 }
             case .REMOVE_COMPONENT;
                 // it's possible that the entity was destroyed before component removal was queued
-                // do nothing in this case.
                 if is_entity_valid(world, it.entity) {
-                    remove_component(world, it.entity, it.type_id);
+                    remove_component(*world.stage, it.entity, it.type_id);
                 }
-            case;
-                assert(false, "Not yet implemented");
+            case .ADD_COMPONENT;
+                // it's possible that the entity was destroyed before component removal was queued
+                if is_entity_valid(world, it.entity) {
+                    ptr := add_component(*world.stage, it.entity, it.type_id);
+                    memcpy(ptr, it.component_data, it.type_id.runtime_size);
+                }
         }
     }
+    assert(world.deferred_stage.entities.count == 0);
     world.deferred_ops.count = 0;
 }
 

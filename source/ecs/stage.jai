@@ -48,23 +48,20 @@ remove_entity :: (stage: *Stage, entity: Entity) {
     array_add(*stage.free_entity_indices, entity.index);
 }
 
-get_component :: (stage: *Stage, entity: Entity, $Component_Type: Type) -> *Component_Type {
+get_component :: (stage: *Stage, entity: Entity, ctid: Component_Type_ID) -> *void {
     record, success := table_find(*stage.entity_records, entity.raw);
     if !success then return null;
 
-    ctid :: #run component_type_id(Component_Type);
     return get_component(*stage.archetypes[record.archetype_id], record.row, ctid);
 }
 
-add_component :: (stage: *Stage, entity: Entity, $Component_Type: Type) -> *Component_Type {
+add_component :: (stage: *Stage, entity: Entity, add_ctid: Component_Type_ID) -> *void {
     record := table_find_pointer(*stage.entity_records, entity.raw);
     assert(record != null);
     if record == null then return null;
 
-    new_ctid :: #run component_type_id(Component_Type);
-
     from := *stage.archetypes[record.archetype_id];
-    to, to_id := archetype_plus(stage, from.type_ids, new_ctid);
+    to, to_id := archetype_plus(stage, from.type_ids, add_ctid);
     // archetype_plus may have caused the archetypes array to resize, thereby invalidating our pointer. reset it just in case:
     from = *stage.archetypes[record.archetype_id];
 
@@ -79,11 +76,7 @@ add_component :: (stage: *Stage, entity: Entity, $Component_Type: Type) -> *Comp
     record.row = new_row;
     record.archetype_id = to_id;
 
-    result := get_component(to, record.row, new_ctid);
-    ini :: initializer_of(Component_Type);
-    #if ini {
-        ini(result);
-    }
+    result := get_component(to, record.row, add_ctid);
 
     return result;
 }

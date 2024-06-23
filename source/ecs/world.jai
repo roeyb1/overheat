@@ -49,7 +49,7 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
         entity := add_entity(*world.deferred_stage, sorted_ctids);
         entity.deferred = true;
 
-        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}});
+        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}, null});
         return entity;
     }
 
@@ -72,21 +72,25 @@ destroy_entity :: (world: *World, entity: Entity) {
 
 get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
     if entity.deferred {
-        return get_component(*world.deferred_stage, entity, Component_Type);
+        return get_component(*world.deferred_stage, entity, #run component_type_id(Component_Type));
     }
-    return get_component(*world.stage, entity, Component_Type);
+    return get_component(*world.stage, entity, #run component_type_id(Component_Type));
 }
 
 add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+    ctid :: #run component_type_id(Component_Type);
+
     if entity.deferred {
-        return add_component(*world.deferred_stage, entity, Component_Type);
+        return add_component(*world.deferred_stage, entity, ctid);
     }
 
     if world.should_defer {
-        assert(false, "Adding components to an entity is not yet supported while iterating queries");
+        ptr := TempNew(Component_Type);
+        array_add(*world.deferred_ops, .{type = .ADD_COMPONENT, entity = entity, type_id = ctid, component_data = ptr});
+        return ptr;
     }
     
-    result := add_component(*world.stage, entity, Component_Type);
+    result := add_component(*world.stage, entity, ctid);
     // @todo: when to fire the add event if something was deferred?
     broadcast_event(world, ECS_EVENT_ON_ADD);
     return result;
@@ -104,7 +108,7 @@ remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> 
     }
 
     if world.should_defer {
-        array_add(*world.deferred_ops, .{.REMOVE_COMPONENT, entity, ctid});
+        array_add(*world.deferred_ops, .{.REMOVE_COMPONENT, entity, ctid, null});
         // @todo: this should return true if the entity actually has the component type
         return true; 
     }
