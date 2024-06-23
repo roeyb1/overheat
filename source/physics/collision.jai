@@ -60,6 +60,9 @@ resolve_collisions :: (q: Query) {
     positions := query_get(q, Position);
     colliders := query_get(q, Collider_AABB);
 
+
+    // @todo: this system currently has a bug in networking. Since the order in which we process hits and collision invokers is not guaranteed
+    //        to be consistent between the client and server, we might desync. We need to sort these before processing to ensure determinism.
     for 0..q.count-1 {
         for *hit : invokers[it].hits_this_frame {
             invoker_bounds := translate(colliders[it], positions[it]);
