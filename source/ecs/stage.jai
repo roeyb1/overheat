@@ -13,6 +13,8 @@ Stage :: struct {
 }
 
 add_entity :: (stage: *Stage, ctids: [] Component_Type_ID) -> Entity {
+    /*
+    // @todo: re-enable free-entity-index reuse
     if stage.free_entity_indices.count > 0 {
         index := pop(*stage.free_entity_indices);
         stage.entities[index].generation += 1;
@@ -20,6 +22,7 @@ add_entity :: (stage: *Stage, ctids: [] Component_Type_ID) -> Entity {
 
         return .{index = index, generation = stage.entities[index].generation};
     }
+    */
 
     new_entity := array_add(*stage.entities);
     new_entity.generation = 0;

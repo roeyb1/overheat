@@ -26,7 +26,7 @@ is_entity_valid :: (world: *World, entity: Entity) -> bool {
 }
 
 spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
-    #insert #run () -> string {
+    #insert -> string {
         sb: String_Builder;
         
         sbprint(*sb, "CTIDS :: Component_Type_ID.[");
@@ -34,17 +34,22 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
             sbprint(*sb, "#run component_type_id(Initial_Archetype[%]), ", it);
         }
         sbprint(*sb, "];\n");
-        sbprint(*sb, "#run intro_sort(CTIDS, (a, b) => cast, trunc(int)a.hash - cast, trunc(int) b.hash);\n");
         return builder_to_string(*sb);
-    }();
+    };
+
+    // @todo: maybe this can be sorted in the #insert above?
+    sorted_ctids: [..] Component_Type_ID;
+    sorted_ctids.allocator = temp;
+    array_copy(*sorted_ctids, CTIDS);
+    quick_sort(sorted_ctids, (x) => x.hash);
 
     if world.should_defer {
-        entity := add_entity(*world.deferred_stage, CTIDS);
+        entity := add_entity(*world.deferred_stage, sorted_ctids);
         entity.deferred = true;
         return entity;
     }
 
-    return add_entity(*world.stage, CTIDS);
+    return add_entity(*world.stage, sorted_ctids);
 }
 
 destroy_entity :: (world: *World, entity: Entity) {
