@@ -46,6 +46,8 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
     if world.should_defer {
         entity := add_entity(*world.deferred_stage, sorted_ctids);
         entity.deferred = true;
+
+        array_add(*world.deferred_ops, .{.SPAWN, entity});
         return entity;
     }
 
@@ -77,6 +79,10 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
     if entity.deferred {
         return add_component(*world.deferred_stage, entity, Component_Type);
     }
+
+    if world.should_defer {
+        assert(false, "Adding components to an entity is not yet supported while iterating queries");
+    }
     
     result := add_component(*world.stage, entity, Component_Type);
     // @todo: when to fire the add event if something was deferred?
@@ -95,6 +101,10 @@ remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
         remove_component(*world.deferred_stage, entity, Component_Type);
         return;
     }
+
+    if world.should_defer {
+        assert(false, "Adding components to an entity is not yet supported while iterating queries");
+    }
     
     remove_component(*world.stage, entity, Component_Type);
 
@@ -102,17 +112,7 @@ remove_component :: (world: *World, entity: Entity, $Component_Type: Type) {
     broadcast_event(world, ECS_EVENT_ON_REMOVE);
 }
 
-compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
-    if a.count != b.count then return false;
-    // component type arrays are always sorted, so we can simply check each element with it's pair
-    for 0..a.count-1 {
-        if a[it] != b[it] then return false;
-    }
-    return true;
-}
-
 //------------------------- TESTING -------------------------   
-
 
 test_entity_components :: (ctx: *TestContext) {
     Test :: struct {

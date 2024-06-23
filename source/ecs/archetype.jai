@@ -91,8 +91,6 @@ remove_entity :: (archetype: *Archetype, row: s64, entity_records: *Table(s64, E
     }
 }
 
-//copy_entity :: (dest: *Archetype)
-
 move_entity :: (dest: *Archetype, source: *Archetype, source_row: s64, entity: Entity, entity_records: *Table(s64, Entity_Record)) -> (dest_row: s64) {
     dest_row := add_entity(dest, entity);
 

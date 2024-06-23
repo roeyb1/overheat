@@ -48,6 +48,10 @@ main :: () {
     register_event_listener(EVENT_ON_PLAYER_ANIM_STATE_CHANGED, on_player_anim_state_changed);
     register_event_listener(EVENT_PLAYER_ATTACK, trigger_player_attack);
 
+    g_world.should_defer = true;
+    trigger_player_attack(*g_world);
+    g_world.should_defer = false;
+
 
     accumulated_time := 0.0;
 
