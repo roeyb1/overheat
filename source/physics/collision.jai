@@ -93,15 +93,25 @@ resolve_collisions :: (q: Query) {
     hit_list := get_singleton(q.world, Hit_Result_List);
 
     for *pair : hit_list.pairs {
-        invoker_bounds := pair.a_bounds;
+        a_pos := get_component(q.world, pair.a, Position);
+        a_collider := get_component(q.world, pair.a, Collider_AABB);
+        a_bounds := translate(a_collider, a_pos);
 
-        minkowsky := minkowsky_difference(invoker_bounds, pair.b_bounds);
-        // check if there even is still a collision. We may no longer be colliding due to the collision resolution of any previous hits.
-        // We can do this by checking if the minkowsky diff still contains the origin:
+        b_pos := get_component(q.world, pair.b, Position);
+        b_collider := get_component(q.world, pair.b, Collider_AABB);
+        b_bounds := translate(b_collider, b_pos);
+
+        minkowsky := minkowsky_difference(a_bounds, b_bounds);
         if is_inside(minkowsky, .{0, 0}) {
             penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
 
-            get_component(q.world, pair.a, Position).value -= penetration_vector;
+            // if the second entity has a collision invoker, we will handle half of the resolution here
+            if get_component(q.world, pair.b, Collision_Invoker) {
+                a_pos.value -= penetration_vector;
+                b_pos.value += penetration_vector;
+            } else {
+                a_pos.value -= penetration_vector;
+            }
         }
     }
     
@@ -115,12 +125,21 @@ generate_hit_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, sel
     for other : spatial.bounds {
         if intersects(bounds, other) && spatial.entities[it_index] != self {
             pair: *Hit_Pair = array_add(*result);
-            pair.sort_key = max(sort_key, spatial.sort_keys[it_index]);
-            pair.a = self;
-            pair.a_bounds = bounds;
+            if spatial.sort_keys[it_index] == 0 || sort_key < spatial.sort_keys[it_index] {
+                pair.sort_key = sort_key;
+                pair.a = self;
+                pair.a_bounds = bounds;
 
-            pair.b = spatial.entities[it_index];
-            pair.b_bounds = other;
+                pair.b = spatial.entities[it_index];
+                pair.b_bounds = other;
+            } else {
+                pair.sort_key = spatial.sort_keys[it_index];
+                pair.b = self;
+                pair.b_bounds = bounds;
+
+                pair.a = spatial.entities[it_index];
+                pair.a_bounds = other;
+            }
         }
     }
 
