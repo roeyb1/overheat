@@ -47,7 +47,6 @@ get_iter :: (archetype: *Archetype, ctid: Component_Type_ID) -> *void {
             return archetype.storage[it_index].data;
         }
     }
-    assert(false);
     return null;
 }
 

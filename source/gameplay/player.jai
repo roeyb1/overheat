@@ -31,6 +31,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         Networking_ID,
         Move_Speed,
         Point_Light,
+        Collision_Invoker,
         Anim_State_Component,
         Animation,
         Direction,
@@ -40,6 +41,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     << get_component(*g_world, entity, Position) = .{position};
     << get_component(*g_world, entity, Interp_Position) = .{position, position};
     << get_component(*g_world, entity, Networking_ID) = .{networking_id};
+    << get_component(*g_world, entity, Collision_Invoker) = .{networking_id};
     << get_component(*g_world, entity, Move_Speed) =  .{6};
     << get_component(*g_world, entity, Point_Light) = .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.};
     << get_component(*g_world, entity, Animation) = .{CHARACTER_IDLE_DEFINITION,0,CHARACTER_IDLE_DEFINITION.frame_duration, false};
@@ -62,7 +64,6 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 
     add_component(*g_world, entity, Sprite, .{sprite, PLAYER_SIZE, 0, 4, 0});
     add_component(*g_world, entity, Collider_AABB, .{aabb = make_aabb(.{0, 0}, PLAYER_COLLIDER_SIZE)});
-    add_component(*g_world, entity, Collision_Invoker);
 
     return entity;
 }
