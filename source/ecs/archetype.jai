@@ -29,16 +29,16 @@ archetype_matches_types :: (archetype: *Archetype, ctids: [] Component_Type_ID) 
 /** Returns true of the archetype contains all of the types (it may also have others, but it at least has the subset) */
 archetype_contains_types :: (archetype: *Archetype, ctids: [] Component_Type_ID) -> bool {
     for ctid : ctids {
-        found := false;
-        for 0..archetype.type_ids.count-1 {
-            if archetype.type_ids[it] == ctid {
-                found = true;
-                break;
-            }
-        }
-        if !found then return false;
+        if !has_component_type(archetype, ctid) then return false;
     }
     return true;
+}
+
+has_component_type :: (archetype: *Archetype, ctid: Component_Type_ID) -> bool {
+    for archetype.type_ids {
+        if it == ctid then return true;
+    }
+    return false;
 }
 
 get_iter :: (archetype: *Archetype, ctid: Component_Type_ID) -> *void {
@@ -106,16 +106,4 @@ move_entity :: (dest: *Archetype, source: *Archetype, source_row: s64, entity: E
     remove_entity(source, source_row, entity_records);
 
     return dest_row;
-}
-
-find_or_create_cached_archetypes_for_ctids :: (world: *World, ctids: [] Component_Type_ID) -> [] s64 {
-    result := table_find_pointer(*world.archetype_cache, ctids);
-    if result != null then return << result;
-
-    archetypes: [..] s64;
-    result = table_add(*world.archetype_cache, ctids, archetypes);
-    for * world.archetypes {
-        if archetype_contains_types(it, ctids) && it.entities.count > 0 then array_add(result, it_index);
-    }
-    return << result;
 }

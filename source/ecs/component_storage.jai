@@ -30,6 +30,16 @@ compare_ctid :: (a: Component_Type_ID, b: Component_Type_ID) -> bool {
     return a.hash == b.hash;
 }
 
+compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
+    if a.count != b.count then return false;
+    // component type arrays are always sorted, so we can simply check each element with it's pair
+    for 0..a.count-1 {
+        if a[it] != b[it] then return false;
+    }
+    return true;
+}
+
+
 /** Get the type id of a component. Just hash the component type name. */
 component_type_id :: ($c: Type) -> Component_Type_ID {
     assert(type_info(c).type == .STRUCT, "Only struct types are supported as component types!");

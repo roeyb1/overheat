@@ -1,9 +1,11 @@
-Entity :: union {
-    struct {
-        index: s32;
-        generation: s32;
-    }
-    raw: s64;
+Entity :: struct {
+    index: s32 = INVALID_ENTITY_INDEX;
+    generation: s32;
+
+#place index;
+    raw: s64 = -1;
+
+    deferred: bool = false;
 }
 
 INVALID_ENTITY_INDEX : s32 : -1;

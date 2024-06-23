@@ -236,6 +236,7 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
             break;
         }
     }
+
     world.should_defer = false;
     process_deferred_operations(world);
 }
@@ -252,13 +253,14 @@ execute_system :: (sys: System, world: *World) {
 
         sys.def.func(query);
     } else {
-        archtype_ids := find_or_create_cached_archetypes_for_ctids(world, sys.archetype);
+        archtype_ids := find_or_create_cached_archetypes_for_ctids(*world.stage, sys.archetype);
 
         for archtype_ids {
-            archetype := *world.archetypes[it];
+            archetype := *world.stage.archetypes[it];
             query.current_archetype = archetype;
             query.entities = archetype.entities;
             query.count = archetype.entities.count;
+            query.types = sys.archetype;
 
             sys.def.func(query);
         }
@@ -288,7 +290,7 @@ make_iter :: (world: *World, $component_types: ..Type) -> ECS_Iter {
     iter: ECS_Iter;
     iter.world = world;
     iter.archetype = archetype;
-    iter.archetype_ids = find_or_create_cached_archetypes_for_ctids(world, iter.archetype);
+    iter.archetype_ids = find_or_create_cached_archetypes_for_ctids(*world.stage, iter.archetype);
     return iter;
 }
 
@@ -300,7 +302,7 @@ for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {
     query.world = iter.world;
 
     for arch_id, arch_index : iter.archetype_ids {
-        archetype := *iter.world.archetypes[arch_id];
+        archetype := *iter.world.stage.archetypes[arch_id];
         query.current_archetype = archetype;
         query.entities = archetype.entities;
         query.count = archetype.entities.count;

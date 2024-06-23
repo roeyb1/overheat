@@ -33,6 +33,21 @@ array_find :: (arr: [] $T, val: T, pred: (a: T, b: T) -> bool) -> bool, s64 {
     return false, -1;
 }
 
+TempNew :: ($T: Type, $initialized := true) -> *T {
+    memory := talloc(size_of(T));
+
+    // Since New gets called a lot, we just roll Initialize() into here, so that
+    // we don't kick off so many extra polymorphs.
+    #if initialized {
+        ini :: initializer_of(T);
+
+        #if ini  inline ini(memory);
+        else     memset(memory, 0, size_of(T));
+    }
+
+    return cast(*T) memory;
+}
+
 #if ENABLE_ENSURE {
     ensure :: inline (val: bool, msg: string = "", args: ..Any) -> bool {
         if !val {
