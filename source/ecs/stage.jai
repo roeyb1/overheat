@@ -13,16 +13,17 @@ Stage :: struct {
 }
 
 add_entity :: (stage: *Stage, ctids: [] Component_Type_ID) -> Entity {
-    new_entity: Entity;
+    new_entity: *Entity;
     if stage.free_entity_indices.count > 0 {
         index := pop(*stage.free_entity_indices);
-        stage.entities[index].index = index;
+        new_entity = *stage.entities[index];
 
-        new_entity = .{index = index, generation = stage.entities[index].generation};
+        << new_entity = .{index = index, generation = stage.entities[index].generation, deferred = false};
     } else {
         new_entity = array_add(*stage.entities);
         new_entity.generation = 0;
         new_entity.index = cast(s32) stage.entities.count-1;
+        new_entity.deferred = false;
     }
     new_entity.deferred = false;
 
@@ -42,8 +43,12 @@ remove_entity :: (stage: *Stage, entity: Entity) {
 
     // increment the generation number so we can check old entity indexes against it to see if it was destroyed.
     stage.entities[entity.index].generation += 1;
+    stage.entities[entity.index].index = INVALID_ENTITY_INDEX;
 
     remove_entity(*stage.archetypes[old_record.archetype_id], old_record.row, *stage.entity_records);
+    if stage.archetypes[old_record.archetype_id].entities.count == 0 {
+        remove_archetype_from_active_cache(stage, old_record.archetype_id);
+    }
 
     array_add(*stage.free_entity_indices, entity.index);
 }
@@ -142,9 +147,12 @@ get_or_create_archetype :: (stage: *Stage, ctids: [] Component_Type_ID) -> (*Arc
     }
 
     result := array_add(*stage.archetypes);
-    init(result, ctids);
-
     archetype_id := stage.archetypes.count-1;
+
+    init(result, ctids, archetype_id);
+
+
+    add_archetype_to_active_cache(stage, result, archetype_id);
 
     return result, archetype_id;
 }
@@ -156,7 +164,7 @@ add_archetype_to_active_cache :: (stage: *Stage, archetype: *Archetype, archetyp
 
         // if this archetype would match the ctids in this cache entry, add it to the cache now:
         if archetype_contains_types(archetype, cached_ctids) {
-            array_add(cached_archetype_ids, archetype_id);
+            array_add_if_unique(cached_archetype_ids, archetype_id);
         }
     }
 

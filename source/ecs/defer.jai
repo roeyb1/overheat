@@ -21,11 +21,15 @@ process_deferred_operations :: (world: *World) {
     for world.deferred_ops {
         if #complete it.type == {
             case .DESTROY;
-                destroy_entity(world, it.entity);
+                assert(it.entity.deferred == false, "Deferred entities should be deleted immediately and not enter the deferred queue");
+                if ensure(is_entity_valid(world, it.entity), "Destroyed entity is not valid") {
+                    destroy_entity(world, it.entity);
+                }
             case .SPAWN;
                 // It's possible that the entity was destoyed in the staging world before we could copy it to the main world, very unlikely though
-                if is_entity_valid(world, it.entity) {
+                if ensure(is_entity_valid(world, it.entity), "Spawned entity is not valid anymore") {
                     copy_entity_between_deferred(world, it.entity);
+                    remove_entity(*world.deferred_stage, it.entity);
                 }
             case .REMOVE_COMPONENT;
                 // it's possible that the entity was destroyed before component removal was queued
@@ -48,22 +52,15 @@ process_deferred_operations :: (world: *World) {
 
 copy_entity_between_deferred :: (world: *World, source: Entity) -> Entity {
 
-    source_stage: *Stage;
-    dest_stage: *Stage;
-    if source.deferred {
-        source_stage = *world.deferred_stage;
-        dest_stage = *world.stage;
-    } else {
-        source_stage = *world.stage;
-        dest_stage = *world.deferred_stage;
-    }
+    source_stage := *world.deferred_stage;
+    dest_stage := *world.stage;
 
     s_record := table_find_pointer(*source_stage.entity_records, source.raw);
     assert(s_record != null);
 
     from := *source_stage.archetypes[s_record.archetype_id];
 
-    new := add_entity(*world.stage, from.type_ids);
+    new := add_entity(dest_stage, from.type_ids);
 
     d_record := table_find_pointer(*dest_stage.entity_records, new.raw);
     assert(d_record != null);
@@ -76,13 +73,6 @@ copy_entity_between_deferred :: (world: *World, source: Entity) -> Entity {
         assert(src_size == dst_size);
 
         memcpy(dst_component, src_component, src_size);
-    }
-
-    if from.entities.count == 0 {
-        remove_archetype_from_active_cache(source_stage, s_record.archetype_id);
-    }
-    if to.entities.count == 1 {
-        add_archetype_to_active_cache(dest_stage, to, d_record.archetype_id);
     }
 
     return new;

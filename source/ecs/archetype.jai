@@ -5,9 +5,11 @@ Archetype :: struct {
     type_ids: [..] Component_Type_ID;
 
     entities: [..] Entity;
+
+    id: s64;
 }
 
-init :: (archetype: *Archetype, ctids: [] Component_Type_ID) {
+init :: (archetype: *Archetype, ctids: [] Component_Type_ID, archetype_id: s64) {
     for ctid : ctids {
         storage := array_add(*archetype.storage);
         storage.component_size = ctid.runtime_size;
@@ -15,6 +17,7 @@ init :: (archetype: *Archetype, ctids: [] Component_Type_ID) {
         array_add(*archetype.type_ids, ctid);
     }
     array_reset(*archetype.entities);
+    archetype.id = archetype_id;
 }
 
 archetype_matches_types :: (archetype: *Archetype, ctids: [] Component_Type_ID) -> bool {
@@ -69,6 +72,14 @@ add_entity :: (archetype: *Archetype, entity: Entity) -> s64 {
 }
 
 remove_entity :: (archetype: *Archetype, row: s64, entity_records: *Table(s64, Entity_Record)) {
+    if archetype.entities.count > 1 {
+        // the record for the element that got swapped into the removed entities place needs to be updated to reflect the new row:
+        entity_to_swap := archetype.entities[archetype.entities.count-1];
+        record := table_find_pointer(entity_records, entity_to_swap.raw);
+        assert(record != null && record.row == archetype.entities.count - 1);
+        record.row = row;
+    }
+
     array_unordered_remove_by_index(*archetype.entities, row);
 
     for * archetype.storage {
@@ -78,16 +89,6 @@ remove_entity :: (archetype: *Archetype, row: s64, entity_records: *Table(s64, E
 
     swapped_row := archetype.entities.count;
 
-    // the record for the element that got swapped into the removed entities place needs to be updated to reflect the new row:
-    if swapped_row >= 0 {
-        for * entity_records {
-            record := it;
-            if record.row == swapped_row {
-                record.row = row;
-                break;
-            }
-        }
-    }
 }
 
 move_entity :: (dest: *Archetype, source: *Archetype, source_row: s64, entity: Entity, entity_records: *Table(s64, Entity_Record)) -> (dest_row: s64) {
