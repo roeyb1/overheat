@@ -19,7 +19,6 @@ process_deferred_operations :: (world: *World) {
     assert(world.should_defer == false);
 
     for world.deferred_ops {
-        assert(it.entity.deferred == false, "Deferred operations should not ever be queued for deferred entities. There's a bug somewhere. Op: (%)", it);
         if #complete it.type == {
             case .DESTROY;
                 destroy_entity(world, it.entity);
@@ -41,7 +40,7 @@ process_deferred_operations :: (world: *World) {
                 }
         }
     }
-    assert(world.deferred_stage.entities.count == 0);
+    assert((world.deferred_stage.entities.count - world.deferred_stage.free_entity_indices.count) == 0);
     world.deferred_ops.count = 0;
 }
 
@@ -77,6 +76,13 @@ copy_entity_between_deferred :: (world: *World, source: Entity) -> Entity {
         assert(src_size == dst_size);
 
         memcpy(dst_component, src_component, src_size);
+    }
+
+    if from.entities.count == 0 {
+        remove_archetype_from_active_cache(source_stage, s_record.archetype_id);
+    }
+    if to.entities.count == 1 {
+        add_archetype_to_active_cache(dest_stage, to, d_record.archetype_id);
     }
 
     return new;
