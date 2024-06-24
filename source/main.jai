@@ -89,7 +89,6 @@ main :: () {
         }
 
         execute(*g_world, .PreRender);
-        execute(*g_world, .OnUIRender);
         execute(*g_world, .OnRender);
 
         rendering_end_frame();
@@ -148,7 +147,6 @@ main :: () {
         g_interp_alpha = accumulated_time / FIXED_TIMESTEP;
 
         execute(*g_world, .PreRender);
-        execute(*g_world, .OnUIRender);
         execute(*g_world, .OnRender);
 
 
