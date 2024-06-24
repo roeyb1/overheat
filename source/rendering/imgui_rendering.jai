@@ -49,6 +49,8 @@ destroy_imgui_pipeline :: () {
 }
 
 render_imgui_pass :: (rg: *RenderGraph, view_data: *RenderViewData, rt_handle: RDGResourceViewHandle) {
+    ImGui.Render();
+
     usage_descs := RDGResourceUsageDesc.[
         .{rt_handle, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
     ];

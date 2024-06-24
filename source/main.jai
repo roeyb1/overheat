@@ -171,10 +171,6 @@ update_positions :: (q: Query) {
     }
 } @System(OnUpdate) @Write(Position) @Read(Velocity)
 
-render_imgui :: (q: Query) {
-    ImGui.Render();
-} @System(PreRender) @Write() @Read()
-
 render_scene :: (q: Query) {
     pos := get_component(q.world, main_view_camera, Position);
     cam := get_component(q.world, main_view_camera, Camera);
