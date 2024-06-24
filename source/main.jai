@@ -37,7 +37,7 @@ main :: () {
     networking_init();
 
     load_all_assets();
-    //import_ldtk_level(*g_world);
+    import_ldtk_level(*g_world);
 
     last_time = seconds_since_init();
 
@@ -208,6 +208,7 @@ using Random :: #import "Random";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";
 #load "gameplay/damage.jai";
+#load "gameplay/duration.jai";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";

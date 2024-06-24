@@ -6,7 +6,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "jai ${workspaceFolder}/build.jai - -natvis -debug_for",
+            "command": "jai ${workspaceFolder}/build.jai - -natvis",
             "problemMatcher": [
                 {
                     "severity": "error",

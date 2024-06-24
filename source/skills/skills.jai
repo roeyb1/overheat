@@ -1,33 +1,29 @@
-Skill :: struct {
-}
+Skill :: struct @Component {}
+
 //incorrect use a player id or something
-Skill_Inventory :: struct {
+Skill_Inventory :: struct @Component {
     skills : [..] Entity; 
 }
 
-To_Cast :: struct {
+To_Cast :: struct @Component {
     value: bool;
 }
 
 
-Skill_Definition :: struct {}
+Skill_Definition :: struct @Component {}
 
-Focus :: struct{
+Focus :: struct @Component {
     value: s64;
 }
 
-Ignite :: struct{
+Ignite :: struct @Component {
     radius: Animation_Definition;
     damage: s64;
 }
 
-Project :: struct {}
+Project :: struct @Component {}
 
-Duration :: struct {
-    value: float;
-}
-
-Skill_Fragment :: struct {
+Skill_Fragment :: struct @Component {
     type: Skill_Fragment_Types;
     value: u64;
 }
@@ -51,11 +47,11 @@ SKILL_FRAGMENT_NAMES ::
     "Duration",
     ];
 
-Fragments :: struct {
+Fragments :: struct @Component {
     value: [..] Skill_Fragment;
 }
 
-initialize_skills :: (world: *World, entity: Entity, number_of_skills: s64){
+initialize_skills :: (world: *World, entity: Entity, number_of_skills: s64) {
     inventory := get_component(*g_world, entity, Skill_Inventory);
     for 0 .. number_of_skills-1 {
         skill := spawn_entity(world, Skill_Definition, Local_Player, Name, Fragments, To_Cast);
@@ -153,17 +149,6 @@ ignite :: (q: Query) {
     }
 
 } @System(OnUpdate) @Write() @Read(Ignite,Position)
-
-update_duration :: (q: Query) {
-        durations := query_get(q, Duration);
-        for 0..q.count-1 {
-            durations[it].value = durations[it].value - g_delta_time;
-            
-            if durations[it].value < 0 {
-                destroy_entity(q.world, q.entities[it]);
-            }
-        }
-} @System(OnUpdate) @Write(Duration) @Read() 
 
 
 use_skill0 :: (q: Query) {
