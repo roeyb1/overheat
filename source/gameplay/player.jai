@@ -93,6 +93,10 @@ update_local_player_commands_from_input :: (q: Query) {
         if length_squared(player_commands[it].move_vector) > 1 {
             player_commands[it].move_vector = unit_vector(player_commands[it].move_vector);
         }
+
+        if is_button_down(input_states, .MAIN_ATTACK) {
+            player_commands[it].main_attack = true;
+        }
     }
 } @System(PostLoad) @Write(Player_Commands) @Read(Local_Player,Input_States)
 
