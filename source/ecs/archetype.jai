@@ -72,6 +72,14 @@ add_entity :: (archetype: *Archetype, entity: Entity) -> s64 {
 }
 
 remove_entity :: (archetype: *Archetype, row: s64, entity_records: *Table(s64, Entity_Record)) {
+    if archetype.entities.count > 1 {
+        // the record for the element that got swapped into the removed entities place needs to be updated to reflect the new row:
+        entity_to_swap := archetype.entities[archetype.entities.count-1];
+        record := table_find_pointer(entity_records, entity_to_swap.raw);
+        assert(record != null && record.row == archetype.entities.count - 1);
+        record.row = row;
+    }
+
     array_unordered_remove_by_index(*archetype.entities, row);
 
     for * archetype.storage {
@@ -81,16 +89,6 @@ remove_entity :: (archetype: *Archetype, row: s64, entity_records: *Table(s64, E
 
     swapped_row := archetype.entities.count;
 
-    // the record for the element that got swapped into the removed entities place needs to be updated to reflect the new row:
-    if swapped_row >= 0 {
-        for entity : archetype.entities {
-            record := table_find_pointer(entity_records, entity.raw);
-            assert(record != null);
-            if record.row == swapped_row {
-                record.row = row;
-            }
-        }
-    }
 }
 
 move_entity :: (dest: *Archetype, source: *Archetype, source_row: s64, entity: Entity, entity_records: *Table(s64, Entity_Record)) -> (dest_row: s64) {
