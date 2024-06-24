@@ -147,9 +147,10 @@ get_or_create_archetype :: (stage: *Stage, ctids: [] Component_Type_ID) -> (*Arc
     }
 
     result := array_add(*stage.archetypes);
-    init(result, ctids);
-
     archetype_id := stage.archetypes.count-1;
+
+    init(result, ctids, archetype_id);
+
 
     add_archetype_to_active_cache(stage, result, archetype_id);
 

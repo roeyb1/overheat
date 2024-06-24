@@ -60,7 +60,7 @@ copy_entity_between_deferred :: (world: *World, source: Entity) -> Entity {
 
     from := *source_stage.archetypes[s_record.archetype_id];
 
-    new := add_entity(*world.stage, from.type_ids);
+    new := add_entity(dest_stage, from.type_ids);
 
     d_record := table_find_pointer(*dest_stage.entity_records, new.raw);
     assert(d_record != null);

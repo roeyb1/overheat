@@ -5,9 +5,11 @@ Archetype :: struct {
     type_ids: [..] Component_Type_ID;
 
     entities: [..] Entity;
+
+    id: s64;
 }
 
-init :: (archetype: *Archetype, ctids: [] Component_Type_ID) {
+init :: (archetype: *Archetype, ctids: [] Component_Type_ID, archetype_id: s64) {
     for ctid : ctids {
         storage := array_add(*archetype.storage);
         storage.component_size = ctid.runtime_size;
@@ -15,6 +17,7 @@ init :: (archetype: *Archetype, ctids: [] Component_Type_ID) {
         array_add(*archetype.type_ids, ctid);
     }
     array_reset(*archetype.entities);
+    archetype.id = archetype_id;
 }
 
 archetype_matches_types :: (archetype: *Archetype, ctids: [] Component_Type_ID) -> bool {
@@ -80,11 +83,11 @@ remove_entity :: (archetype: *Archetype, row: s64, entity_records: *Table(s64, E
 
     // the record for the element that got swapped into the removed entities place needs to be updated to reflect the new row:
     if swapped_row >= 0 {
-        for * entity_records {
-            record := it;
+        for entity : archetype.entities {
+            record := table_find_pointer(entity_records, entity.raw);
+            assert(record != null);
             if record.row == swapped_row {
                 record.row = row;
-                break;
             }
         }
     }

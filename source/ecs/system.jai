@@ -303,6 +303,7 @@ for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {
     query: Query;
     query.world = iter.world;
 
+    query.world.should_defer = true;
     for arch_id, arch_index : iter.archetype_ids {
         archetype := *iter.world.stage.archetypes[arch_id];
         query.current_archetype = archetype;
@@ -314,4 +315,6 @@ for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {
 
         #insert body;
     }
+    query.world.should_defer = false;
+    process_deferred_operations(query.world);
 }
