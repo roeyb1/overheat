@@ -114,7 +114,7 @@ add_component_by_fragment :: (skill: Entity, fragment: Skill_Fragment) {
             print("HEYA IM IGNITE\n");
         case .Duration;
             add_component(*g_world, skill, Duration);
-            print("HEYA IM REPEL\n");
+            log("Spawned skill entity with duration tag: %", skill);
     }
 }
 
@@ -138,14 +138,13 @@ ignite :: (q: Query) {
     }
 
     for positions_to_spawn {
-            entity := spawn_entity(*g_world, Sprite, Position);
-            sprite := load_spritesheet("assets/orc_mage_walk_2.png",30, 0, 0,5,1);
-            PLAYER_SIZE :: Vector2.{0.5, 0.5};
-            add_component(*g_world, entity, Sprite, .{sprite, PLAYER_SIZE, 0, 4, 0});
+        entity := spawn_entity(*g_world, Sprite, Position, Duration);
+        sprite := load_spritesheet("assets/orc_mage_walk_2.png",30, 0, 0,5,1);
+        PLAYER_SIZE :: Vector2.{0.5, 0.5};
 
-            << get_component(*g_world, entity, Position) = .{it.value};
-
-            add_component(*g_world, entity, Duration, .{5.0});
+        << get_component(*g_world, entity, Sprite) =  .{sprite, PLAYER_SIZE, 0, 4, 0};
+        << get_component(*g_world, entity, Position) = .{it.value};
+        << get_component(*g_world, entity, Duration) = .{5.0};
     }
 
 } @System(OnUpdate) @Write() @Read(Ignite,Position)

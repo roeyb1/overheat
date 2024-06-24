@@ -49,7 +49,7 @@ TempNew :: ($T: Type, $initialized := true) -> *T {
 }
 
 #if ENABLE_ENSURE {
-    ensure :: inline (val: bool, msg: string = "", args: ..Any) -> bool {
+    ensure :: (val: bool, msg: string = "", args: ..Any) -> bool {
         if !val {
             log_error("Ensure condition failed: %", tprint(msg, ..args));
             debug_break();
@@ -57,7 +57,7 @@ TempNew :: ($T: Type, $initialized := true) -> *T {
         return val;
     }
 } else {
-    ensure :: inline (val: bool, msg: string = "", args: ..Any) -> bool { return val; }
+    ensure :: (val: bool, msg: string = "", args: ..Any) -> bool { return val; }
 }
 
 sbprint :: print_to_builder;

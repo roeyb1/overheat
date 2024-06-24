@@ -211,7 +211,6 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
     wait_count.allocator = temp;
     array_copy(*wait_count, scheduler.wait_count_template);
 
-    world.should_defer = true;
     while systems_to_run.count > 0 {
         found_one = false;
 
@@ -238,15 +237,13 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
             break;
         }
     }
-
-    world.should_defer = false;
-    process_deferred_operations(world);
 }
 
 execute_system :: (sys: System, world: *World) {
     query: Query;
     query.world = world;
 
+    world.should_defer = true;
     // special case systems with no components to iterate over. These should only execute one single time and don't have an archetype
     if sys.archetype.count == 0 {
         query.current_archetype = null;
@@ -267,6 +264,9 @@ execute_system :: (sys: System, world: *World) {
             sys.def.func(query);
         }
     }
+
+    world.should_defer = false;
+    process_deferred_operations(world);
 }
 
 #scope_export
