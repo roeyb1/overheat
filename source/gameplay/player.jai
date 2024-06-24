@@ -18,12 +18,6 @@ Player_Commands :: struct @Component {
 
     main_attack: bool;
     secondary_attack: bool;
-
-    attack1: bool;
-    attack2: bool;
-    attack3: bool;
-    attack4: bool;
-    attack5: bool;
 }
 
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
@@ -41,7 +35,6 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         Anim_State_Component,
         Animation,
         Direction,
-        Skill_Inventory,
         Player_Controller);
 
     << get_component(*g_world, entity, Name) = .{sprint("Player_%", networking_id)};
@@ -72,8 +65,6 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     add_component(*g_world, entity, Sprite, .{sprite, PLAYER_SIZE, 0, 4, 0});
     add_component(*g_world, entity, Collider_AABB, .{aabb = make_aabb(.{0, 0}, PLAYER_COLLIDER_SIZE)});
 
-    initialize_skills(*g_world, entity, 5);
-
     return entity;
 }
 
@@ -101,23 +92,6 @@ update_local_player_commands_from_input :: (q: Query) {
         // Normalize the input vector to prevent diagonal movement being faster than horizontal
         if length_squared(player_commands[it].move_vector) > 1 {
             player_commands[it].move_vector = unit_vector(player_commands[it].move_vector);
-        }
-
-
-        if is_button_down(input_states, .ATTACK1) {
-            player_commands[it].attack1 = true;
-        }
-        if is_button_down(input_states, .ATTACK2) {
-            player_commands[it].attack2 = true;
-        }
-        if is_button_down(input_states, .ATTACK3) {
-            player_commands[it].attack3 = true;
-        }
-        if is_button_down(input_states, .ATTACK4) {
-            player_commands[it].attack4 = true;
-        }
-        if is_button_down(input_states, .ATTACK5) {
-            player_commands[it].attack5 = true;
         }
     }
 } @System(PostLoad) @Write(Player_Commands) @Read(Local_Player,Input_States)

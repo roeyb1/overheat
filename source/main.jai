@@ -213,5 +213,3 @@ using Random :: #import "Random";
 #load "animation/sprite_animation.jai";
 #load "animation/anim_sm_player.jai";
 #load "animation/animation_definitions.jai";
-#load "skills/skills.jai";
-#load "skills/ui_skills.jai";
