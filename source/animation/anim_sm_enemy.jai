@@ -6,13 +6,15 @@ Enemy_Anim_State :: enum u8 {
 ENEMY_IDLE_DEFINITION :: Animation_Definition .{
     frames = .[0, 1, 2, 3],
     frame_duration = 0.3,
-    name = "idle"
+    name = "idle",
+    flags = .LOOP,
 };
 
 ENEMY_WALK_DEFINITION :: Animation_Definition .{
     frames = .[4, 5, 6, 7, 8, 9],
     frame_duration = 0.15,
-    name = "walk"
+    name = "walk",
+    flags = .LOOP,
 };
 
 update_enemy_anim_state :: (q: Query) {
