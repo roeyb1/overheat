@@ -104,7 +104,7 @@ main :: () {
         << cam_pos = .{ g_player_start };
         camera.entity_to_track = g_local_player;
 
-        spawn_enemy(*g_world, g_player_start);
+        spawn_enemy(*g_world, g_player_start, .BAT);
     }
     
 
@@ -215,4 +215,5 @@ using Random :: #import "Random";
 #load "animation/sprite_animation.jai";
 #load "animation/anim_sm_player.jai";
 #load "animation/anim_sm_enemy.jai";
+#load "animation/bat_anims.jai";
 #load "animation/animation_definitions.jai";

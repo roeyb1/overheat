@@ -38,17 +38,24 @@ update_sprite_anim :: (q: Query) {
     anims := query_get(q, Animation);
     sprites := query_get(q, Sprite);
     directions := query_get_opt(q, Direction);
+    velocities := query_get_opt(q, Velocity);
 
     for 0..q.count-1 {
         anim_def := *anims[it].definition;
 
-        direction_offset: u32 = ifx directions && test_flag_bit(anim_def.flags, .DIRECTIONAL_INDEXING) {
-            cast(u32)directions[it].value * sprites[it].sheet.width_in_sprites;
+        if directions {
+            if anim_def.directional_mode == {
+                case .UNIQUE_SPRITES;
+                    direction_offset := cast(u32)directions[it].value * sprites[it].sheet.width_in_sprites;
+                    sprites[it].index = anim_def.frames[anims[it].current_index] + direction_offset;
+                case .FLIP_X;
+                    if velocities {
+                        sprites[it].flip = ifx velocities[it].x < 0 then .FLIP_X else .NONE;
+                    }
+                    sprites[it].index = anim_def.frames[anims[it].current_index];
+            }
         } else {
-            0;
+            sprites[it].index = anim_def.frames[anims[it].current_index];
         }
-
-        sprites[it].index = anim_def.frames[anims[it].current_index] + direction_offset;
-        sprites[it].flip = anim_def.flip;
     }
-} @System(PreRender) @Write(Sprite) @Read(Animation) @OptionalRead(Direction)
+} @System(PreRender) @Write(Sprite) @Read(Animation) @OptionalRead(Direction,Velocity)
