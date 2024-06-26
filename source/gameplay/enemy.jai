@@ -8,7 +8,7 @@ Enemy :: struct @Component {
     type: Enemy_Type;
 }
 
-Enemy_Bundle :: struct {
+Enemy_Bundle :: struct @Bundle {
     enemy: Enemy;
     position: Position;
     velocity: Velocity;

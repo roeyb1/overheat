@@ -20,7 +20,7 @@ Player_Commands :: struct @Component {
     secondary_attack: bool;
 }
 
-Player_Bundle :: struct {
+Player_Bundle :: struct @Bundle {
     player: Player;
     velocity: Velocity;
     name: Name;

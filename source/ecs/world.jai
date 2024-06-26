@@ -141,6 +141,7 @@ spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
         sb: String_Builder;
 
         ti :: cast(*Type_Info_Struct) type_info(T);
+        assert(has_note(ti, "Bundle"), "Attempted to use struct (%) as a bundle but it is not marked as such with a @Bundle note!", ti.name);
 
         sbprint(*sb, "Types :: Component_Type_ID.[");
         for ti.members {
