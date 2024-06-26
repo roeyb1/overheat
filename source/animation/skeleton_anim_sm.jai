@@ -1,10 +1,10 @@
-Skeleton_Anim_State :: enum u8 {
-    IDLE;
-    WALK;
-}
+Skeleton_Animation :: struct @Component {
+    State :: enum u8 {
+        IDLE;
+        WALK;
+    }
 
-Skeleton_Anim_State_Component :: struct @Component {
-    state: Skeleton_Anim_State;
+    state: State;
 
     defs :: Animation_Definition.[
         .{
@@ -26,8 +26,8 @@ Skeleton_Anim_State_Component :: struct @Component {
 
 update_skeleton_anim_state :: (q: Query) {
     velocities := query_get(q, Velocity);
-    anim_states := query_get(q, Skeleton_Anim_State_Component);
-    anims := query_get(q, Animation);
+    anim_states := query_get(q, Skeleton_Animation);
+    anims := query_get(q, Sprite_Animator);
 
     for 0..q.count-1 {
         current_state := anim_states[it].state;
@@ -35,21 +35,21 @@ update_skeleton_anim_state :: (q: Query) {
         if current_state == {
             case .IDLE;
                 if !equals(length_squared(velocities[it]), 0) {
-                    anim_states[it].state = Skeleton_Anim_State.WALK;
+                    anim_states[it].state = .WALK;
                     transition_to_state(q.world, *anims[it], anim_states[it]);
                 }
             case .WALK;
                 if equals(length_squared(velocities[it]), 0) {
-                    anim_states[it].state = Skeleton_Anim_State.IDLE;
+                    anim_states[it].state = .IDLE;
                     transition_to_state(q.world, *anims[it], anim_states[it]);
                 }
         }
     }
-} @System(OnUpdate) @Write(Skeleton_Anim_State_Component,Animation) @Read(Enemy,Velocity)
+} @System(OnUpdate) @Write(Skeleton_Animation,Sprite_Animator) @Read(Enemy,Velocity)
 
 
 #scope_file
 
-transition_to_state :: (world: *World, animation: *Animation, anim_state: Skeleton_Anim_State_Component){
-    << animation = .{ anim_state.defs[anim_state.state], 0, anim_state.defs[anim_state.state].frame_duration, false };
+transition_to_state :: (world: *World, animator: *Sprite_Animator, anim_state: Skeleton_Animation){
+    << animator = .{ anim_state.defs[anim_state.state], 0, anim_state.defs[anim_state.state].frame_duration, false };
 }

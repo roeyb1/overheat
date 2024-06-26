@@ -1,4 +1,4 @@
-Animation :: struct @Component {
+Sprite_Animator :: struct @Component {
     definition: Animation_Definition;
     current_index: u32;
     time_till_switch: float;
@@ -7,7 +7,7 @@ Animation :: struct @Component {
 
 /** A system that iterates over all animations and their corresponding sprites and switches the flip book index if the duration of the current frame has elapsed */
 update_animation_index :: (q: Query) {
-    anims := query_get(q, Animation);
+    anims := query_get(q, Sprite_Animator);
 
     for 0..q.count-1 {
         anim_def := *anims[it].definition;
@@ -27,11 +27,11 @@ update_animation_index :: (q: Query) {
             }
         }
     }
-} @System(PreRender) @Write(Animation) @Read()
+} @System(PreRender) @Write(Sprite_Animator) @Read()
 
 
 update_sprite_anim :: (q: Query) {
-    anims := query_get(q, Animation);
+    anims := query_get(q, Sprite_Animator);
     sprites := query_get(q, Sprite);
     directions := query_get_opt(q, Direction);
     velocities := query_get_opt(q, Velocity);
@@ -54,4 +54,4 @@ update_sprite_anim :: (q: Query) {
             sprites[it].index = anim_def.frames[anims[it].current_index];
         }
     }
-} @System(PreRender) @Write(Sprite) @Read(Animation) @OptionalRead(Direction,Velocity)
+} @System(PreRender) @Write(Sprite) @Read(Sprite_Animator) @OptionalRead(Direction,Velocity)
