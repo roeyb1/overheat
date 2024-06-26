@@ -5,10 +5,6 @@ Animation :: struct @Component {
     finished: bool = false;
 }
 
-Anim_State_Component :: struct @Component {
-    state: u8;
-}
-
 /** A system that iterates over all animations and their corresponding sprites and switches the flip book index if the duration of the current frame has elapsed */
 update_animation_index :: (q: Query) {
     anims := query_get(q, Animation);

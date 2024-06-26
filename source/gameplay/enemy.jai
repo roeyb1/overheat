@@ -9,7 +9,7 @@ Enemy :: struct @Component {
 }
 
 spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
-    entity := spawn_entity(world, Enemy, Position, Velocity, Interp_Position, Move_Speed, Sprite, Animation, Anim_State_Component, Direction, Collision_Invoker, Collider_AABB);
+    entity := spawn_entity(world, Enemy, Position, Velocity, Interp_Position, Move_Speed, Sprite, Animation, Bat_Anim_State_Component, Direction, Collision_Invoker, Collider_AABB);
 
     << get_component(world, entity, Position) = .{position};
     << get_component(world, entity, Interp_Position) = .{position, position};

@@ -32,7 +32,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         Move_Speed,
         Point_Light,
         Collision_Invoker,
-        Anim_State_Component,
+        Player_Anim_State_Component,
         Animation,
         Direction,
         Player_Controller);
@@ -105,7 +105,7 @@ update_player_controllers :: (q: Query) {
     player_controllers := query_get(q, Player_Controller);
     velocities := query_get(q, Velocity);
     move_speeds := query_get(q, Move_Speed);
-    anim_states := query_get(q, Anim_State_Component);
+    anim_states := query_get(q, Player_Anim_State_Component);
 
     for 0..q.count-1 {
         // @todo: is there a better way to block movement while attacking?
@@ -118,7 +118,7 @@ update_player_controllers :: (q: Query) {
         velocities[it].value += (velocity_from_input - player_controllers[it].velocity_from_input);
         player_controllers[it].velocity_from_input = velocity_from_input;
     }
-} @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed,Anim_State_Component)
+} @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed,Player_Anim_State_Component)
 
 broadcast_local_player_commands :: (q: Query) {
     player_commands := query_get(q, Player_Commands);
