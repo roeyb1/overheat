@@ -20,38 +20,26 @@ Player_Commands :: struct @Component {
     secondary_attack: bool;
 }
 
+Player_Bundle :: struct @Bundle {
+    player: Player;
+    velocity: Velocity;
+    name: Name;
+    player_commands: Player_Commands;
+    position: Position;
+    interp_position: Interp_Position;
+    networking_id: Networking_ID;
+    move_speed: Move_Speed;
+    point_light: Point_Light;
+    invoker: Collision_Invoker;
+    animation: Player_Animation;
+    animator: Sprite_Animator;
+    dir: Direction;
+    player_controller: Player_Controller;
+    sprite: Sprite;
+    collider: Collider_AABB;
+}
+
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
-    entity := spawn_entity(*g_world,
-        Player,
-        Velocity,
-        Name,
-        Player_Commands,
-        Position,
-        Interp_Position,
-        Networking_ID,
-        Move_Speed,
-        Point_Light,
-        Collision_Invoker,
-        Player_Animation,
-        Sprite_Animator,
-        Direction,
-        Player_Controller);
-
-    << get_component(*g_world, entity, Name) = .{sprint("Player_%", networking_id)};
-    << get_component(*g_world, entity, Position) = .{position};
-    << get_component(*g_world, entity, Interp_Position) = .{position, position};
-    << get_component(*g_world, entity, Networking_ID) = .{networking_id};
-    << get_component(*g_world, entity, Collision_Invoker) = .{networking_id};
-    << get_component(*g_world, entity, Move_Speed) =  .{6};
-    << get_component(*g_world, entity, Point_Light) = .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.};
-
-
-    // if this is a local player:
-    if g_client.local_client_id == networking_id {
-        add_component(*g_world, entity, Local_Player);
-    }
-
-
     sprite := ifx g_client.local_client_id == networking_id {
         load_spritesheet("assets/players/player_character1.png",48, 0, 0,23,4);
     } else {
@@ -61,8 +49,22 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     PLAYER_SIZE :: Vector2.{2.3, 2.3};
     PLAYER_COLLIDER_SIZE :: Vector2.{1., 1.};
 
-    add_component(*g_world, entity, Sprite, .{sprite, PLAYER_SIZE, 0, 4, 0});
-    add_component(*g_world, entity, Collider_AABB, .{aabb = make_aabb(.{0, 0}, PLAYER_COLLIDER_SIZE)});
+    entity := spawn_from_bundle(*g_world, Player_Bundle.{
+        name = .{ sprint("Player_%", networking_id) },
+        position = .{ position },
+        interp_position = .{ position, position },
+        networking_id = .{ networking_id },
+        invoker = .{ networking_id },
+        move_speed =  .{ 6 },
+        point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 10. },
+        sprite = .{ sprite, PLAYER_SIZE, 0, 4, 0 },
+        collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
+    });
+
+    // if this is a local player:
+    if g_client.local_client_id == networking_id {
+        add_component(*g_world, entity, Local_Player);
+    }
 
     return entity;
 }
