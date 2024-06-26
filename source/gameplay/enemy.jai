@@ -33,7 +33,7 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
     }
 
     << get_component(world, entity, Sprite) = .{sprite, size, 0, 4, 0};
-    << get_component(world, entity, Collider_AABB) = .{aabb = make_aabb(.{0, 0}, collider_size)};
+    << get_component(world, entity, Collider_AABB) = .{aabb = make_aabb(.{0, 0}, collider_size), blocking = false};
 }
 
 track_player :: (q: Query) {

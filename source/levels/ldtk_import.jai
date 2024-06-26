@@ -97,7 +97,7 @@ import_ldtk_level :: (world: *World) {
                         collider := spawn_entity(world);
                         add_component(world, collider, Position, .{.{x,y} });
                         add_component(world, collider, Shadow_Caster, .{bounds});
-                        add_component(world, collider, Collider_AABB, .{bounds});
+                        add_component(world, collider, Collider_AABB, .{bounds, true});
                     }
                 }
             }
