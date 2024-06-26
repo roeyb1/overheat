@@ -88,6 +88,52 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_
     return result;
 }
 
+add_components_from_bundle :: (world: *World, entity: Entity, bundle: $T) {
+    #assert(type_info(T).type == .STRUCT); // Attempting to add a bundle that is not a struct. Did you accidentally pass a type instead of an instance of the type?
+
+    // @Speed: batch component adds into a single archetype transfer and then copy values over after
+    #insert -> string {
+        sb: String_Builder;
+
+        ti :: cast(*Type_Info_Struct) type_info(T);
+
+        for ti.members {
+            // components can only be structs
+            if it.type.type == .STRUCT {
+                member_type_info := cast(*Type_Info_Struct) it.type;
+                if has_note(member_type_info, "Component") {
+                    sbprint(*sb, "add_component(world, entity, %, bundle.%);\n", member_type_info.name, it.name);
+                }
+            }
+        }
+
+        return builder_to_string(*sb);
+    }
+}
+
+remove_components_from_bundle :: (world: *World, entity: Entity, $bundle: Type) {
+    #assert(type_info(T).type == .STRUCT); // Attempting to use a bundle that is not a struct. Did you accidentally pass a type instead of an instance of the type?
+
+    // @Speed: batch component adds into a single archetype transfer and then copy values over after
+    #insert -> string {
+        sb: String_Builder;
+
+        ti :: cast(*Type_Info_Struct) type_info(T);
+
+        for ti.members {
+            // components can only be structs
+            if it.type.type == .STRUCT {
+                member_type_info := cast(*Type_Info_Struct) it.type;
+                if has_note(member_type_info, "Component") {
+                    sbprint(*sb, "remove_component(world, entity, %);\n", member_type_info.name);
+                }
+            }
+        }
+
+        return builder_to_string(*sb);
+    }
+}
+
 spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
     #assert(type_info(T).type == .STRUCT); // Attempting to add a bundle that is not a struct. Did you accidentally pass a type instead of an instance of the type?
 
