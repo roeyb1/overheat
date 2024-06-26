@@ -113,7 +113,27 @@ spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
         return builder_to_string(*sb);
     }
 
-    return _spawn_entity(world, Types);
+    entity := _spawn_entity(world, Types);
+
+    #insert -> string {
+        sb: String_Builder;
+
+        ti :: cast(*Type_Info_Struct) type_info(T);
+
+        for ti.members {
+            // components can only be structs
+            if it.type.type == .STRUCT {
+                member_type_info := cast(*Type_Info_Struct) it.type;
+                if has_note(member_type_info, "Component") {
+                    sbprint(*sb, "<< get_component(world, entity, %) = bundle.%;\n", member_type_info.name, it.name);
+                }
+            }
+        }
+
+        return builder_to_string(*sb);
+    }
+
+    return entity;
 }
 
 remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> bool {

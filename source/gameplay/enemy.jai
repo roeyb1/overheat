@@ -8,13 +8,26 @@ Enemy :: struct @Component {
     type: Enemy_Type;
 }
 
-spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
-    entity := spawn_entity(world, Enemy, Position, Velocity, Interp_Position, Move_Speed, Sprite, Sprite_Animator, Direction, Collision_Invoker, Collider_AABB);
+Enemy_Bundle :: struct {
+    enemy: Enemy;
+    position: Position;
+    velocity: Velocity;
+    interp_position: Interp_Position;
+    move_speed: Move_Speed;
+    sprite: Sprite;
+    animator: Sprite_Animator;
+    direction: Direction;
+    invoker: Collision_Invoker;
+    collider: Collider_AABB;;
+}
 
-    << get_component(world, entity, Position) = .{position};
-    << get_component(world, entity, Interp_Position) = .{position, position};
-    << get_component(world, entity, Move_Speed) =  .{3};
-    get_component(world, entity, Enemy).type = type;
+spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
+    entity := spawn_from_bundle(world, Enemy_Bundle.{
+        position = .{ position },
+        interp_position = .{ position, position },
+        move_speed =  .{ 3 },
+        enemy.type = type,
+    });
 
     size: Vector2;
     collider_size: Vector2;
