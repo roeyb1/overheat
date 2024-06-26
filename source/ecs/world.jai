@@ -39,21 +39,7 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
         return builder_to_string(*sb);
     };
 
-    // @todo: maybe this can be sorted in the #insert above?
-    sorted_ctids: [..] Component_Type_ID;
-    sorted_ctids.allocator = temp;
-    array_copy(*sorted_ctids, CTIDS);
-    quick_sort(sorted_ctids, (x) => x.hash);
-
-    if world.should_defer {
-        entity := add_entity(*world.deferred_stage, sorted_ctids);
-        entity.deferred = true;
-
-        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}, null});
-        return entity;
-    }
-
-    return add_entity(*world.stage, sorted_ctids);
+    return _spawn_entity(world, CTIDS);
 }
 
 destroy_entity :: (world: *World, entity: Entity) {
@@ -102,6 +88,34 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_
     return result;
 }
 
+spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
+    #assert(type_info(T).type == .STRUCT); // Attempting to add a bundle that is not a struct. Did you accidentally pass a type instead of an instance of the type?
+
+    #insert -> string {
+        sb: String_Builder;
+
+        ti :: cast(*Type_Info_Struct) type_info(T);
+
+        sbprint(*sb, "Types :: Component_Type_ID.[");
+        for ti.members {
+            // components can only be structs
+            if it.type.type == .STRUCT {
+                member_type_info := cast(*Type_Info_Struct) it.type;
+                if has_note(member_type_info, "Component") {
+                    sbprint(*sb, "#run component_type_id(%), ", member_type_info.name);
+                } else {
+                    log_warning("Member (%) of bundle (%) does not have a @Component tag? It will not be added to the entity, was this intentional?", member_type_info.name, ti.name);
+                }
+            }
+        }
+        sbprint(*sb, "];");
+
+        return builder_to_string(*sb);
+    }
+
+    return _spawn_entity(world, Types);
+}
+
 remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> bool {
     if entity.deferred {
         return remove_component(*world.deferred_stage, entity, ctid);
@@ -123,6 +137,26 @@ remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> 
 remove_component :: (world: *World, entity: Entity, $Component_Type: Type) -> bool {
     return remove_component(world, entity, #run component_type_id(Component_Type));
 }
+
+_spawn_entity :: (world: *World, initial_archetype: [] Component_Type_ID) -> Entity {
+    // @todo: maybe this can be sorted in the #insert above?
+    sorted_ctids: [..] Component_Type_ID;
+    sorted_ctids.allocator = temp;
+    array_copy(*sorted_ctids, initial_archetype);
+    quick_sort(sorted_ctids, (x) => x.hash);
+
+    if world.should_defer {
+        entity := add_entity(*world.deferred_stage, sorted_ctids);
+        entity.deferred = true;
+
+        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}, null});
+        return entity;
+    }
+
+    return add_entity(*world.stage, sorted_ctids);
+}
+
+
 
 //------------------------- TESTING -------------------------   
 

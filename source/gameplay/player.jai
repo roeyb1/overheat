@@ -20,22 +20,25 @@ Player_Commands :: struct @Component {
     secondary_attack: bool;
 }
 
+Player_Bundle :: struct {
+    player: Player;
+    velocity: Velocity;
+    name: Name;
+    player_commands: Player_Commands;
+    position: Position;
+    interp_position: Interp_Position;
+    networking_id: Networking_ID;
+    move_speed: Move_Speed;
+    point_light: Point_Light;
+    invoker: Collision_Invoker;
+    animation: Player_Animation;
+    animator: Sprite_Animator;
+    dir: Direction;
+    player_controller: Player_Controller;
+}
+
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
-    entity := spawn_entity(*g_world,
-        Player,
-        Velocity,
-        Name,
-        Player_Commands,
-        Position,
-        Interp_Position,
-        Networking_ID,
-        Move_Speed,
-        Point_Light,
-        Collision_Invoker,
-        Player_Animation,
-        Sprite_Animator,
-        Direction,
-        Player_Controller);
+    entity := spawn_from_bundle(*g_world, Player_Bundle.{});
 
     << get_component(*g_world, entity, Name) = .{sprint("Player_%", networking_id)};
     << get_component(*g_world, entity, Position) = .{position};
