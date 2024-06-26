@@ -32,8 +32,8 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         Move_Speed,
         Point_Light,
         Collision_Invoker,
-        Anim_State_Component,
-        Animation,
+        Player_Animation,
+        Sprite_Animator,
         Direction,
         Player_Controller);
 
@@ -44,7 +44,6 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     << get_component(*g_world, entity, Collision_Invoker) = .{networking_id};
     << get_component(*g_world, entity, Move_Speed) =  .{6};
     << get_component(*g_world, entity, Point_Light) = .{intensity = 1., color = .{ 255. / 255., 197. / 255., 143./255.}, radius = 10.};
-    << get_component(*g_world, entity, Animation) = .{CHARACTER_IDLE_DEFINITION,0,CHARACTER_IDLE_DEFINITION.frame_duration, false};
 
 
     // if this is a local player:
@@ -105,11 +104,11 @@ update_player_controllers :: (q: Query) {
     player_controllers := query_get(q, Player_Controller);
     velocities := query_get(q, Velocity);
     move_speeds := query_get(q, Move_Speed);
-    anim_states := query_get(q, Anim_State_Component);
+    anim_states := query_get(q, Player_Animation);
 
     for 0..q.count-1 {
         // @todo: is there a better way to block movement while attacking?
-        current_anim_state := cast(Player_Anim_State) anim_states[it].state;
+        current_anim_state := anim_states[it].state;
         velocity_from_input := player_commands[it].move_vector * move_speeds[it].speed;
         if current_anim_state == .ATTACK || current_anim_state == .ATTACK_WIND_UP {
             velocity_from_input = .{0, 0};
@@ -118,7 +117,7 @@ update_player_controllers :: (q: Query) {
         velocities[it].value += (velocity_from_input - player_controllers[it].velocity_from_input);
         player_controllers[it].velocity_from_input = velocity_from_input;
     }
-} @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed,Anim_State_Component)
+} @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed,Player_Animation)
 
 broadcast_local_player_commands :: (q: Query) {
     player_commands := query_get(q, Player_Commands);

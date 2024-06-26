@@ -103,6 +103,9 @@ main :: () {
         cam_pos := get_component(*g_world, main_view_camera, Position);
         << cam_pos = .{ g_player_start };
         camera.entity_to_track = g_local_player;
+
+        spawn_enemy(*g_world, g_player_start, .BAT);
+        spawn_enemy(*g_world, g_player_start, .SKELETON);
     }
     
 
@@ -206,9 +209,12 @@ using Random :: #import "Random";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";
 #load "gameplay/damage.jai";
+#load "gameplay/enemy.jai";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
 #load "animation/sprite_animation.jai";
-#load "animation/anim_sm_player.jai";
+#load "animation/player_anim_sm.jai";
+#load "animation/skeleton_anim_sm.jai";
+#load "animation/bat_anim_sm.jai";
 #load "animation/animation_definitions.jai";

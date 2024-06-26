@@ -1,8 +1,8 @@
 Directions :: enum u32 {
-    Down      :: 0;
-    Left      :: 1;
-    Right     :: 2;
-    Up        :: 3;
+    DOWN      :: 0;
+    LEFT      :: 1;
+    RIGHT     :: 2;
+    UP        :: 3;
 }
 
 Direction :: struct @Component {
@@ -15,13 +15,13 @@ update_directions:: (q: Query) {
 
     for 0..q.count-1 {
         if velocities[it].y < 0 {
-            directions[it].value = Directions.Down;
+            directions[it].value = Directions.DOWN;
         } else if velocities[it].y > 0 {
-            directions[it].value = Directions.Up;
+            directions[it].value = Directions.UP;
         } else if velocities[it].x < 0 {
-            directions[it].value = Directions.Left;
+            directions[it].value = Directions.LEFT;
         } else if velocities[it].x > 0 {
-            directions[it].value = Directions.Right;
+            directions[it].value = Directions.RIGHT;
         } 
     }
 } @System(PostUpdate) @Write(Direction) @Read(Velocity)

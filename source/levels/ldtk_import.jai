@@ -2,7 +2,7 @@ LDTK_Tile :: struct {
     src: [2] s32;
     px: [2] s32;
     t: u32; // tile id
-    f: u32;
+    f: u8;
 }
 
 LDTK_Entity :: struct {
@@ -97,7 +97,7 @@ import_ldtk_level :: (world: *World) {
                         collider := spawn_entity(world);
                         add_component(world, collider, Position, .{.{x,y} });
                         add_component(world, collider, Shadow_Caster, .{bounds});
-                        add_component(world, collider, Collider_AABB, .{bounds});
+                        add_component(world, collider, Collider_AABB, .{bounds, true});
                     }
                 }
             }
@@ -137,7 +137,7 @@ spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32,
         sprite.z_order = cast(u16) layer_index;
         sprite.scale = make_vector2(tile_size);
         sprite.index = tile.t;
-        sprite.flip = tile.f;
+        sprite.flip = cast(Flip_Flags) tile.f;
         add_component(world, tile_entity, Sprite, sprite);
     }
 }

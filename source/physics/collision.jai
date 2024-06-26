@@ -1,5 +1,7 @@
 Collider_AABB :: struct @Component {
     #as using aabb: AABB;
+
+    blocking: bool;
 }
 
 Hit_Result :: struct {
@@ -24,7 +26,7 @@ Collision_Invoker :: struct @Component {
 
 Collision_Spatial :: struct @SingletonComponent {
     // @Speed this will be optimized with an AABB tree
-    bounds: [..] AABB;
+    bounds: [..] Collider_AABB;
     entities: [..] Entity;
     sort_keys: [..] u64; // 0 everywhere except when an entity has a unique networking key
 }
@@ -55,7 +57,7 @@ build_collision_spatial :: (q: Query) {
     array_reserve(*spatial.bounds, spatial.bounds.count + q.count);
     array_reserve(*spatial.sort_keys, spatial.sort_keys.count + q.count);
     for 0..q.count-1 {
-        array_add(*spatial.bounds, translate(colliders[it], positions[it]));
+        array_add(*spatial.bounds, .{translate(colliders[it], positions[it]), colliders[it].blocking});
 
         if invokers {
             array_add(*spatial.sort_keys, invokers[it].id);
@@ -107,8 +109,8 @@ resolve_collisions :: (q: Query) {
 
             // if the second entity has a collision invoker, we will handle half of the resolution here
             if get_component(q.world, pair.b, Collision_Invoker) {
-                a_pos.value -= penetration_vector;
-                b_pos.value += penetration_vector;
+                a_pos.value -= penetration_vector / 2.;
+                b_pos.value += penetration_vector / 2.;
             } else {
                 a_pos.value -= penetration_vector;
             }
@@ -124,21 +126,25 @@ generate_hit_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, sel
 
     for other : spatial.bounds {
         if intersects(bounds, other) && spatial.entities[it_index] != self {
-            pair: *Hit_Pair = array_add(*result);
-            if spatial.sort_keys[it_index] == 0 || sort_key < spatial.sort_keys[it_index] {
-                pair.sort_key = sort_key;
-                pair.a = self;
-                pair.a_bounds = bounds;
+            // track hit pairs for collision resolution, but only if they are blocking hits, otherwise we just emit an overlap event:
+            // @todo: actually emit events for overlaps
+            if other.blocking {
+                pair: *Hit_Pair = array_add(*result);
+                if spatial.sort_keys[it_index] == 0 || sort_key < spatial.sort_keys[it_index] {
+                    pair.sort_key = sort_key;
+                    pair.a = self;
+                    pair.a_bounds = bounds;
 
-                pair.b = spatial.entities[it_index];
-                pair.b_bounds = other;
-            } else {
-                pair.sort_key = spatial.sort_keys[it_index];
-                pair.b = self;
-                pair.b_bounds = bounds;
+                    pair.b = spatial.entities[it_index];
+                    pair.b_bounds = other;
+                } else {
+                    pair.sort_key = spatial.sort_keys[it_index];
+                    pair.b = self;
+                    pair.b_bounds = bounds;
 
-                pair.a = spatial.entities[it_index];
-                pair.a_bounds = other;
+                    pair.a = spatial.entities[it_index];
+                    pair.a_bounds = other;
+                }
             }
         }
     }

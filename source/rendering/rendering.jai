@@ -1,12 +1,18 @@
 #scope_export
 
+Flip_Flags :: enum_flags u8 {
+    NONE   :: 0;
+    FLIP_X :: 1 << 0;
+    FLIP_Y :: 1 << 1;
+}
+
 Sprite :: struct @Component {
     sheet: *SpriteSheet = null;
     scale: Vector2 = .{1, 1};
     index: u32 = 0;
     z_order: u16 = 0;
 
-    flip: u32 = 0;
+    flip: Flip_Flags = 0;
 }
 
 // Copy over the sprite data required for rendering so we don't need to directly reference it
