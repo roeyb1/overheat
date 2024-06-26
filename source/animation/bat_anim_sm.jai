@@ -24,10 +24,9 @@ Bat_Anim_State_Component :: struct @Component {
             directional_mode = .FLIP_X,
         },
     ];
-
 }
 
-update_enemy_anim_state :: (q: Query) {
+update_bat_anim_state :: (q: Query) {
     velocities := query_get(q, Velocity);
     anim_states := query_get(q, Bat_Anim_State_Component);
     anims := query_get(q, Animation);

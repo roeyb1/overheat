@@ -9,7 +9,7 @@ Enemy :: struct @Component {
 }
 
 spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
-    entity := spawn_entity(world, Enemy, Position, Velocity, Interp_Position, Move_Speed, Sprite, Animation, Bat_Anim_State_Component, Direction, Collision_Invoker, Collider_AABB);
+    entity := spawn_entity(world, Enemy, Position, Velocity, Interp_Position, Move_Speed, Sprite, Animation, Direction, Collision_Invoker, Collider_AABB);
 
     << get_component(world, entity, Position) = .{position};
     << get_component(world, entity, Interp_Position) = .{position, position};
@@ -25,10 +25,12 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
             size = Vector2.{1.0, 1.0};
             collider_size = Vector2.{0.6, 0.6};
             sprite = load_spritesheet("assets/enemies/skeleton.png", 32, 0, 0, 10, 4);
+            add_component(world, entity, Skeleton_Anim_State_Component);
         case .BAT;
             size = Vector2.{2.3, 2.3};
             collider_size = Vector2.{0.6, 0.6};
             sprite = load_spritesheet("assets/enemies/bat2.png", 96, 0, 0, 15, 4);
+            add_component(world, entity, Bat_Anim_State_Component);
     }
 
     << get_component(world, entity, Sprite) = .{sprite, size, 0, 4, 0};

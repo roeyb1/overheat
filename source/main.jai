@@ -105,6 +105,7 @@ main :: () {
         camera.entity_to_track = g_local_player;
 
         spawn_enemy(*g_world, g_player_start, .BAT);
+        spawn_enemy(*g_world, g_player_start, .SKELETON);
     }
     
 
@@ -213,7 +214,7 @@ using Random :: #import "Random";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
 #load "animation/sprite_animation.jai";
-#load "animation/anim_sm_player.jai";
-#load "animation/anim_sm_enemy.jai";
-#load "animation/bat_anims.jai";
+#load "animation/player_anim_sm.jai";
+#load "animation/skeleton_anim_sm.jai";
+#load "animation/bat_anim_sm.jai";
 #load "animation/animation_definitions.jai";
