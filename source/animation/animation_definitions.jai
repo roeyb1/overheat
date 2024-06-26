@@ -23,37 +23,3 @@ Animation_Definition :: struct {
 
     directional_mode: Anim_Direction_Mode;
 }
-
-// Temporarily define some of our animations here until we make this data driven.
-
-CHARACTER_WALK_DEFINITION :: Animation_Definition .{
-    frames = .[1,2,1,0],
-    frame_duration = 0.15,
-    name = "walk",
-    flags = .LOOP,
-    directional_mode = .UNIQUE_SPRITES,
-};
-
-CHARACTER_IDLE_DEFINITION :: Animation_Definition .{
-    frames = .[1],
-    frame_duration = 0.3,
-    name = "idle",
-    flags = .LOOP,
-    directional_mode = .UNIQUE_SPRITES,
-};
-
-CHARACTER_ATTACK_WIND_UP_DEFINITION :: Animation_Definition .{
-    frames = .[10],
-    frame_duration = 0.09,
-    name = "attack_wind_up",
-    flags = .NONE,
-    directional_mode = .UNIQUE_SPRITES,
-};
-
-CHARACTER_ATTACK_DEFINITION :: Animation_Definition .{
-    frames = .[11, 12, 13, 14],
-    frame_duration = 0.09,
-    name = "attack",
-    flags = .NONE,
-    directional_mode = .UNIQUE_SPRITES,
-};

@@ -7,6 +7,37 @@ Player_Anim_State :: enum u8 {
 
 Player_Anim_State_Component :: struct @Component {
     state: Player_Anim_State;
+
+    defs :: Animation_Definition.[
+        .{
+            frames = .[1],
+            frame_duration = 0.3,
+            name = "idle",
+            flags = .LOOP,
+            directional_mode = .UNIQUE_SPRITES,
+        },
+        .{
+            frames = .[1,2,1,0],
+            frame_duration = 0.15,
+            name = "walk",
+            flags = .LOOP,
+            directional_mode = .UNIQUE_SPRITES,
+        },
+        .{
+            frames = .[10],
+            frame_duration = 0.09,
+            name = "attack_wind_up",
+            flags = .NONE,
+            directional_mode = .UNIQUE_SPRITES,
+        },
+        .{
+            frames = .[11, 12, 13, 14],
+            frame_duration = 0.09,
+            name = "attack",
+            flags = .NONE,
+            directional_mode = .UNIQUE_SPRITES,
+        },
+    ];
 }
 
 EVENT_PLAYER_ATTACK: Event_ID = -1;
@@ -24,32 +55,32 @@ update_player_anim_state :: (q: Query) {
 
         if player_commands[it].main_attack && current_state != .ATTACK {
             anim_states[it].state = xx Player_Anim_State.ATTACK_WIND_UP;
-            transition_to_state(q.world, *anims[it], CHARACTER_ATTACK_WIND_UP_DEFINITION);
+            transition_to_state(q.world, *anims[it], anim_states[it]);
         }
         if current_state == {
             case .IDLE;
                 if !equals(length_squared(velocities[it]), 0) {
                     anim_states[it].state = xx Player_Anim_State.WALK;
-                    transition_to_state(q.world, *anims[it], CHARACTER_WALK_DEFINITION);
+                    transition_to_state(q.world, *anims[it], anim_states[it]);
                 }
             case .WALK;
                 if equals(length_squared(velocities[it]), 0) {
                     anim_states[it].state = xx Player_Anim_State.IDLE;
-                    transition_to_state(q.world, *anims[it], CHARACTER_IDLE_DEFINITION);
+                    transition_to_state(q.world, *anims[it], anim_states[it]);
                 }
             case .ATTACK_WIND_UP;
                 if anims[it].finished then {
                     anim_states[it].state = xx Player_Anim_State.ATTACK;
-                    transition_to_state(q.world, *anims[it], CHARACTER_ATTACK_DEFINITION);
+                    transition_to_state(q.world, *anims[it], anim_states[it]);
                 }
             case .ATTACK;
                 if anims[it].finished then {
                     if equals(length_squared(velocities[it]), 0) {
-                        anim_states[it].state = xx Player_Anim_State.IDLE;
-                        transition_to_state(q.world, *anims[it], CHARACTER_IDLE_DEFINITION);
+                        anim_states[it].state = Player_Anim_State.IDLE;
+                        transition_to_state(q.world, *anims[it], anim_states[it]);
                     } else {
-                        anim_states[it].state = xx Player_Anim_State.WALK;
-                        transition_to_state(q.world, *anims[it], CHARACTER_WALK_DEFINITION);
+                        anim_states[it].state = Player_Anim_State.WALK;
+                        transition_to_state(q.world, *anims[it], anim_states[it]);
                     }
                 }
         }
@@ -73,7 +104,7 @@ on_player_anim_state_changed :: (world: *World) {
 
 #scope_file
 
-transition_to_state :: (world: *World, animation: *Animation, template: Animation_Definition){
-    << animation = .{ template, 0, template.frame_duration, false };
+transition_to_state :: (world: *World, animation: *Animation, anim_state: Player_Anim_State_Component){
+    << animation = .{ anim_state.defs[anim_state.state], 0, anim_state.defs[anim_state.state].frame_duration, false };
     broadcast_event(world, EVENT_ON_PLAYER_ANIM_STATE_CHANGED);
 }

@@ -29,7 +29,6 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
             size = Vector2.{2.3, 2.3};
             collider_size = Vector2.{0.6, 0.6};
             sprite = load_spritesheet("assets/enemies/bat2.png", 96, 0, 0, 15, 4);
-            << get_component(world, entity, Animation) = .{ BAT_IDLE_DEFINITION, 0, BAT_IDLE_DEFINITION.frame_duration, false};
     }
 
     << get_component(world, entity, Sprite) = .{sprite, size, 0, 4, 0};
