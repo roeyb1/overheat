@@ -1,15 +1,18 @@
 
 Bat_Animation :: struct @Component {
     State :: enum u8 {
+        UNINITIALIZED;
         IDLE;
         WALK;
         ATTACK_WIND_UP;
         ATTACK;
     }
 
-    state: State;
+    state: State = .UNINITIALIZED;
 
     defs :: Animation_Definition.[
+        .{
+        },
         .{
             frames = .[0, 1, 2, 3, 4, 5, 6, 7],
             frame_duration = 0.1,
@@ -36,6 +39,10 @@ update_bat_anim_state :: (q: Query) {
         current_state := anim_states[it].state;
 
         if current_state == {
+            case .UNINITIALIZED;
+                    anim_states[it].state = .IDLE;
+                    transition_to_state(q.world, *anims[it], anim_states[it]);
+                    anims[it].time_till_switch *= random_get_zero_to_one();
             case .IDLE;
                 if !equals(length_squared(velocities[it]), 0) {
                     anim_states[it].state = .WALK;
@@ -46,6 +53,8 @@ update_bat_anim_state :: (q: Query) {
                     anim_states[it].state = .IDLE;
                     transition_to_state(q.world, *anims[it], anim_states[it]);
                 }
+            case;
+                assert(false, "NYI");
         }
     }
 } @System(OnUpdate) @Write(Bat_Animation,Sprite_Animator) @Read(Enemy,Velocity)

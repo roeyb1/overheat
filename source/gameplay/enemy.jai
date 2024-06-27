@@ -56,3 +56,16 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
     << get_component(world, entity, Sprite) = .{sprite, size, 0, 4, 0};
     << get_component(world, entity, Collider_AABB) = .{aabb = make_aabb(.{0, 0}, collider_size), blocking = false};
 }
+
+spawn_enemy_pack :: (world: *World, center: Vector2, radius: float, type: Enemy_Type) {
+    // for now, always just spawn 4 enemies around the center within radius distance:
+    count :: 4;
+    // @todo: this is not deterministic, we need to seed the spawners so they are always consistent on server/client. Or.. only the server can spawn them
+    for 0..count-1 {
+        angle := TAU * random_get_zero_to_one();
+        distance := radius * random_get_zero_to_one();
+
+        position := center + Vector2.{distance * cos(angle), distance * sin(angle)};
+        spawn_enemy(world, position, .BAT);
+    }
+}
