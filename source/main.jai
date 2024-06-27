@@ -103,9 +103,6 @@ main :: () {
         cam_pos := get_component(*g_world, main_view_camera, Position);
         << cam_pos = .{ g_player_start };
         camera.entity_to_track = g_local_player;
-
-        spawn_enemy(*g_world, g_player_start, .BAT);
-        spawn_enemy(*g_world, g_player_start, .SKELETON);
     }
     
 
