@@ -60,6 +60,13 @@ get_component :: (stage: *Stage, entity: Entity, ctid: Component_Type_ID) -> *vo
     return get_component(*stage.archetypes[record.archetype_id], record.row, ctid);
 }
 
+has_components :: (stage: *Stage, entity: Entity, ctids: [] Component_Type_ID) -> bool {
+    record, success := table_find(*stage.entity_records, entity.raw);
+    if !success then return false;
+
+    return archetype_contains_types(*stage.archetypes[record.archetype_id], ctids);
+}
+
 add_component :: (stage: *Stage, entity: Entity, add_ctid: Component_Type_ID) -> *void {
     record := table_find_pointer(*stage.entity_records, entity.raw);
     assert(record != null);

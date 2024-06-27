@@ -43,7 +43,7 @@ follow_entity :: (q: Query) {
 
             entity, found := find_nearest_matching_predicate(get_singleton(q.world, Collision_Spatial), positions[it], q.entities[it], (entity: Entity, data: *void) -> bool {
                 params := cast(*Params) data;
-                return get_component(params.world, entity, params.type) != null;
+                return has_component(params.world, entity, params.type);
             }, *params);
 
             if found {

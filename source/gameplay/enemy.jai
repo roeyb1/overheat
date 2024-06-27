@@ -32,7 +32,7 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
         follow = .{
             mode = .TAG,
             tag = #run component_type_id(Player),
-            max_distance = 8,
+            max_distance = 5,
         },
     });
 
