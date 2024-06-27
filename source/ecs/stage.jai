@@ -34,6 +34,10 @@ add_entity :: (stage: *Stage, ctids: [] Component_Type_ID) -> Entity {
 
     table_add(*stage.entity_records, new_entity.raw, .{archetype_id = archetype_id, row = row});
 
+    if archetype.entities.count == 1 {
+        add_archetype_to_active_cache(stage, archetype, archetype_id);
+    }
+
     return new_entity;
 }
 
@@ -157,7 +161,6 @@ get_or_create_archetype :: (stage: *Stage, ctids: [] Component_Type_ID) -> (*Arc
     archetype_id := stage.archetypes.count-1;
 
     init(result, ctids, archetype_id);
-
 
     add_archetype_to_active_cache(stage, result, archetype_id);
 
