@@ -56,7 +56,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         networking_id = .{ networking_id },
         invoker = .{ networking_id },
         move_speed =  .{ 6 },
-        point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 10. },
+        point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 20. },
         sprite = .{ sprite, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
     });
