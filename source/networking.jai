@@ -37,6 +37,7 @@ PacketType :: enum u8 #specified {
     PLAYER_JOINED           :: 2;
     PLAYER_LEFT             :: 3;
     PLAYER_COMMANDS         :: 4;
+    ENEMY_INIT_DATA         :: 4;
 }
 
 /** Packet sent from the server to the client assigning it a player id. */
@@ -47,6 +48,7 @@ ConnectionEstablished_Packet :: struct {
 
     // #hack: using the player joined packet to avoid adding a new struct
     existing_players: [..] PlayerJoined_Packet;
+    existing_enemies: [..] Enemy_Init_Data_Packet;
 }
 
 /** Packet sent from the server to all clients indicating a new player has joined the game. */
@@ -68,6 +70,14 @@ Player_Commands_Packet :: struct {
 
     networking_id: u64;
     commands: Player_Commands;
+}
+
+Enemy_Init_Data_Packet :: struct {
+    PACKET_TYPE :: PacketType.ENEMY_INIT_DATA;
+
+    networking_id: u64;
+    position: Vector2;
+    type: Enemy_Type;
 }
 
 networking_init :: () -> bool {
@@ -188,6 +198,12 @@ networking_send_packet :: (client: *Server.ClientConnection, packet_data: *$Type
 
 is_server :: inline () -> bool {
     return g_is_server;
+}
+
+get_unique_networking_id :: () -> u64 {
+    assert(is_server());
+    g_server.next_valid_networking_id += 1;
+    return g_server.next_valid_networking_id-1;
 }
 
 #scope_file
@@ -435,16 +451,8 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 return;
             }
 
-            new_networking_id := server.next_valid_networking_id;
+            new_networking_id := get_unique_networking_id();
             assert(new_networking_id != INVALID_NETWORKING_ID);
-
-            // validate this player id is not currently in use:
-            {
-                for * server.clients {
-                    assert(it.networking_id != new_networking_id, "player id % is already in use!", new_networking_id);
-                }
-            }
-            server.next_valid_networking_id += 1;
 
             new_client: Server.ClientConnection;
             new_client.connection = info.m_conn;
@@ -465,6 +473,19 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                         player_data := array_add(*conn_established.existing_players);
                         player_data.networking_id = networking_ids[it].id;
                         player_data.position = positions[it];
+                    }
+                }
+
+                for q : make_iter(*g_world, Enemy, Networking_ID, Position) {
+                    networking_ids := query_get(q, Networking_ID);
+                    positions := query_get(q, Position);
+                    enemies := query_get(q, Enemy);
+
+                    for 0..q.count-1 {
+                        enemy_data := array_add(*conn_established.existing_enemies);
+                        enemy_data.networking_id = networking_ids[it].id;
+                        enemy_data.position = positions[it];
+                        enemy_data.type = enemies[it].type;
                     }
                 }
 
@@ -570,6 +591,10 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             for player_data : conn_established.existing_players {
                 player := init_player(player_data.networking_id, player_data.position);
                 log("Existing player initialized %", get_component(*g_world, player, Name).name);
+            }
+
+            for enemy_data : conn_established.existing_enemies {
+                enemy := spawn_enemy(*g_world, enemy_data.position, enemy_data.networking_id, enemy_data.type);
             }
         case .PLAYER_JOINED;
             player_joined: PlayerJoined_Packet;

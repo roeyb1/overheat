@@ -17,14 +17,16 @@ Enemy_Bundle :: struct @Bundle {
     animator: Sprite_Animator;
     direction: Direction;
     invoker: Collision_Invoker;
-    collider: Collider_AABB;;
+    collider: Collider_AABB;
+    networking_id: Networking_ID;
 }
 
-spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
+spawn_enemy :: (world: *World, position: Vector2, networking_id: u64, type: Enemy_Type) {
     entity := spawn_from_bundle(world, Enemy_Bundle.{
         position = .{ position },
         interp_position = .{ position, position },
         enemy.type = type,
+        networking_id.id = networking_id,
     });
 
     add_components_from_bundle(world, entity, Follower.{
@@ -58,14 +60,14 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
 }
 
 spawn_enemy_pack :: (world: *World, center: Vector2, radius: float, type: Enemy_Type) {
+    assert(is_server(), "Spawn enemy pack called from client code! - This should only be called on the server");
     // for now, always just spawn 4 enemies around the center within radius distance:
     count :: 4;
-    // @todo: this is not deterministic, we need to seed the spawners so they are always consistent on server/client. Or.. only the server can spawn them
     for 0..count-1 {
         angle := TAU * random_get_zero_to_one();
         distance := radius * random_get_zero_to_one();
 
         position := center + Vector2.{distance * cos(angle), distance * sin(angle)};
-        spawn_enemy(world, position, .BAT);
+        spawn_enemy(world, position, get_unique_networking_id(), .BAT);
     }
 }
