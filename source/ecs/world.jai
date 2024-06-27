@@ -56,10 +56,14 @@ destroy_entity :: (world: *World, entity: Entity) {
     remove_entity(*world.stage, entity);
 }
 
-get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+get_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *void {
     if entity.deferred {
-        return get_component(*world.deferred_stage, entity, #run component_type_id(Component_Type));
+        return get_component(*world.deferred_stage, entity, ctid);
     }
+    return get_component(*world.stage, entity, ctid);
+}
+
+get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
     return get_component(*world.stage, entity, #run component_type_id(Component_Type));
 }
 

@@ -39,11 +39,11 @@ reset_collision_spatial :: (q: Query) {
     spatial := get_singleton(q.world, Collision_Spatial);
 
     // rebuild the spatial from scratch every frame.
-    // #todo: only update the pieces that changed using events
     spatial.entities.count = 0;
     spatial.bounds.count = 0;
     spatial.sort_keys.count = 0;
-} @System(PreUpdate) @Write(Collision_Spatial) @Read()
+    // #todo: only update the pieces that changed using events
+} @System(OnUpdate) @Write(Collision_Spatial) @Read()
 
 build_collision_spatial :: (q: Query) {
     spatial := get_singleton(q.world, Collision_Spatial);
@@ -150,4 +150,31 @@ generate_hit_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, sel
     }
 
     return result;
+}
+
+find_nearest_matching_predicate :: (spatial: *Collision_Spatial, point: Vector2, self: Entity, pred: #type (entity: Entity, data: *void) -> (bool), data: *void) -> Entity, bool {
+    // @Speed accelerate with AABB tree
+    candidates: [..] Entity;
+    candidates.allocator = temp;
+    distances: [..] float;
+    distances.allocator = temp;
+
+    for other : spatial.bounds {
+        if spatial.entities[it_index] != self {
+            if pred(spatial.entities[it_index], data) {
+                array_add(*candidates, spatial.entities[it_index]);
+                array_add(*distances, length(point - box_center(other)));
+            }
+        }
+    }
+    
+    if distances.count == 0 {
+        return INVALID_ENTITY, false;
+    }
+
+    min_index := 0;
+    for 0..distances.count-1 {
+        if distances[it] < distances[min_index] then min_index = it;
+    }
+    return candidates[min_index], true;
 }

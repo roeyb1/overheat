@@ -12,7 +12,7 @@ Bat_Animation :: struct @Component {
     defs :: Animation_Definition.[
         .{
             frames = .[0, 1, 2, 3, 4, 5, 6, 7],
-            frame_duration = 0.3,
+            frame_duration = 0.1,
             name = "idle",
             flags = .LOOP,
             directional_mode = .FLIP_X,

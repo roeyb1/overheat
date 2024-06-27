@@ -9,6 +9,7 @@ Entity :: struct {
 }
 
 INVALID_ENTITY_INDEX : s32 : -1;
+INVALID_ENTITY :: Entity.{ index = INVALID_ENTITY_INDEX };
 
 operator == :: (a: Entity, b: Entity) -> bool {
     return a.raw == b.raw;

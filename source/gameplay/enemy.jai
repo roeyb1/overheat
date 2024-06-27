@@ -13,7 +13,6 @@ Enemy_Bundle :: struct @Bundle {
     position: Position;
     velocity: Velocity;
     interp_position: Interp_Position;
-    move_speed: Move_Speed;
     sprite: Sprite;
     animator: Sprite_Animator;
     direction: Direction;
@@ -25,8 +24,16 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
     entity := spawn_from_bundle(world, Enemy_Bundle.{
         position = .{ position },
         interp_position = .{ position, position },
-        move_speed =  .{ 3 },
         enemy.type = type,
+    });
+
+    add_components_from_bundle(world, entity, Follower.{
+        move_speed.speed = 3,
+        follow = .{
+            mode = .TAG,
+            tag = #run component_type_id(Player),
+            max_distance = 8,
+        },
     });
 
     size: Vector2;
@@ -49,13 +56,3 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
     << get_component(world, entity, Sprite) = .{sprite, size, 0, 4, 0};
     << get_component(world, entity, Collider_AABB) = .{aabb = make_aabb(.{0, 0}, collider_size), blocking = false};
 }
-
-track_player :: (q: Query) {
-    velocities := query_get(q, Velocity);
-    move_speeds := query_get(q, Move_Speed);
-    positions := query_get(q, Position);
-
-    for 0..q.count-1 {
-        velocities[it].value = unit_vector(get_component(q.world, g_local_player, Position) - positions[it]) * move_speeds[it].speed;
-    }
-} @System(PreUpdate) @Write(Velocity) @Read(Enemy,Move_Speed,Position)

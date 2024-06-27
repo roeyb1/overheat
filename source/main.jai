@@ -103,6 +103,8 @@ main :: () {
         cam_pos := get_component(*g_world, main_view_camera, Position);
         << cam_pos = .{ g_player_start };
         camera.entity_to_track = g_local_player;
+
+        spawn_enemy(*g_world, g_player_start, .BAT);
     }
     
 
@@ -207,6 +209,7 @@ using Random :: #import "Random";
 #load "gameplay/attributes.jai";
 #load "gameplay/damage.jai";
 #load "gameplay/enemy.jai";
+#load "gameplay/follower.jai";
 #load "physics/collision.jai";
 #load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
