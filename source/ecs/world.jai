@@ -53,6 +53,18 @@ destroy_entity :: (world: *World, entity: Entity) {
         return;
     }
 
+    // recursively delete destroy all children:
+    children: [..] Entity;
+    children.allocator = temp;
+    for * iter : make_children_iter(world, entity) {
+        for iter.entities {
+            array_add(*children, it);
+        }
+    }
+    for children {
+        destroy_entity(world, it);
+    }
+
     remove_entity(*world.stage, entity);
 }
 
