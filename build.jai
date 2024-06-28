@@ -622,6 +622,8 @@ DONE
     for event_functions {
         // @Event(EventID[,ComponentType])
         assert(it.notes.count >= 1);
+        if contains(it.notes[0].text, "DynamicEvent") then continue;
+
         event_valid, event_id, optional_ctid := parse_event_tag(it.notes[0].text);
         assert(event_valid, "Event note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[0].text);
 
