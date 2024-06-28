@@ -544,6 +544,17 @@ generate_system_functions :: (w: Workspace) {
     // shuffle the system functions to try to surface bugs that depend on specific system ordering:
     shuffle(system_functions);
 
+INSERT_STRING :: #string DONE
+    .{
+        func = %1,
+        debug_name = "%2",
+        phase = .%3,
+        component_reads = #run component_type_ids(.[%4]),
+        component_writes = #run component_type_ids(.[%5]),
+        optional_writes = #run component_type_ids(.[%6]),
+    },
+DONE
+
     sbprint(*sb, "ALL_SYSTEMS := System_Def.[\n");
     for system_functions {
         // need at least three notes: @System(Phase); @Read(..), @Write(..)
@@ -565,17 +576,6 @@ generate_system_functions :: (w: Workspace) {
                 assert(opt_write_valid, "System opt-write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[3].text);
             }
         }
-
-INSERT_STRING :: #string DONE
-    .{
-        func = %1,
-        debug_name = "%2",
-        phase = .%3,
-        component_reads = #run component_type_ids(.[%4]),
-        component_writes = #run component_type_ids(.[%5]),
-        optional_writes = #run component_type_ids(.[%6]),
-    },
-DONE
 
         sbprint(*sb, INSERT_STRING, it.name, it.name, phase, read, write, opt_write);
     }
@@ -609,13 +609,25 @@ generate_event_functions :: (w: Workspace) {
 
     sb: String_Builder;
 
+INSERT_STRING :: #string DONE
+    .{
+        callback = %1,
+        debug_name = "%2",
+        event_id = *%3,
+        ctid = #run component_type_id(%4),
+    },
+DONE
+
+    sbprint(*sb, "ALL_EVENT_LISTENERS := Event_Listener.[\n");
     for event_functions {
         // @Event(EventID[,ComponentType])
         assert(it.notes.count >= 1);
         event_valid, event_id, optional_ctid := parse_event_tag(it.notes[0].text);
         assert(event_valid, "Event note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[0].text);
 
+        sbprint(*sb, INSERT_STRING, it.name, it.name, event_id, optional_ctid);
     }
+    sbprint(*sb, "];\n");
 
     add_build_string(builder_to_string(*sb), w);
 }

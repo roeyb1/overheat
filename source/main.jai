@@ -20,6 +20,8 @@ main_view_camera: Entity;
 main :: () {
     log_initialize();
 
+    register_events();
+
     execute_unit_tests();
 
     // set the working direction to be the root of the project (should always two directories up from the executable)
@@ -166,6 +168,11 @@ render_scene :: (q: Query) {
 
     render_scene(cam.projection, pos);
 } @System(OnRender) @Write() @Read(Position,Camera)
+
+on_player_component_added :: (world: *World, entity: Entity) {
+    log("Player added!");
+} @Event(EcsOnAdd,Player)
+
 
 using Basic :: #import "Basic";
 using Random :: #import "Random";

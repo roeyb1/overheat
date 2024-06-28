@@ -105,7 +105,7 @@ add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *vo
     }
     
     result := add_component(*world.stage, entity, ctid);
-    // @todo: when to fire the add event if something was deferred?
+    broadcast_on_component_add(world, entity, ctid);
     return result;
 }
 
@@ -230,7 +230,9 @@ remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> 
     
     removed := remove_component(*world.stage, entity, ctid);
 
-    // @todo: when to fire the add event if something was deferred?
+    if removed {
+        broadcast_on_component_remove(world, entity, ctid);
+    }
     return removed;
 }
 
@@ -239,7 +241,6 @@ remove_component :: (world: *World, entity: Entity, $Component_Type: Type) -> bo
 }
 
 _spawn_entity :: (world: *World, initial_archetype: [] Component_Type_ID) -> Entity {
-    // @todo: maybe this can be sorted in the #insert above?
     sorted_ctids: [..] Component_Type_ID;
     sorted_ctids.allocator = temp;
     array_copy(*sorted_ctids, initial_archetype);
@@ -255,7 +256,13 @@ _spawn_entity :: (world: *World, initial_archetype: [] Component_Type_ID) -> Ent
         return reserved;
     }
 
-    return add_entity(*world.stage, sorted_ctids);
+    entity := add_entity(*world.stage, sorted_ctids);
+
+    for initial_archetype {
+        broadcast_on_component_add(world, entity, it);
+    }
+
+    return entity;
 }
 
 
