@@ -1,15 +1,25 @@
-Child_Of :: struct @Component {}
+Child_Of :: struct @Component {
+    parent: Entity;
+}
 
 entity_set_parent :: (world: *World, child: Entity, parent: Entity) {
     // the last bits of the unique_id will be the entities index.
     // Entity index is re-used, but because all children are killed whenever the parent is destroyed, there's no risk here
-    add_component(world, child, pair_ctid(Child_Of, cast(u32) parent.index));
+    child_of := cast(*Child_Of) add_component(world, child, pair_ctid(Child_Of, cast(u32) parent.index));
+
+    child_of_c := add_component(world, child, Child_Of);
+    child_of_c.parent = parent;
+}
+
+get_parent :: (world: *World, child: Entity) -> Entity {
+    child_of := get_component(world, child, Child_Of);
+    return child_of.parent;
 }
 
 spawn_child_entity :: (world: *World, parent: Entity, $component_types: ..Type) -> Entity {
     #insert -> string {
         sb: String_Builder;
-        sbprint(*sb, "archetype :: Component_Type_ID.[");
+        sbprint(*sb, "archetype :: Component_Type_ID.[#run component_type_id(Child_Of),");
         for component_types {
             sbprint(*sb, "#run component_type_id(%),", it);
         }
@@ -21,7 +31,12 @@ spawn_child_entity :: (world: *World, parent: Entity, $component_types: ..Type) 
     array_copy(*ctids, archetype);
     array_add(*ctids, pair_ctid(Child_Of, cast(u32) parent.index));
 
-    return _spawn_entity(world, ctids);
+    child := _spawn_entity(world, ctids);
+
+    child_of := get_component(world, child, Child_Of);
+    child_of.parent = parent;
+
+    return child;
 }
 
 make_children_iter :: (world: *World, entity: Entity, $component_types: ..Type) -> ECS_Iter {
