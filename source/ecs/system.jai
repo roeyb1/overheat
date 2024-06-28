@@ -102,7 +102,7 @@ add_system :: (phase: System_Phase, def: *System_Def) {
         if ctid.is_singleton remove ctid;
     }
 
-    quick_sort(def.archetype, (x) => x.hash);
+    quick_sort(def.archetype, (x) => x.unique_id);
 
     log("Registered system: %", system.debug_name);
 }
@@ -296,12 +296,15 @@ make_iter :: (world: *World, $component_types: ..Type) -> ECS_Iter {
 
 for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE)); // We don't handle the reverse flag.
-    #assert(!(flags & .POINTER)); // We don't handle the pointer flag.
 
     query: Query;
     query.world = iter.world;
 
-    query.world.should_defer = true;
+    #if flags & .POINTER == 0 {
+        old_defer_value := query.world.should_defer;
+        query.world.should_defer = true;
+    }
+
     for arch_id, arch_index : iter.archetype_ids {
         archetype := *iter.world.stage.archetypes[arch_id];
         query.current_archetype = archetype;
@@ -313,6 +316,11 @@ for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {
 
         #insert body;
     }
-    query.world.should_defer = false;
-    process_deferred_operations(query.world);
+
+    #if flags & .POINTER == 0 {
+        query.world.should_defer = old_defer_value;
+        if !query.world.should_defer {
+            process_deferred_operations(query.world);
+        }
+    }
 }

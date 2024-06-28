@@ -21,15 +21,17 @@ process_deferred_operations :: (world: *World) {
     for world.deferred_ops {
         if #complete it.type == {
             case .DESTROY;
-                assert(it.entity.deferred == false, "Deferred entities should be deleted immediately and not enter the deferred queue");
+                assert(!table_contains(*world.deferred_entities, it.entity.raw), "Deferred entities should be deleted immediately and not enter the deferred queue");
                 if ensure(is_entity_valid(world, it.entity), "Destroyed entity is not valid") {
                     destroy_entity(world, it.entity);
                 }
             case .SPAWN;
                 // It's possible that the entity was destoyed in the staging world before we could copy it to the main world, very unlikely though
                 if ensure(is_entity_valid(world, it.entity), "Spawned entity is not valid anymore") {
-                    copy_entity_between_deferred(world, it.entity);
-                    remove_entity(*world.deferred_stage, it.entity);
+                    deferred, found := table_find(*world.deferred_entities, it.entity.raw);
+                    assert(found);
+                    copy_entity_between_deferred(world, it.entity, deferred);
+                    remove_entity(*world.deferred_stage, deferred);
                 }
             case .REMOVE_COMPONENT;
                 // it's possible that the entity was destroyed before component removal was queued
@@ -46,26 +48,29 @@ process_deferred_operations :: (world: *World) {
     }
     assert((world.deferred_stage.entities.count - world.deferred_stage.free_entity_indices.count) == 0);
     world.deferred_ops.count = 0;
+    table_reset(*world.deferred_entities);
 }
 
 #scope_file 
 
-copy_entity_between_deferred :: (world: *World, source: Entity) -> Entity {
-
+copy_entity_between_deferred :: (world: *World, to_entity: Entity, from_entity: Entity) {
     source_stage := *world.deferred_stage;
     dest_stage := *world.stage;
 
-    s_record := table_find_pointer(*source_stage.entity_records, source.raw);
+    s_record := table_find_pointer(*source_stage.entity_records, from_entity.raw);
     assert(s_record != null);
 
     from := *source_stage.archetypes[s_record.archetype_id];
 
-    new := add_entity(dest_stage, from.type_ids);
+    to, to_id := get_or_create_archetype(*world.stage, from.type_ids);
 
-    d_record := table_find_pointer(*dest_stage.entity_records, new.raw);
+    d_record := table_find_pointer(*dest_stage.entity_records, to_entity.raw);
     assert(d_record != null);
 
-    to := *dest_stage.archetypes[d_record.archetype_id];
+    dest_row := add_entity(to, to_entity);
+
+    d_record.row = dest_row;
+    d_record.archetype_id = to_id;
 
     for ctid : from.type_ids {
         src_component, src_size := get_component(from, s_record.row, ctid);
@@ -74,6 +79,4 @@ copy_entity_between_deferred :: (world: *World, source: Entity) -> Entity {
 
         memcpy(dst_component, src_component, src_size);
     }
-
-    return new;
 }

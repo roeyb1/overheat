@@ -18,14 +18,12 @@ add_entity :: (stage: *Stage, ctids: [] Component_Type_ID) -> Entity {
         index := pop(*stage.free_entity_indices);
         new_entity = *stage.entities[index];
 
-        << new_entity = .{index = index, generation = stage.entities[index].generation, deferred = false};
+        << new_entity = .{index = index, generation = stage.entities[index].generation};
     } else {
         new_entity = array_add(*stage.entities);
         new_entity.generation = 0;
         new_entity.index = cast(s32) stage.entities.count-1;
-        new_entity.deferred = false;
     }
-    new_entity.deferred = false;
 
     assert(new_entity.index != INVALID_ENTITY_INDEX);
 
@@ -130,7 +128,7 @@ archetype_plus :: (stage: *Stage, ctids: [] Component_Type_ID, plus: Component_T
     new_types.allocator = temp;
     array_copy(*new_types, ctids);
     array_add(*new_types, plus);
-    quick_sort(new_types, (x) => x.hash);
+    quick_sort(new_types, (x) => x.unique_id);
 
     archetype, id := get_or_create_archetype(stage, new_types);
     return archetype, id;
@@ -193,7 +191,7 @@ find_or_create_cached_archetypes_for_ctids :: (stage: *Stage, ctids: [] Componen
     if result != null then return << result;
 
     archetypes: [..] s64;
-    result = table_add(*stage.archetype_cache, ctids, archetypes);
+    result = table_add(*stage.archetype_cache, array_copy(ctids), archetypes);
     for * stage.archetypes {
         if archetype_contains_types(it, ctids) && it.entities.count > 0 then array_add(result, it_index);
     }

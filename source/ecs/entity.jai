@@ -4,8 +4,6 @@ Entity :: struct {
 
 #place index;
     raw: s64 = -1;
-
-    deferred: bool = false;
 }
 
 INVALID_ENTITY_INDEX : s32 : -1;

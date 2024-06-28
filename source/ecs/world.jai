@@ -10,6 +10,8 @@ World :: struct {
 
     deferred_ops: [..] Deferred_ECS_Operation;
 
+    deferred_entities: Table(s64, Entity);
+
     should_defer: bool = false;
 }
 
@@ -20,10 +22,8 @@ Entity_Record :: struct {
 
 is_entity_valid :: (world: *World, entity: Entity) -> bool {
     if entity.index == INVALID_ENTITY_INDEX then return false;
-    stage := ifx entity.deferred then *world.deferred_stage else *world.stage;
-
-    if entity.index >= stage.entities.count then return false;
-    if entity.generation != stage.entities[entity.index].generation then return false;
+    if entity.index >= world.stage.entities.count then return false;
+    if entity.generation != world.stage.entities[entity.index].generation then return false;
     return true;
 }
 
@@ -44,21 +44,34 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
 
 destroy_entity :: (world: *World, entity: Entity) {
     if world.should_defer {
-        if entity.deferred {
-            remove_entity(*world.deferred_stage, entity);
-        } else {
-            array_add(*world.deferred_ops, .{type = .DESTROY, entity = entity});
+        deferred, found := table_find(*world.deferred_entities, entity.raw);
+        if found {
+            remove_entity(*world.deferred_stage, deferred);
         }
+        array_add(*world.deferred_ops, .{type = .DESTROY, entity = entity});
 
         return;
+    }
+
+    // recursively delete destroy all children:
+    children: [..] Entity;
+    children.allocator = temp;
+    for * iter : make_children_iter(world, entity) {
+        for iter.entities {
+            array_add(*children, it);
+        }
+    }
+    for children {
+        destroy_entity(world, it);
     }
 
     remove_entity(*world.stage, entity);
 }
 
 has_components :: (world: *World, entity: Entity, ctids: [] Component_Type_ID) -> bool {
-    if entity.deferred {
-        return has_components(*world.deferred_stage, entity, ctids);
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return has_components(*world.deferred_stage, deferred, ctids);
     }
     return has_components(*world.stage, entity, ctids);
 }
@@ -68,25 +81,25 @@ has_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> boo
 }
 
 get_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *void {
-    if entity.deferred {
-        return get_component(*world.deferred_stage, entity, ctid);
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return get_component(*world.deferred_stage, deferred, ctid);
     }
     return get_component(*world.stage, entity, ctid);
 }
 
 get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
-    return get_component(*world.stage, entity, #run component_type_id(Component_Type));
+    return get_component(world, entity, #run component_type_id(Component_Type));
 }
 
-add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
-    ctid :: #run component_type_id(Component_Type);
-
-    if entity.deferred {
-        return add_component(*world.deferred_stage, entity, ctid);
+add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *void{
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return add_component(*world.deferred_stage, deferred, ctid);
     }
 
     if world.should_defer {
-        ptr := TempNew(Component_Type);
+        ptr := talloc(ctid.runtime_size);
         array_add(*world.deferred_ops, .{type = .ADD_COMPONENT, entity = entity, type_id = ctid, component_data = ptr});
         return ptr;
     }
@@ -95,6 +108,12 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
     // @todo: when to fire the add event if something was deferred?
     broadcast_event(world, ECS_EVENT_ON_ADD);
     return result;
+}
+
+add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+    ctid :: #run component_type_id(Component_Type);
+
+    return add_component(world, entity, ctid);
 }
 
 add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_value: Component_Type) -> *Component_Type {
@@ -199,8 +218,9 @@ spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
 }
 
 remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> bool {
-    if entity.deferred {
-        return remove_component(*world.deferred_stage, entity, ctid);
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return remove_component(*world.deferred_stage, deferred, ctid);
     }
 
     if world.should_defer {
@@ -225,14 +245,16 @@ _spawn_entity :: (world: *World, initial_archetype: [] Component_Type_ID) -> Ent
     sorted_ctids: [..] Component_Type_ID;
     sorted_ctids.allocator = temp;
     array_copy(*sorted_ctids, initial_archetype);
-    quick_sort(sorted_ctids, (x) => x.hash);
+    quick_sort(sorted_ctids, (x) => x.unique_id);
 
     if world.should_defer {
-        entity := add_entity(*world.deferred_stage, sorted_ctids);
-        entity.deferred = true;
+        reserved := add_entity(*world.stage, .[]);
 
-        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}, null});
-        return entity;
+        entity := add_entity(*world.deferred_stage, sorted_ctids);
+
+        array_add(*world.deferred_ops, .{.SPAWN, reserved, .{}, null});
+        table_add(*world.deferred_entities, reserved.raw, entity);
+        return reserved;
     }
 
     return add_entity(*world.stage, sorted_ctids);

@@ -15,9 +15,10 @@ Component_Container :: struct {
 }
 
 Component_Type_ID :: struct {
-    hash: u64;
+    unique_id: u64;
+    debug_name: string;
+
     runtime_size: s64;
-    name: string;
     initializer: (*void);
     is_singleton: bool;
 }
@@ -27,7 +28,7 @@ operator== :: (a: Component_Type_ID, b: Component_Type_ID) -> bool {
 }
 
 compare_ctid :: (a: Component_Type_ID, b: Component_Type_ID) -> bool {
-    return a.hash == b.hash;
+    return a.unique_id == b.unique_id;
 }
 
 compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
@@ -39,16 +40,27 @@ compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
     return true;
 }
 
+NEXT_CTID : u64 = 0;
 
-/** Get the type id of a component. Just hash the component type name. */
-component_type_id :: ($c: Type) -> Component_Type_ID {
+component_type_id :: inline ($c: Type) -> Component_Type_ID {
     assert(type_info(c).type == .STRUCT, "Only struct types are supported as component types!");
 
     ti :: type_info(c);
-    is_singleton := has_note(ti, "SingletonComponent");
-    hash :: #run fnv1a_hash(ti.name.data, ti.name.count, h = 5381);
+    is_singleton :: #run has_note(ti, "SingletonComponent");
 
-    return .{hash, ti.runtime_size, ti.name, ti.initializer, is_singleton};
+    UNIQUE_ID :: #run -> u64 {
+        NEXT_CTID += 1;
+        return NEXT_CTID;
+    }
+
+    // we use the type info pointer as the unique identifier for the ctid;
+    return Component_Type_ID.{
+        unique_id = cast(u64) ti,
+        runtime_size = ti.runtime_size,
+        debug_name = ti.name,
+        initializer = ti.initializer,
+        is_singleton = is_singleton
+    };
 }
 
 /** Returns a compile-time generated (sorted by id) view of a static array of component type ids */
@@ -65,7 +77,7 @@ component_type_ids :: ($component_types: [] Type) -> [] Component_Type_ID {
             }
         }
         print_to_builder(*builder, "];\n");
-        print_to_builder(*builder, "#run quick_sort(result, (x) => x.hash);\n");
+        print_to_builder(*builder, "#run quick_sort(result, (x) => x.unique_id);\n");
         return builder_to_string(*builder);
     }();
     return result;
