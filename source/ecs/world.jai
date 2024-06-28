@@ -78,15 +78,13 @@ get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
     return get_component(*world.stage, entity, #run component_type_id(Component_Type));
 }
 
-add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
-    ctid :: #run component_type_id(Component_Type);
-
+add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *void{
     if entity.deferred {
         return add_component(*world.deferred_stage, entity, ctid);
     }
 
     if world.should_defer {
-        ptr := TempNew(Component_Type);
+        ptr := talloc(ctid.runtime_size);
         array_add(*world.deferred_ops, .{type = .ADD_COMPONENT, entity = entity, type_id = ctid, component_data = ptr});
         return ptr;
     }
@@ -95,6 +93,12 @@ add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
     // @todo: when to fire the add event if something was deferred?
     broadcast_event(world, ECS_EVENT_ON_ADD);
     return result;
+}
+
+add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+    ctid :: #run component_type_id(Component_Type);
+
+    return add_component(world, entity, ctid);
 }
 
 add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_value: Component_Type) -> *Component_Type {

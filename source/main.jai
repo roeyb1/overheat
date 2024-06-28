@@ -197,6 +197,7 @@ using Random :: #import "Random";
 #load "unit_test.jai";
 #load "assets.jai";
 #load "ecs/world.jai";
+#load "ecs/relationships.jai";
 #load "ecs/system.jai";
 #load "ecs/singleton.jai";
 #load "gameplay/components.jai";

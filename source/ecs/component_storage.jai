@@ -40,11 +40,18 @@ compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
     return true;
 }
 
+NEXT_CTID : u64 = 0;
+
 component_type_id :: inline ($c: Type) -> Component_Type_ID {
     assert(type_info(c).type == .STRUCT, "Only struct types are supported as component types!");
 
     ti :: type_info(c);
     is_singleton :: #run has_note(ti, "SingletonComponent");
+
+    UNIQUE_ID :: #run -> u64 {
+        NEXT_CTID += 1;
+        return NEXT_CTID;
+    }
 
     // we use the type info pointer as the unique identifier for the ctid;
     return Component_Type_ID.{

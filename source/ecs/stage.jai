@@ -193,7 +193,7 @@ find_or_create_cached_archetypes_for_ctids :: (stage: *Stage, ctids: [] Componen
     if result != null then return << result;
 
     archetypes: [..] s64;
-    result = table_add(*stage.archetype_cache, ctids, archetypes);
+    result = table_add(*stage.archetype_cache, array_copy(ctids), archetypes);
     for * stage.archetypes {
         if archetype_contains_types(it, ctids) && it.entities.count > 0 then array_add(result, it_index);
     }
