@@ -68,6 +68,9 @@ copy_entity_between_deferred :: (world: *World, to_entity: Entity, from_entity: 
     assert(d_record != null);
 
     dest_row := add_entity(to, to_entity);
+    if dest_row == 0 {
+        add_archetype_to_active_cache(*world.stage, to, to_id);
+    }
 
     d_record.row = dest_row;
     d_record.archetype_id = to_id;
