@@ -40,9 +40,6 @@ Player_Animation :: struct @Component {
     ];
 }
 
-EVENT_PLAYER_ATTACK: Event_ID = -1;
-EVENT_ON_PLAYER_ANIM_STATE_CHANGED: Event_ID = -1;
-
 /** A system that iterates over all anim_state_components and changes their value in accordance to transition rules defined here */
 update_player_anim_state :: (q: Query) {
     velocities := query_get(q, Velocity);
@@ -87,23 +84,8 @@ update_player_anim_state :: (q: Query) {
     }
 } @System(OnUpdate) @Write(Player_Animation,Sprite_Animator) @Read(Player,Player_Commands,Velocity)
 
-on_player_anim_state_changed :: (world: *World) {
-    for q : make_iter(world, Velocity, Player_Animation, Sprite_Animator) {
-        velocities := query_get(q, Velocity);
-        anim_states := query_get(q, Player_Animation);
-        anims := query_get(q, Sprite_Animator);
-
-        for 0..q.count-1 {
-            if anim_states[it].state == .ATTACK {
-                broadcast_event(q.world, EVENT_PLAYER_ATTACK);
-            }
-        }
-    }
-} @Event @Write(Player_Animation,Sprite_Animator) @Read(Player,Velocity)
-
 #scope_file
 
 transition_to_state :: (world: *World, animator: *Sprite_Animator, anim_state: Player_Animation){
     << animator = .{ anim_state.defs[anim_state.state], 0, anim_state.defs[anim_state.state].frame_duration, false };
-    broadcast_event(world, EVENT_ON_PLAYER_ANIM_STATE_CHANGED);
 }

@@ -106,7 +106,6 @@ add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *vo
     
     result := add_component(*world.stage, entity, ctid);
     // @todo: when to fire the add event if something was deferred?
-    broadcast_event(world, ECS_EVENT_ON_ADD);
     return result;
 }
 
@@ -232,7 +231,6 @@ remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> 
     removed := remove_component(*world.stage, entity, ctid);
 
     // @todo: when to fire the add event if something was deferred?
-    broadcast_event(world, ECS_EVENT_ON_REMOVE);
     return removed;
 }
 
