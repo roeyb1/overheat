@@ -523,6 +523,17 @@ generate_system_functions :: (w: Workspace) {
         right.count -= 1;
         return true, right;
     }
+    
+    parse_opt_write_types :: (str: string) -> bool, string {
+        found, left, right := split_from_left(str, #char "(");
+        assert(found);
+        if left != "OptionalWrite" {
+            return false, "";
+        }
+        // remove the closing parenthesis before splitting
+        right.count -= 1;
+        return true, right;
+    }
 
     // shuffle the system functions to try to surface bugs that depend on specific system ordering:
     shuffle(system_functions);
@@ -541,8 +552,26 @@ generate_system_functions :: (w: Workspace) {
         read_valid, read := parse_read_types(it.notes[2].text);
         assert(read_valid, "System read note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[2].text);
 
+        opt_write: string;
+        if it.notes.count >= 4 {
+            if contains(it.notes[3].text, "OptionalWrite") {
+                opt_write_valid, opt_write := parse_opt_write_types(it.notes[3].text);
+                assert(opt_write_valid, "System opt-write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[3].text);
+            }
+        }
 
-        sbprint(*sb, "\t.{func = %1, debug_name = \"%2\", phase = .%3, component_reads = #run component_type_ids(.[%4]), component_writes = #run component_type_ids(.[%5])}, \n", it.name, it.name, phase, read, write);
+INSERT_STRING :: #string DONE
+    .{
+        func = %1,
+        debug_name = "%2",
+        phase = .%3,
+        component_reads = #run component_type_ids(.[%4]),
+        component_writes = #run component_type_ids(.[%5]),
+        optional_writes = #run component_type_ids(.[%6]),
+    },
+DONE
+
+        sbprint(*sb, INSERT_STRING, it.name, it.name, phase, read, write, opt_write);
     }
     sbprint(*sb, "];");
 

@@ -69,6 +69,7 @@ System_Def :: struct {
 
     component_reads: [] Component_Type_ID;
     component_writes: [] Component_Type_ID;
+    optional_writes: [] Component_Type_ID;
     archetype: [..] Component_Type_ID;
 }
 
@@ -147,7 +148,13 @@ build_dependency_graph :: (scheduler: *System_Scheduler) {
     }
 
     for * system : scheduler.systems {
-        for ctid : system.component_writes {
+        write_dependencies: [..] Component_Type_ID;
+        write_dependencies.allocator = temp;
+
+        array_append(*write_dependencies, system.component_writes);
+        array_append(*write_dependencies, system.optional_writes);
+
+        for ctid : write_dependencies {
             for * other : scheduler.systems {
                 if system == other then continue;
                 other_reads_ctid := array_find(other.component_reads, ctid, compare_ctid);
