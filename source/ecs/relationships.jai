@@ -1,7 +1,6 @@
 Child_Of :: struct @Component {}
 
 entity_set_parent :: (world: *World, child: Entity, parent: Entity) {
-    assert(parent.deferred == child.deferred, "Cannot make entities children of a deferred entity");
     // the last bits of the unique_id will be the entities index.
     // Entity index is re-used, but because all children are killed whenever the parent is destroyed, there's no risk here
     add_component(world, child, pair_ctid(Child_Of, cast(u32) parent.index));

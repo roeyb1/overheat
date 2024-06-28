@@ -10,6 +10,8 @@ World :: struct {
 
     deferred_ops: [..] Deferred_ECS_Operation;
 
+    deferred_entities: Table(s64, Entity);
+
     should_defer: bool = false;
 }
 
@@ -20,10 +22,8 @@ Entity_Record :: struct {
 
 is_entity_valid :: (world: *World, entity: Entity) -> bool {
     if entity.index == INVALID_ENTITY_INDEX then return false;
-    stage := ifx entity.deferred then *world.deferred_stage else *world.stage;
-
-    if entity.index >= stage.entities.count then return false;
-    if entity.generation != stage.entities[entity.index].generation then return false;
+    if entity.index >= world.stage.entities.count then return false;
+    if entity.generation != world.stage.entities[entity.index].generation then return false;
     return true;
 }
 
@@ -44,11 +44,11 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
 
 destroy_entity :: (world: *World, entity: Entity) {
     if world.should_defer {
-        if entity.deferred {
-            remove_entity(*world.deferred_stage, entity);
-        } else {
-            array_add(*world.deferred_ops, .{type = .DESTROY, entity = entity});
+        deferred, found := table_find(*world.deferred_entities, entity.raw);
+        if found {
+            remove_entity(*world.deferred_stage, deferred);
         }
+        array_add(*world.deferred_ops, .{type = .DESTROY, entity = entity});
 
         return;
     }
@@ -69,8 +69,9 @@ destroy_entity :: (world: *World, entity: Entity) {
 }
 
 has_components :: (world: *World, entity: Entity, ctids: [] Component_Type_ID) -> bool {
-    if entity.deferred {
-        return has_components(*world.deferred_stage, entity, ctids);
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return has_components(*world.deferred_stage, deferred, ctids);
     }
     return has_components(*world.stage, entity, ctids);
 }
@@ -80,19 +81,21 @@ has_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> boo
 }
 
 get_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *void {
-    if entity.deferred {
-        return get_component(*world.deferred_stage, entity, ctid);
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return get_component(*world.deferred_stage, deferred, ctid);
     }
     return get_component(*world.stage, entity, ctid);
 }
 
 get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
-    return get_component(*world.stage, entity, #run component_type_id(Component_Type));
+    return get_component(world, entity, #run component_type_id(Component_Type));
 }
 
 add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *void{
-    if entity.deferred {
-        return add_component(*world.deferred_stage, entity, ctid);
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return add_component(*world.deferred_stage, deferred, ctid);
     }
 
     if world.should_defer {
@@ -215,8 +218,9 @@ spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
 }
 
 remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> bool {
-    if entity.deferred {
-        return remove_component(*world.deferred_stage, entity, ctid);
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return remove_component(*world.deferred_stage, deferred, ctid);
     }
 
     if world.should_defer {
@@ -244,11 +248,13 @@ _spawn_entity :: (world: *World, initial_archetype: [] Component_Type_ID) -> Ent
     quick_sort(sorted_ctids, (x) => x.unique_id);
 
     if world.should_defer {
-        entity := add_entity(*world.deferred_stage, sorted_ctids);
-        entity.deferred = true;
+        reserved := add_entity(*world.stage, .[]);
 
-        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}, null});
-        return entity;
+        entity := add_entity(*world.deferred_stage, sorted_ctids);
+
+        array_add(*world.deferred_ops, .{.SPAWN, reserved, .{}, null});
+        table_add(*world.deferred_entities, reserved.raw, entity);
+        return reserved;
     }
 
     return add_entity(*world.stage, sorted_ctids);

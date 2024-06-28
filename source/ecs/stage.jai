@@ -18,14 +18,12 @@ add_entity :: (stage: *Stage, ctids: [] Component_Type_ID) -> Entity {
         index := pop(*stage.free_entity_indices);
         new_entity = *stage.entities[index];
 
-        << new_entity = .{index = index, generation = stage.entities[index].generation, deferred = false};
+        << new_entity = .{index = index, generation = stage.entities[index].generation};
     } else {
         new_entity = array_add(*stage.entities);
         new_entity.generation = 0;
         new_entity.index = cast(s32) stage.entities.count-1;
-        new_entity.deferred = false;
     }
-    new_entity.deferred = false;
 
     assert(new_entity.index != INVALID_ENTITY_INDEX);
 
