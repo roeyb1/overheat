@@ -40,8 +40,17 @@ compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
     return true;
 }
 
-NEXT_CTID : u64 = 0;
+NULL_COMPONENT_ID : u64 : 0;
+NEXT_CTID : u64 = 1;
 
+component_type_id :: inline () -> Component_Type_ID {
+    return Component_Type_ID.{
+        unique_id = NULL_COMPONENT_ID,
+        runtime_size = 0,
+        debug_name = "INVALID",
+        initializer = null,
+    };
+}
 component_type_id :: inline ($c: Type) -> Component_Type_ID {
     assert(type_info(c).type == .STRUCT, "Only struct types are supported as component types!");
 
@@ -51,6 +60,8 @@ component_type_id :: inline ($c: Type) -> Component_Type_ID {
     UNIQUE_ID :: #run -> u64 {
         return atomic_add(*NEXT_CTID, 1);
     }
+
+    assert(UNIQUE_ID != NULL_COMPONENT_ID);
 
     return Component_Type_ID.{
         unique_id = UNIQUE_ID,

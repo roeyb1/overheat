@@ -20,7 +20,7 @@ main_view_camera: Entity;
 main :: () {
     log_initialize();
 
-    init_ecs_events();
+    register_events();
 
     execute_unit_tests();
 
@@ -43,15 +43,6 @@ main :: () {
 
     // The following few lines should probably be moved elsewhere. They initialize some specific things which could maybe tied into a global world init function?
     main_view_camera = spawn_entity(*g_world, Position, Camera);
-    EVENT_PLAYER_ATTACK = register_event();
-    EVENT_ON_PLAYER_ANIM_STATE_CHANGED = register_event();
-    register_event_listener(EVENT_ON_PLAYER_ANIM_STATE_CHANGED, on_player_anim_state_changed);
-    register_event_listener(EVENT_PLAYER_ATTACK, trigger_player_attack);
-
-    g_world.should_defer = true;
-    trigger_player_attack(*g_world);
-    g_world.should_defer = false;
-
 
     accumulated_time := 0.0;
 
@@ -177,6 +168,11 @@ render_scene :: (q: Query) {
 
     render_scene(cam.projection, pos);
 } @System(OnRender) @Write() @Read(Position,Camera)
+
+on_player_component_added :: (world: *World, entity: Entity) {
+    log("Player added!");
+} @Event(EcsOnAdd,Player)
+
 
 using Basic :: #import "Basic";
 using Random :: #import "Random";
