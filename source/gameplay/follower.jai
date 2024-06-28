@@ -46,7 +46,7 @@ follow_entity :: (q: Query) {
 
         direction := target_pos - positions[it];
         if length(direction) <= followers[it].max_distance {
-            velocities[it].value = unit_vector(direction) * move_speeds[it].speed;
+            velocities[it].value = unit_vector(direction) * move_speeds[it].value;
         } else {
             velocities[it].value = .{0, 0};
         }

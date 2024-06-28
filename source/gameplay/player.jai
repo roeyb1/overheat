@@ -66,7 +66,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         interp_position = .{ position, position },
         networking_id = .{ networking_id },
         invoker = .{ id = networking_id },
-        move_speed =  .{ 6 },
+        move_speed =  .{ base_value = 6},
         point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 20. },
         sprite = .{ sprite, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
@@ -142,7 +142,7 @@ update_player_controllers :: (q: Query) {
     for 0..q.count-1 {
         // @todo: is there a better way to block movement while attacking?
         current_anim_state := anim_states[it].state;
-        velocity_from_input := player_commands[it].move_vector * move_speeds[it].speed;
+        velocity_from_input := player_commands[it].move_vector * move_speeds[it].value;
         if current_anim_state == .ATTACK || current_anim_state == .ATTACK_WIND_UP {
             velocity_from_input = .{0, 0};
         }

@@ -6,6 +6,10 @@ Skill_Inventory :: struct @Component {
     skills : [..] Entity; 
 }
 
+Target_Entity :: struct @Component {
+    value: Entity;
+}
+
 To_Cast :: struct @Component {
     value: bool;
 }
@@ -26,10 +30,11 @@ Skill_Fragment :: struct {
 Skill_Fragment_Types :: enum u8 {
     NONE;
     PROJECT;
+    SELF;
     TOUCH;
     FOCUS;
     IGNITE;
-    STABILIZE;
+    Haste;
     NBR;  
 }
 
@@ -38,10 +43,11 @@ SKILL_FRAGMENT_NAMES ::
     string .[
     "",   
     "Project",
+    "Self",
     "Touch",
     "Focus",
     "Ignite",
-    "Stabilize",
+    "Haste",
     ];
 
 
@@ -84,8 +90,9 @@ fire_skill :: (world: *World, skill: Entity, casting_entity: Networking_ID) {
         valid,player := get_player_by_networking_id(world,casting_entity);
 
         if valid {
-            skill_instance := spawn_entity(world, Skill);
-    
+            skill_instance := spawn_entity(world, Skill, Target_Entity);
+            << get_component(world, skill_instance ,Target_Entity) = .{player};
+
             for get_component(world, skill, Fragments).value {
                 add_component_by_fragment(world ,skill_instance, player, it);
             } 
@@ -101,15 +108,19 @@ add_component_by_fragment :: (world: *World, skill: Entity,  casting_entity: Ent
         case .TOUCH;
      
             add_touch(world,skill,3,casting_entity);
+        case .SELF;
+
+            add_self(world,skill,3,casting_entity);
         case .FOCUS;
 
             add_focus(world, skill,3);
         case .IGNITE;
 
             add_ignite(world,skill,3);
-        case .STABILIZE;
+        case .Haste;
 
-            add_stabilize(world,skill,3);
+            add_haste(world,skill,3, get_component(world, skill, Target_Entity).value );
+
     }
 }
 
@@ -164,7 +175,8 @@ broadcast_skill_targeting :: (networking_id: Networking_ID, position: Vector2) {
 
 #load "skill_fragments/ignite.jai";
 #load "skill_fragments/focus.jai";
-#load "skill_fragments/stabilize.jai";
+#load "skill_fragments/haste.jai";
 #load "skill_fragments/project.jai";
 #load "skill_fragments/touch.jai";
+#load "skill_fragments/self.jai";
 

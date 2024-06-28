@@ -32,7 +32,7 @@ spawn_enemy :: (world: *World, position: Vector2, networking_id: u64, type: Enem
     });
 
     add_components_from_bundle(world, entity, Follower.{
-        move_speed.speed = 3,
+        move_speed.base_value = 3,
         follow = .{
             mode = .TAG,
             tag = #run component_type_id(Player),
