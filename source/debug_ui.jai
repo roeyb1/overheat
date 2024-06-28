@@ -140,13 +140,13 @@ visualize_system_execution :: () {
                         ImGui.TableNextRow();
                         ImGui.TableNextColumn();
                         if ctid_index < it.def.component_reads.count {
-                            ImGui.Text("%", it.def.component_reads[ctid_index].name);
+                            ImGui.Text("%", it.def.component_reads[ctid_index].debug_name);
                         } else {
                             ImGui.Text("");
                         }
                         ImGui.TableNextColumn();
                         if ctid_index < it.def.component_writes.count {
-                            ImGui.Text("%", it.def.component_writes[ctid_index].name);
+                            ImGui.Text("%", it.def.component_writes[ctid_index].debug_name);
                         } else {
                             ImGui.Text("");
                         }

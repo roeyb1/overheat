@@ -102,7 +102,7 @@ add_system :: (phase: System_Phase, def: *System_Def) {
         if ctid.is_singleton remove ctid;
     }
 
-    quick_sort(def.archetype, (x) => x.hash);
+    quick_sort(def.archetype, (x) => x.unique_id);
 
     log("Registered system: %", system.debug_name);
 }

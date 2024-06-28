@@ -130,7 +130,7 @@ archetype_plus :: (stage: *Stage, ctids: [] Component_Type_ID, plus: Component_T
     new_types.allocator = temp;
     array_copy(*new_types, ctids);
     array_add(*new_types, plus);
-    quick_sort(new_types, (x) => x.hash);
+    quick_sort(new_types, (x) => x.unique_id);
 
     archetype, id := get_or_create_archetype(stage, new_types);
     return archetype, id;

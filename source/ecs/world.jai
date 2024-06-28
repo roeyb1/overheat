@@ -225,7 +225,7 @@ _spawn_entity :: (world: *World, initial_archetype: [] Component_Type_ID) -> Ent
     sorted_ctids: [..] Component_Type_ID;
     sorted_ctids.allocator = temp;
     array_copy(*sorted_ctids, initial_archetype);
-    quick_sort(sorted_ctids, (x) => x.hash);
+    quick_sort(sorted_ctids, (x) => x.unique_id);
 
     if world.should_defer {
         entity := add_entity(*world.deferred_stage, sorted_ctids);
