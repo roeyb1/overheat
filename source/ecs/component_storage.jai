@@ -49,13 +49,11 @@ component_type_id :: inline ($c: Type) -> Component_Type_ID {
     is_singleton :: #run has_note(ti, "SingletonComponent");
 
     UNIQUE_ID :: #run -> u64 {
-        NEXT_CTID += 1;
-        return NEXT_CTID;
+        return atomic_add(*NEXT_CTID, 1);
     }
 
-    // we use the type info pointer as the unique identifier for the ctid;
     return Component_Type_ID.{
-        unique_id = cast(u64) ti,
+        unique_id = UNIQUE_ID,
         runtime_size = ti.runtime_size,
         debug_name = ti.name,
         initializer = ti.initializer,
@@ -120,3 +118,4 @@ remove_row :: (cc: *Component_Container, row: s64) {
 }
 
 #import "Hash";
+#import "Atomics";
