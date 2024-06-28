@@ -37,7 +37,9 @@ PacketType :: enum u8 #specified {
     PLAYER_JOINED           :: 2;
     PLAYER_LEFT             :: 3;
     PLAYER_COMMANDS         :: 4;
-    ENEMY_INIT_DATA         :: 4;
+    ENEMY_INIT_DATA         :: 5;
+    PLAYER_SKILL_UPDATE     :: 6;
+    TARGETING_INFO          :: 7;      
 }
 
 /** Packet sent from the server to the client assigning it a player id. */
@@ -80,6 +82,24 @@ Enemy_Init_Data_Packet :: struct {
     type: Enemy_Type;
 }
 
+Player_Skill_Update_Packet :: struct {
+    PACKET_TYPE :: PacketType.PLAYER_SKILL_UPDATE;
+
+    networking_id: u64;
+
+    skill_to_update: s64;
+
+    skill_info: [..] Skill_Fragment;
+}
+
+Targeting_Info_Packet :: struct {
+    PACKET_TYPE :: PacketType.TARGETING_INFO;
+
+    networking_id: u64;
+
+    position: Vector2;
+}
+
 networking_init :: () -> bool {
     log("Initializing networking systems...");
 
@@ -88,11 +108,10 @@ networking_init :: () -> bool {
         return false;
     }
 
-    /*
-    Simulate lag
-    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Send, 30);
-    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Recv, 30);
-    */
+    //Simulate lag
+    //Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Send, 30);
+    //Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Recv, 30);
+    
 
     Utils.SetDebugOutputFunction(.Msg, gns_debug_callback);
 
@@ -646,6 +665,38 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
                     }
                 }
             }
+        case .PLAYER_SKILL_UPDATE;
+            player_skill_update: Player_Skill_Update_Packet;
+            byte_buffer_read(buffer, *player_skill_update);
+
+            for q : make_iter(*g_world, Networking_ID, Player, Skill_Inventory) {
+                networking_ids := query_get(q, Networking_ID);
+                skill_inventories := query_get(q, Skill_Inventory);
+
+                for 0..q.count-1 {
+                    if networking_ids[it].id == player_skill_update.networking_id {
+                        fragments := get_component(q.world,skill_inventories[it].skills[player_skill_update.skill_to_update],Fragments);
+                        array_copy(*fragments.value,player_skill_update.skill_info);
+                        log("% has changed skills to %.", networking_ids[it].id,fragments.value);
+                        break;
+                    }
+                }
+            }
+        case .TARGETING_INFO;
+        targeting_info: Targeting_Info_Packet;
+        byte_buffer_read(buffer, *targeting_info);
+
+        for q : make_iter(*g_world, Networking_ID, Player, Current_Target) {
+                networking_ids := query_get(q, Networking_ID);
+                current_targets := query_get(q, Current_Target);
+
+                for 0..q.count-1 {
+                    if networking_ids[it].id == targeting_info.networking_id {
+                        current_targets[it].value = targeting_info.position;
+                        break;
+                    }
+                }
+        }
         case;
     }
 }
@@ -658,6 +709,24 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             for * g_server.clients {
                 // let the client be authoritative about its movement, don't send movement packets back to the client they came from
                 if it.networking_id != player_commands_packet.networking_id {
+                    Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
+                }
+            }
+        case .PLAYER_SKILL_UPDATE;
+            player_skill_update: Player_Skill_Update_Packet;
+            byte_buffer_read(buffer, *player_skill_update);
+            for * g_server.clients {
+                // let the client be authoritative about its movement, don't send movement packets back to the client they came from
+                if it.networking_id != player_skill_update.networking_id {
+                    Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
+                }
+            }
+        case .TARGETING_INFO;
+            targeting_info: Targeting_Info_Packet;
+            byte_buffer_read(buffer, *targeting_info);
+            for * g_server.clients {
+                // let the client be authoritative about its movement, don't send movement packets back to the client they came from
+                if it.networking_id != targeting_info.networking_id {
                     Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
                 }
             }
