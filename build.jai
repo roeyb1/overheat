@@ -396,6 +396,9 @@ message_loop :: (w: Workspace) {
                     if has_note_substr(header, "System") {
                         array_add(*system_functions, header);
                     }
+                    if has_note_substr(header, "Event") {
+                        array_add(*event_functions, header);
+                    }
                 }
                 
             case .PHASE;
@@ -416,6 +419,10 @@ message_loop :: (w: Workspace) {
                     if !generated_system_functions {
                         generate_system_functions(message.workspace);
                         generated_system_functions = true;
+                    }
+                    if !generated_event_functions {
+                        generate_event_functions(message.workspace);
+                        generated_event_functions = true;
                     }
                 }
             }
@@ -489,7 +496,6 @@ sbprint :: print_to_builder;
         
 generate_system_functions :: (w: Workspace) {
     sb: String_Builder;
-    defer free_buffers(*sb);
 
     parse_system_phase :: (str: string) -> bool, string {
         found, left, right := split_from_left(str, #char "(");
@@ -578,6 +584,42 @@ DONE
     add_build_string(builder_to_string(*sb), w);
 }
 
+generate_event_functions :: (w: Workspace) {
+    parse_event_tag :: (str: string) -> (valid: bool, event_id: string, optional_component_type: string) {
+        found, left, right := split_from_left(str, #char "(");
+        assert(found);
+        if left != "Event" {
+            return false, "", "";
+        }
+
+        {
+            found, left, right := split_from_left(right, #char ",");
+
+            // if the comma wasn't found, there's no optional type but it's still perfectly valid
+            if !found {
+                left.count -= 1;
+                return true, left, "";
+            }
+
+            // remove the closing parenthesis and return the view:
+            right.count -= 1;
+            return true, left, right;
+        }
+    }
+
+    sb: String_Builder;
+
+    for event_functions {
+        // @Event(EventID[,ComponentType])
+        assert(it.notes.count >= 1);
+        event_valid, event_id, optional_ctid := parse_event_tag(it.notes[0].text);
+        assert(event_valid, "Event note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[0].text);
+
+    }
+
+    add_build_string(builder_to_string(*sb), w);
+}
+
 unit_test_functions: [..] *Code_Procedure_Header;
 generated_unit_test_actions := false;
 
@@ -586,6 +628,9 @@ has_run_procedures := false;
 
 system_functions: [..] *Code_Procedure_Header;
 generated_system_functions := false;
+
+event_functions: [..] *Code_Procedure_Header;
+generated_event_functions := false;
 
 
 is_absolute_path :: (path: string) -> bool { // This routine is probably not as correct as we'd like. We'd like to put in a better one! But maybe we will stop doing the cwd thing, or do it differently; hard to say.

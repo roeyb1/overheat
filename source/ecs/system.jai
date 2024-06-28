@@ -279,7 +279,6 @@ execute_system :: (sys: System, world: *World) {
 ECS_Iter :: struct {
     world: *World;
     archetype: [] Component_Type_ID;
-
     archetype_ids: [] s64;
 }
 

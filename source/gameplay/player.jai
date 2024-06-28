@@ -133,9 +133,5 @@ broadcast_local_player_commands :: (q: Query) {
     }
 } @System(OnUpdate) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
 
-trigger_player_attack :: (world: *World) {
-    log("Player attacked!");
-} @Event @Write() @Read()
-
 
 #import "Math";

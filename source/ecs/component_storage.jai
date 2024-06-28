@@ -40,7 +40,7 @@ compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
     return true;
 }
 
-NEXT_CTID : u64 = 0;
+NEXT_CTID : u64 = 1;
 
 component_type_id :: inline ($c: Type) -> Component_Type_ID {
     assert(type_info(c).type == .STRUCT, "Only struct types are supported as component types!");
