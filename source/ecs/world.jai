@@ -65,6 +65,13 @@ destroy_entity :: (world: *World, entity: Entity) {
         destroy_entity(world, it);
     }
 
+    record, success := table_find(*world.stage.entity_records, entity.raw);
+    assert(success);
+
+    for world.stage.archetypes[record.archetype_id].type_ids {
+        broadcast_on_component_remove(world, entity, it);
+    }
+
     remove_entity(*world.stage, entity);
 }
 
@@ -92,10 +99,12 @@ get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Comp
     return get_component(world, entity, #run component_type_id(Component_Type));
 }
 
-add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *void{
+add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID, broadcast := true) -> *void{
     deferred, found := table_find(*world.deferred_entities, entity.raw);
     if found {
-        return add_component(*world.deferred_stage, deferred, ctid);
+        result := add_component(*world.deferred_stage, deferred, ctid);
+        if broadcast broadcast_on_component_add(world, entity, ctid);
+        return result;
     }
 
     if world.should_defer {
@@ -105,19 +114,20 @@ add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *vo
     }
     
     result := add_component(*world.stage, entity, ctid);
-    broadcast_on_component_add(world, entity, ctid);
+    if broadcast broadcast_on_component_add(world, entity, ctid);
     return result;
 }
 
-add_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+add_component :: (world: *World, entity: Entity, $Component_Type: Type, broadcast := true) -> *Component_Type {
     ctid :: #run component_type_id(Component_Type);
 
-    return add_component(world, entity, ctid);
+    return add_component(world, entity, ctid, broadcast);
 }
 
 add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_value: Component_Type) -> *Component_Type {
-    result := add_component(world, entity, Component_Type);
+    result := add_component(world, entity, Component_Type, broadcast = false);
     << result = initial_value;
+    broadcast_on_component_add(world, entity, #run component_type_id(Component_Type));
     return result;
 }
 
@@ -219,7 +229,10 @@ spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
 remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> bool {
     deferred, found := table_find(*world.deferred_entities, entity.raw);
     if found {
-        return remove_component(*world.deferred_stage, deferred, ctid);
+        removed := remove_component(*world.deferred_stage, deferred, ctid);
+        if removed {
+            broadcast_on_component_remove(world, entity, ctid);
+        }
     }
 
     if world.should_defer {
