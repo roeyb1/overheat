@@ -35,16 +35,7 @@ follow_entity :: (q: Query) {
             assert(target_pos_component != null, "Attempting to follow an entity that doesn't have a position component!");
             target_pos = target_pos_component.value;
         } else {
-            Params :: struct {
-                world: *World;
-                type: Component_Type_ID;
-            }
-            params := Params.{q.world, followers[it].tag};
-
-            entity, found := find_nearest_matching_predicate(get_singleton(q.world, Collision_Spatial), positions[it], q.entities[it], (entity: Entity, data: *void) -> bool {
-                params := cast(*Params) data;
-                return has_component(params.world, entity, params.type);
-            }, *params);
+            entity, found := find_nearest_with_tag(q.world, positions[it], q.entities[it], followers[it].tag);
 
             if found {
                 target_pos_component := get_component(q.world, entity, Position);
@@ -61,3 +52,33 @@ follow_entity :: (q: Query) {
         }
     }
 } @System(PreUpdate) @Write(Velocity) @Read(Follow,Move_Speed,Position,Collision_Spatial)
+
+#scope_file
+
+find_nearest_with_tag :: (world: *World, point: Vector2, self: Entity, ctid: Component_Type_ID) -> Entity, bool {
+    // @Speed accelerate with AABB tree
+    candidates: [..] Entity;
+    candidates.allocator = temp;
+    distances: [..] float;
+    distances.allocator = temp;
+
+
+    for q : make_iter_raw(world, Component_Type_ID.[#run component_type_id(Position), ctid]) {
+        positions := query_get(q, Position);
+
+        array_append(*candidates, q.entities);
+        for 0..q.count-1 {
+            array_add(*distances, length(point - positions[it]));
+        }
+    }
+    
+    if distances.count == 0 {
+        return INVALID_ENTITY, false;
+    }
+
+    min_index := 0;
+    for 0..distances.count-1 {
+        if distances[it] < distances[min_index] then min_index = it;
+    }
+    return candidates[min_index], true;
+}
