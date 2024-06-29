@@ -31,6 +31,14 @@ intersects :: (a: AABB, b: AABB) -> bool {
     return true;
 }
 
+operator+ :: inline (a: AABB, b: AABB) -> AABB {
+    return .{min(a.min, b.min), max(a.max, b.max)};
+}
+
+area :: inline (aabb: AABB) -> float {
+    return (aabb.max.x - aabb.min.x) * (aabb.max.y - aabb.min.y);
+}
+
 translate:: inline (using box: AABB, translation: Vector2) -> AABB {
     return .{min = min + translation, max = max + translation };
 }
