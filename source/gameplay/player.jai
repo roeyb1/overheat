@@ -24,7 +24,6 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 
     inventory := add_component(*g_world, entity, Inventory);
     // #todo: at some point we should load the player's saved inventory off the disk.
-    populate_inventory(inventory);
 
     // if this is a local player:
     if g_client.local_client_id == networking_id {

@@ -48,96 +48,100 @@ remove_item_storage :: (inventory : *Inventory, index: int){
     log("REMOVED: Item % from storage", index);
 }
 
-// Used later when we have a proper invenotry UI -> assigned "I" as open inventory 
+is_toggle : bool = false;
 OpenInventory :: (key_state: Key_Current_State){
-    log("ATTENTION: I have opened the inventory");
-}
+    if key_state & .START != 0  {
+        is_open = !is_open;
+    }
+}@RegisterInputAction
 
 count : int = 0;
+
 show_inventory_system :: (world: *World) {
-    if ImGui.Begin("Inventory") {
-        if ImGui.Button("Add Item Equipment") {
-        for Query(Local_Player, *Inventory).{world = world} { 
-                add_item_equipment(it.inventory, .{.HELMET, sprint("+50 power GIGA BOSS %", count)});
-                count = count + 1;
-                log("ADDED: new helmet @equipemnt");
-            }
-        }
-
-        ImGui.SameLine();
-
-        if(ImGui.Button("Add Item Storage")){
+    if is_open {
+        if ImGui.Begin("Inventory", *is_open) {
+            if ImGui.Button("Add Item Equipment") {
             for Query(Local_Player, *Inventory).{world = world} { 
-                add_item_storage(it.inventory, .{.HELMET, sprint("+50 power GIGA BOSS %", count)});
-                count = count + 1;
-                log("ADDED: new helmet @storage");
-            }
-        }
-
-        ImGui.SameLine();
-
-        if(ImGui.Button("Remove Helmet")){
-            for Query(Local_Player, *Inventory).{world = world}
-                remove_item_equipment(it.inventory, .HELMET);
-
-            log("REMOVED: helmet @equipment");
-        }
-
-        ImGui.SameLine();   
-
-        if(ImGui.Button("Remove Necklace")){
-            for Query(Local_Player, *Inventory).{world = world}
-                remove_item_equipment(it.inventory, .NECKLACE);
-
-            log("REMOVED: necklace @equipment");
-        }
-        
-        if ImGui.BeginTable("Inventory Table", 2) {
-            ImGui.TableSetupColumn("Item Type");
-            ImGui.TableSetupColumn("Item Name");
-            ImGui.TableHeadersRow();
-
-            for Query(Local_Player, *Inventory).{world = world} { 
-                item_index : int = 0; 
-                for *item : it.inventory.equipment {
-                    ImGui.TableNextRow();
-
-                    ImGui.TableSetColumnIndex(0);
-                    ImGui.Text("%", item.type);
-                    ImGui.TableSetColumnIndex(1);
-                    ImGui.Text("%", item.name);
-
+                    add_item_equipment(it.inventory, .{.HELMET, sprint("+50 power GIGA BOSS %", count)});
+                    count = count + 1;
+                    log("ADDED: new helmet @equipemnt");
                 }
             }
-            ImGui.EndTable();
-        }
-    
-        ImGui.Text("------------Storage------------");
-        if ImGui.BeginTable("Storage Table", 3) {
-            ImGui.TableSetupColumn("Item Type");
-            ImGui.TableSetupColumn("Item Name");
-            ImGui.TableSetupColumn(" ");
-            ImGui.TableHeadersRow();
 
-            for query, entity : Query(Local_Player, *Inventory).{world = world}  { 
-                for 0..query.inventory.storage.count - 1 {
-                    ImGui.TableNextRow();
+            ImGui.SameLine();
 
-                    ImGui.TableSetColumnIndex(0);
-                    ImGui.Text("%", query.inventory.storage[it].type);
-                    ImGui.TableSetColumnIndex(1);
-                    ImGui.Text("%", query.inventory.storage[it].name);
-                    ImGui.TableSetColumnIndex(2);
-                    
-                    if ImGui.Button(temp_c_string(tprint("Remove##%", it))) {
-                        remove_item_storage(query.inventory, it);
+            if(ImGui.Button("Add Item Storage")){
+                for Query(Local_Player, *Inventory).{world = world} { 
+                    add_item_storage(it.inventory, .{.HELMET, sprint("+50 power GIGA BOSS %", count)});
+                    count = count + 1;
+                    log("ADDED: new helmet @storage");
+                }
+            }
+
+            ImGui.SameLine();
+
+            if(ImGui.Button("Remove Helmet")){
+                for Query(Local_Player, *Inventory).{world = world}
+                    remove_item_equipment(it.inventory, .HELMET);
+
+                log("REMOVED: helmet @equipment");
+            }
+
+            ImGui.SameLine();   
+
+            if(ImGui.Button("Remove Necklace")){
+                for Query(Local_Player, *Inventory).{world = world}
+                    remove_item_equipment(it.inventory, .NECKLACE);
+
+                log("REMOVED: necklace @equipment");
+            }
+            
+            if ImGui.BeginTable("Inventory Table", 2) {
+                ImGui.TableSetupColumn("Item Type");
+                ImGui.TableSetupColumn("Item Name");
+                ImGui.TableHeadersRow();
+
+                for Query(Local_Player, *Inventory).{world = world} { 
+                    item_index : int = 0; 
+                    for *item : it.inventory.equipment {
+                        ImGui.TableNextRow();
+
+                        ImGui.TableSetColumnIndex(0);
+                        ImGui.Text("%", item.type);
+                        ImGui.TableSetColumnIndex(1);
+                        ImGui.Text("%", item.name);
+
                     }
                 }
+                ImGui.EndTable();
             }
-            ImGui.EndTable();
+        
+            ImGui.Text("------------Storage------------");
+            if ImGui.BeginTable("Storage Table", 3) {
+                ImGui.TableSetupColumn("Item Type");
+                ImGui.TableSetupColumn("Item Name");
+                ImGui.TableSetupColumn(" ");
+                ImGui.TableHeadersRow();
+
+                for query, entity : Query(Local_Player, *Inventory).{world = world}  { 
+                    for 0..query.inventory.storage.count - 1 {
+                        ImGui.TableNextRow();
+
+                        ImGui.TableSetColumnIndex(0);
+                        ImGui.Text("%", query.inventory.storage[it].type);
+                        ImGui.TableSetColumnIndex(1);
+                        ImGui.Text("%", query.inventory.storage[it].name);
+                        ImGui.TableSetColumnIndex(2);
+                        
+                        if ImGui.Button(temp_c_string(tprint("Remove##%", it))) {
+                            remove_item_storage(query.inventory, it);
+                        }
+                    }
+                }
+                ImGui.EndTable();
+            }
+
         }
-
+        ImGui.End();
     }
-    ImGui.End();
-
 } @System
