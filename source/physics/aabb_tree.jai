@@ -159,4 +159,4 @@ fixup_upwards :: (tree: *AABB_Tree, node: s64) {
 make_node :: (tree: *AABB_Tree) -> s64 {
     root: *Tree_Node = array_add(*tree.nodes);
     return tree.nodes.count-1;
-}
+} @NoProfile

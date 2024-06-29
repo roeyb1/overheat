@@ -85,7 +85,7 @@ detect_collisions :: (q: Query) {
         translated_aabb := translate(colliders[it], positions[it]);
         hits := generate_hit_pairs_for_entity(spatial, translated_aabb, q.entities[it], invokers[it].id);
 
-        array_append(*hit_list.pairs, hits);
+        //array_append(*hit_list.pairs, hits);
     }
 } @System(OnValidate) @Write(Hit_Result_List) @Read(Collision_Invoker,Position,Collider_AABB,Collision_Spatial)
 
@@ -130,30 +130,7 @@ generate_hit_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, sel
     result: [..] Hit_Pair;
     result.allocator = temp;
 
-    for other : spatial.bounds {
-        if intersects(bounds, other) && spatial.entities[it_index] != self {
-            // track hit pairs for collision resolution, but only if they are blocking hits, otherwise we just emit an overlap event:
-            // @todo: actually emit events for overlaps
-            if other.blocking {
-                pair: *Hit_Pair = array_add(*result);
-                if spatial.sort_keys[it_index] == 0 || sort_key < spatial.sort_keys[it_index] {
-                    pair.sort_key = sort_key;
-                    pair.a = self;
-                    pair.a_bounds = bounds;
-
-                    pair.b = spatial.entities[it_index];
-                    pair.b_bounds = other;
-                } else {
-                    pair.sort_key = spatial.sort_keys[it_index];
-                    pair.b = self;
-                    pair.b_bounds = bounds;
-
-                    pair.a = spatial.entities[it_index];
-                    pair.a_bounds = other;
-                }
-            }
-        }
-    }
+    hits := find_overlaps(*spatial.aabb_tree, bounds, self);
 
     return result;
 }
