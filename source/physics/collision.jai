@@ -63,7 +63,9 @@ build_collision_spatial :: (q: Query) {
         bounds := translate(colliders[it], positions[it]);
         array_add(*spatial.bounds, .{bounds, colliders[it].blocking});
 
-        insert(*spatial.aabb_tree, bounds, q.entities[it]);
+        if colliders[it].blocking {
+            insert(*spatial.aabb_tree, bounds, q.entities[it]);
+        }
 
         if invokers {
             array_add(*spatial.sort_keys, invokers[it].id);
@@ -85,7 +87,7 @@ detect_collisions :: (q: Query) {
         translated_aabb := translate(colliders[it], positions[it]);
         hits := generate_hit_pairs_for_entity(spatial, translated_aabb, q.entities[it], invokers[it].id);
 
-        //array_append(*hit_list.pairs, hits);
+        array_append(*hit_list.pairs, hits);
     }
 } @System(OnValidate) @Write(Hit_Result_List) @Read(Collision_Invoker,Position,Collider_AABB,Collision_Spatial)
 
@@ -131,6 +133,15 @@ generate_hit_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, sel
     result.allocator = temp;
 
     hits := find_overlaps(*spatial.aabb_tree, bounds, self);
+
+    for hits {
+        pair: *Hit_Pair = array_add(*result);
+        pair.a = self;
+        pair.a_bounds = bounds;
+
+        pair.b = it.entity;
+        pair.b_bounds = it.bounds;
+    }
 
     return result;
 }

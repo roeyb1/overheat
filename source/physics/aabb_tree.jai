@@ -17,6 +17,11 @@ Tree_Node :: struct {
     entity: Entity = INVALID_ENTITY;
 }
 
+Overlap_Result :: struct {
+    entity: Entity;
+    bounds: AABB;
+}
+
 insert :: (tree: *AABB_Tree, bounds: AABB, entity: Entity) {
     node_index := make_leaf(tree, bounds, entity);
 
@@ -28,8 +33,8 @@ tree_reset :: (tree: *AABB_Tree) {
     tree.root_index = -1;
 }
 
-find_overlaps :: (tree: *AABB_Tree, bounds: AABB, self: Entity = INVALID_ENTITY) -> [] Entity {
-    result: [..] Entity;
+find_overlaps :: (tree: *AABB_Tree, bounds: AABB, self: Entity = INVALID_ENTITY) -> [] Overlap_Result {
+    result: [..] Overlap_Result;
     result.allocator = temp;
 
     stack: [..] s64;
@@ -44,7 +49,9 @@ find_overlaps :: (tree: *AABB_Tree, bounds: AABB, self: Entity = INVALID_ENTITY)
 
         if intersects(tree.nodes[node].bounds, bounds) {
             if tree.nodes[node].is_leaf && tree.nodes[node].entity != self {
-                array_add(*result, tree.nodes[node].entity);
+                overlap := array_add(*result);
+                overlap.entity = tree.nodes[node].entity;
+                overlap.bounds = tree.nodes[node].bounds;
             } else {
                 array_add(*stack, tree.nodes[node].left);
                 array_add(*stack, tree.nodes[node].right);
