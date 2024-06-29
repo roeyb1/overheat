@@ -45,7 +45,7 @@ remove_buff :: (world: *World, attrib: *Attribute, modifier: Attribute_Modifier)
     array_unordered_remove_by_value(*attrib.multipliers, modifier.multipliers);
     compute_attribute(attrib);
 }
-
+/*
 apply_move_speed_modifier :: (q: Query) {
     modifiers := query_get(q, Move_Speed_Modifier);
     
@@ -58,7 +58,14 @@ apply_move_speed_modifier :: (q: Query) {
     }
     
 
-} @System(PreUpdate) @Write() @Read(Move_Speed_Modifier) @OptionalWrite(Move_Speed)
+} @System(PreUpdate) @Write() @Read(Move_Speed_Modifier) @OptionalWrite(Move_Speed)*/
+
+apply_move_speed_modifier :: (world: *World, entity: Entity) {
+    print("hello i am % \n",get_component(world, entity, Move_Speed_Modifier).multipliers);
+    parent := get_parent(world, entity);
+    move_speed := (get_component(world, parent, Move_Speed));
+    apply_buff(world, move_speed, get_component(world, entity, Move_Speed_Modifier));
+} @Event(EcsOnAdd,Move_Speed_Modifier)
 
 reset_move_speed :: (q: Query) {
     speeds := query_get(q, Move_Speed);
