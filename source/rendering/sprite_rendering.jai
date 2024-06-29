@@ -248,6 +248,13 @@ SpriteDrawBucket :: struct {
 }
 
 
+sprite_sort_predicate :: (a: SpriteDrawData, b: SpriteDrawData) -> s64 {
+    if a.z_order == b.z_order {
+        return cast(s64) a.sheet - cast(s64) b.sheet;
+    }
+    return cast(s64) a.z_order - cast(s64) b.z_order;
+} @NoProfile
+
 collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[..] SpriteDrawBucket, min_sprite_z_layer: u32, max_sprite_z_layer: u32) {
     // #todo: automatically register all sprites instead of doing this by specific entity types:
     add_sprite_draw :: (out_draws: *[..] SpriteDrawData, sprite: Sprite, position: Vector2) {
@@ -280,14 +287,7 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
     // First sort the draw calls by z-order
     // then sort them by spritesheet so we can batch each call of a given sheet in the same instanced draw call:
     {
-        sort_predicate :: (a: SpriteDrawData, b: SpriteDrawData) -> s64 {
-            if a.z_order == b.z_order {
-                return cast(s64) a.sheet - cast(s64) b.sheet;
-            }
-            return cast(s64) a.z_order - cast(s64) b.z_order;
-        } @NoProfile
-
-        quick_sort(<< out_draws, sort_predicate);
+        quick_sort(<< out_draws, sprite_sort_predicate);
     }
 
     // sort the draws into buckets by spritesheet:

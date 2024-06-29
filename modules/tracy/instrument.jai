@@ -63,7 +63,7 @@ message :: (p: *Metaprogram_Plugin, message: *Message) {
         h := body.header;
         assert(h != null);
 
-        if h.procedure_flags & (h.procedure_flags.POLYMORPHIC | .COMPILER_GENERATED | .COMPILE_TIME_ONLY | .QUICK | .TYPE_ONLY | .MACRO) continue;  // @Incomplete: Need maybe we want a user-generated compile_time flag; that would be different than this, which is to detect #compiler.
+        if h.procedure_flags & (h.procedure_flags.POLYMORPHIC | .COMPILER_GENERATED | .COMPILE_TIME_ONLY | .QUICK | .TYPE_ONLY | .MACRO | .SYNTACTICALLY_MARKED_AS_INLINE_YES) continue;  // @Incomplete: Need maybe we want a user-generated compile_time flag; that would be different than this, which is to detect #compiler.
 
         file := body.enclosing_load;
 
@@ -86,11 +86,17 @@ message :: (p: *Metaprogram_Plugin, message: *Message) {
         if tc.subexpressions.count < plugin.min_size continue; // Too small!
         if plugin.should_instrument != null && !plugin.should_instrument(body) continue;
 
+        skip := false;
         for h.notes {
             if it.text == "NoProfile" {
                 log("[Tracy] Skipping \"%\" due to NoProfile note.\n", h.name);
-                continue;
+                skip = true;
+                break;
             }
+        }
+
+        if skip {
+            continue;
         }
 
         new_statements : [..] *Code_Node;

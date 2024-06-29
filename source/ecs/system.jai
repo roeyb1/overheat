@@ -282,6 +282,14 @@ ECS_Iter :: struct {
     archetype_ids: [] s64;
 }
 
+make_iter_raw :: (world: *World, ctid: [] Component_Type_ID) -> ECS_Iter {
+    iter: ECS_Iter;
+    iter.world = world;
+    iter.archetype = ctid;
+    iter.archetype_ids = find_or_create_cached_archetypes_for_ctids(*world.stage, iter.archetype);
+    return iter;
+}
+
 make_iter :: (world: *World, $component_types: ..Type) -> ECS_Iter {
     #insert -> string {
         sb: String_Builder;
@@ -293,11 +301,7 @@ make_iter :: (world: *World, $component_types: ..Type) -> ECS_Iter {
         return builder_to_string(*sb);
     }
 
-    iter: ECS_Iter;
-    iter.world = world;
-    iter.archetype = archetype;
-    iter.archetype_ids = find_or_create_cached_archetypes_for_ctids(*world.stage, iter.archetype);
-    return iter;
+    return make_iter_raw(world, archetype);
 }
 
 for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {

@@ -29,7 +29,15 @@ intersects :: (a: AABB, b: AABB) -> bool {
     if a.max.x < b.min.x || a.min.x > b.max.x then return false;
     if a.max.y < b.min.y || a.min.y > b.max.y then return false;
     return true;
-}
+} @NoProfile
+
+operator+ :: inline (a: AABB, b: AABB) -> AABB {
+    return .{min(a.min, b.min), max(a.max, b.max)};
+} @NoProfile
+
+area :: inline (aabb: AABB) -> float {
+    return (aabb.max.x - aabb.min.x) * (aabb.max.y - aabb.min.y);
+} @NoProfile
 
 translate:: inline (using box: AABB, translation: Vector2) -> AABB {
     return .{min = min + translation, max = max + translation };

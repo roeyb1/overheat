@@ -29,6 +29,8 @@ Collision_Spatial :: struct @SingletonComponent {
     bounds: [..] Collider_AABB;
     entities: [..] Entity;
     sort_keys: [..] u64; // 0 everywhere except when an entity has a unique networking key
+
+    aabb_tree: AABB_Tree;
 }
 
 Hit_Result_List :: struct @SingletonComponent {
@@ -42,6 +44,7 @@ reset_collision_spatial :: (q: Query) {
     spatial.entities.count = 0;
     spatial.bounds.count = 0;
     spatial.sort_keys.count = 0;
+    tree_reset(*spatial.aabb_tree);
     // #todo: only update the pieces that changed using events
 } @System(OnUpdate) @Write(Collision_Spatial) @Read()
 
@@ -57,7 +60,12 @@ build_collision_spatial :: (q: Query) {
     array_reserve(*spatial.bounds, spatial.bounds.count + q.count);
     array_reserve(*spatial.sort_keys, spatial.sort_keys.count + q.count);
     for 0..q.count-1 {
-        array_add(*spatial.bounds, .{translate(colliders[it], positions[it]), colliders[it].blocking});
+        bounds := translate(colliders[it], positions[it]);
+        array_add(*spatial.bounds, .{bounds, colliders[it].blocking});
+
+        if colliders[it].blocking {
+            insert(*spatial.aabb_tree, bounds, q.entities[it]);
+        }
 
         if invokers {
             array_add(*spatial.sort_keys, invokers[it].id);
@@ -124,29 +132,15 @@ generate_hit_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, sel
     result: [..] Hit_Pair;
     result.allocator = temp;
 
-    for other : spatial.bounds {
-        if intersects(bounds, other) && spatial.entities[it_index] != self {
-            // track hit pairs for collision resolution, but only if they are blocking hits, otherwise we just emit an overlap event:
-            // @todo: actually emit events for overlaps
-            if other.blocking {
-                pair: *Hit_Pair = array_add(*result);
-                if spatial.sort_keys[it_index] == 0 || sort_key < spatial.sort_keys[it_index] {
-                    pair.sort_key = sort_key;
-                    pair.a = self;
-                    pair.a_bounds = bounds;
+    hits := find_overlaps(*spatial.aabb_tree, bounds, self);
 
-                    pair.b = spatial.entities[it_index];
-                    pair.b_bounds = other;
-                } else {
-                    pair.sort_key = spatial.sort_keys[it_index];
-                    pair.b = self;
-                    pair.b_bounds = bounds;
+    for hits {
+        pair: *Hit_Pair = array_add(*result);
+        pair.a = self;
+        pair.a_bounds = bounds;
 
-                    pair.a = spatial.entities[it_index];
-                    pair.a_bounds = other;
-                }
-            }
-        }
+        pair.b = it.entity;
+        pair.b_bounds = it.bounds;
     }
 
     return result;
@@ -178,3 +172,5 @@ find_nearest_matching_predicate :: (spatial: *Collision_Spatial, point: Vector2,
     }
     return candidates[min_index], true;
 }
+
+#load "aabb_tree.jai";
