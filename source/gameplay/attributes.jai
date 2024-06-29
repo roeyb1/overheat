@@ -54,9 +54,11 @@ apply_move_speed_modifier :: (q: Query) {
         move_speed := get_component(q.world, parent, Move_Speed);
 
         apply_buff(q.world, move_speed, modifiers[it]);
+        //log("hello i am % and my speed is %", get_component(q.world, parent, Name).name,get_component(q.world, parent, Move_Speed).value);
     }
+    
 
-} @System(PreUpdate) @Write(Move_Speed) @Read(Move_Speed_Modifier) @OptionalWrite(Move_Speed)
+} @System(PreUpdate) @Write() @Read(Move_Speed_Modifier) @OptionalWrite(Move_Speed)
 
 reset_move_speed :: (q: Query) {
     speeds := query_get(q, Move_Speed);
