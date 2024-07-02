@@ -84,6 +84,8 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
 
     initialize_skills(*g_world, entity, 5, networking_id);
 
+    compute_attribute(get_component(*g_world,entity,Move_Speed));
+
     return entity;
 }
 

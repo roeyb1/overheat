@@ -10,6 +10,19 @@ Move_Speed :: struct @Component {
     using #as attrib: Attribute;
 }
 
+
+//will need a better way of stacking and not stacking effects
+EffectIdentifier :: enum {
+    HASTE;
+}
+
+Effect_Identifier :: struct @Component {
+    value: EffectIdentifier;
+}
+
+Stackable :: struct @Component {}
+
+
 Attribute_Modifier :: struct {
     multipliers: float;
     adders: float;
@@ -60,13 +73,49 @@ apply_move_speed_modifier :: (q: Query) {
 
 } @System(PreUpdate) @Write() @Read(Move_Speed_Modifier) @OptionalWrite(Move_Speed)*/
 
-apply_move_speed_modifier :: (world: *World, entity: Entity) {
-    print("hello i am % \n",get_component(world, entity, Move_Speed_Modifier).multipliers);
+
+remove_move_speed_modifier :: (world: *World, entity: Entity) {
     parent := get_parent(world, entity);
     move_speed := (get_component(world, parent, Move_Speed));
+    remove_buff(world, move_speed, get_component(world, entity, Move_Speed_Modifier));
+    print("bye i am % \n",move_speed.value);
+} @Event(EcsOnRemove,Move_Speed_Modifier)
+
+apply_move_speed_modifier :: (world: *World, entity: Entity) {
+
+
+    parent := get_parent(world, entity);
+
+/*
+    if !get_component(world, entity, Stackable) {
+        log("hi there");
+        for q: make_children_iter(world,parent,Move_Speed_Modifier) {
+            log("peepeepoopoo");
+        }
+
+
+    }
+
+            for q : make_children_iter(world, parent, Name) {
+            names := query_get(q, Name);
+            for 0..q.count-1 {
+                log("CHILD COMPONENT %", names[it]);
+            }
+        }*/
+
+    iter := make_children_iter(world, parent, Name);
+    for iter {
+    log("hi there");
+    }
+
+    move_speed := (get_component(world, parent, Move_Speed));
     apply_buff(world, move_speed, get_component(world, entity, Move_Speed_Modifier));
+    print("hello i am % \n",get_component(world, parent, Name).name);
 } @Event(EcsOnAdd,Move_Speed_Modifier)
 
+
+
+/*
 reset_move_speed :: (q: Query) {
     speeds := query_get(q, Move_Speed);
     for 0..q.count-1 {
@@ -74,6 +123,6 @@ reset_move_speed :: (q: Query) {
         speeds[it].adders.count = 0;
         compute_attribute(*speeds[it]);
     }
-} @System(PostUpdate) @Write(Move_Speed) @Read() 
+} @System(PostUpdate) @Write(Move_Speed) @Read() */
 
 
