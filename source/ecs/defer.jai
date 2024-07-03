@@ -35,10 +35,6 @@ process_deferred_operations :: (world: *World) {
 
                     record, success := table_find(*world.stage.entity_records, it.entity.raw);
                     assert(success);
-
-                    for ctid : world.stage.archetypes[record.archetype_id].type_ids {
-                        broadcast_on_component_add(world, it.entity, ctid);
-                    }
                 }
             case .REMOVE_COMPONENT;
                 // it's possible that the entity was destroyed before component removal was queued

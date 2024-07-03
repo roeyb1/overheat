@@ -259,17 +259,17 @@ _spawn_entity :: (world: *World, initial_archetype: [] Component_Type_ID) -> Ent
     array_copy(*sorted_ctids, initial_archetype);
     quick_sort(sorted_ctids, (x) => x.unique_id);
 
+    entity: Entity;
     if world.should_defer {
-        reserved := add_entity(*world.stage, .[]);
+        entity = add_entity(*world.stage, .[]);
 
-        entity := add_entity(*world.deferred_stage, sorted_ctids);
+        deferred_entity := add_entity(*world.deferred_stage, sorted_ctids);
 
-        array_add(*world.deferred_ops, .{.SPAWN, reserved, .{}, null});
-        table_add(*world.deferred_entities, reserved.raw, entity);
-        return reserved;
+        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}, null});
+        table_add(*world.deferred_entities, entity.raw, deferred_entity);
+    } else {
+        entity = add_entity(*world.stage, sorted_ctids);
     }
-
-    entity := add_entity(*world.stage, sorted_ctids);
 
     for initial_archetype {
         broadcast_on_component_add(world, entity, it);
