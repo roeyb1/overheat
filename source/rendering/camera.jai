@@ -34,7 +34,7 @@ update_camera_positions :: (q: Query) {
     camera := query_get(q, Camera);
 
     for 0..q.count-1 {
-        if !is_entity_valid(q.world, camera[it].entity_to_track) continue;
+        if !is_valid(q.world, camera[it].entity_to_track) continue;
 
         target_location := get_component(q.world, camera[it].entity_to_track, Position);
         assert(target_location != null);

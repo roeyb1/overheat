@@ -12,6 +12,18 @@ Stage :: struct {
     archetype_cache: Table([] Component_Type_ID, [..] s64, given_compare_function=compare_ctids);
 }
 
+Entity_Record :: struct {
+    archetype_id: s64;
+    row: s64;
+}
+
+is_valid :: (stage: *Stage, entity: Entity) -> bool {
+    if entity.index == INVALID_ENTITY_INDEX then return false;
+    if entity.index >= stage.entities.count then return false;
+    if entity.generation != stage.entities[entity.index].generation then return false;
+    return true;
+}
+
 add_entity :: (stage: *Stage, ctids: [] Component_Type_ID) -> Entity {
     new_entity: *Entity;
     if stage.free_entity_indices.count > 0 {

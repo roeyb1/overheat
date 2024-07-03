@@ -3,30 +3,60 @@
  * A game may create multiple worlds, if needed, but there should only be one global game world which represents the main game state.
  */
 World :: struct {
+    /** The ECS stage where the majority of active game data resides. Queries will only ever iterate over this stage */
     stage: Stage;
+    /**
+     * The deferred stage is the place where ecs spawns and additions are stored temporarily while we are iterating over queries.
+     * This happens to prevent additions from invalidating iterators or pointers to components while within system execution.
+     */
     deferred_stage: Stage;
 
+    /**
+     * Stores all instances of singleton components.
+     */
     singletons: Singleton_Storage;
 
+    /**
+     * The list of all deferred ecs operations that have yet to be processed into the main stage.
+     */
     deferred_ops: [..] Deferred_ECS_Operation;
 
+    /**
+     * Maps a placeholder raw entity id to an entity in the deferred stage.
+     */
     deferred_entities: Table(s64, Entity);
 
+    /**
+     * Flag that indicates if ecs operations will execute in their deferred mode or active mode.
+     * This is always set to true during query iteration.
+     */
     should_defer: bool = false;
 }
 
-Entity_Record :: struct {
-    archetype_id: s64;
-    row: s64;
+/**
+ * Checks if an entity handle is still valid (that entity still exists in the world) by checking the generational index against the current generation in the entities array.
+ * @return true if the entity handle is valid for this world.
+ */
+is_valid :: (world: *World, entity: Entity) -> bool {
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return is_valid(*world.deferred_stage, deferred);
+    } else {
+        return is_valid(*world.stage, entity);
+    }
 }
 
-is_entity_valid :: (world: *World, entity: Entity) -> bool {
-    if entity.index == INVALID_ENTITY_INDEX then return false;
-    if entity.index >= world.stage.entities.count then return false;
-    if entity.generation != world.stage.entities[entity.index].generation then return false;
-    return true;
-}
-
+/**
+ * Spawns a new entity in the world with a given set of components already attached.
+ * The operation may be deferred, if the world is currently iterating over a query set. If this is the case,
+ * a consistent entity handle will be returned, and all future calls to add_component/get_component/remove_component will
+ * forward to a behind-the-scenes deferred entity handle with the actual component data. Once the query set is resolved, the deferred
+ * entity spawn will be processed and fully added to the main scene.
+ *
+ * Calling `spawn_entity` with component types will broadcast the EcsOnAdd event for each component time immediately when the entity is spawned.
+ * 
+ * @return Returns a unique entity handle to the newly spawned entity.
+ */
 spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
     #insert -> string {
         sb: String_Builder;
@@ -39,10 +69,48 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
         return builder_to_string(*sb);
     };
 
-    return _spawn_entity(world, CTIDS);
+    return spawn_entity_with_ctids(world, CTIDS);
 }
 
+/**
+ * Same as `spawn_entity` but takes an array of component type ids instead of a varags list of types.
+ * This is useful for initializing an entity with dynamically created ctids, such as in the case of relational components (ex. Child_Of).
+ */
+spawn_entity_with_ctids :: (world: *World, initial_archetype: [] Component_Type_ID) -> Entity {
+    sorted_ctids: [..] Component_Type_ID;
+    sorted_ctids.allocator = temp;
+    array_copy(*sorted_ctids, initial_archetype);
+    quick_sort(sorted_ctids, (x) => x.unique_id);
+
+    entity: Entity;
+    if world.should_defer {
+        entity = add_entity(*world.stage, .[]);
+
+        deferred_entity := add_entity(*world.deferred_stage, sorted_ctids);
+
+        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}, null});
+        table_add(*world.deferred_entities, entity.raw, deferred_entity);
+    } else {
+        entity = add_entity(*world.stage, sorted_ctids);
+    }
+
+    for initial_archetype {
+        broadcast_on_component_add(world, entity, it);
+    }
+
+    return entity;
+}
+
+
+/**
+ * Destroy an entity in the world, causing it's entity handle to not longer be valid.
+ * This will also recursively destroy all child entities of the entity to be destroyed.
+ * 
+ * This operation will be deferred if the world is currently iterating a query set, thereby causing the entity
+ * to still appear in queries until the next time the deferred operations are resolved (usually at the end of the current phase of system execution).
+ */
 destroy_entity :: (world: *World, entity: Entity) {
+    assert(is_valid(world, entity));
     if world.should_defer {
         deferred, found := table_find(*world.deferred_entities, entity.raw);
         if found {
@@ -53,7 +121,7 @@ destroy_entity :: (world: *World, entity: Entity) {
         return;
     }
 
-    // recursively delete destroy all children:
+    // recursively destroy all children:
     children: [..] Entity;
     children.allocator = temp;
     for * iter : make_children_iter(world, entity) {
@@ -75,19 +143,28 @@ destroy_entity :: (world: *World, entity: Entity) {
     remove_entity(*world.stage, entity);
 }
 
+/** Returns true of a given entity has a component of the given type */
+has_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> bool {
+    return has_components(*world.stage, entity, .[ctid]);
+}
 has_components :: (world: *World, entity: Entity, ctids: [] Component_Type_ID) -> bool {
+    assert(is_valid(world, entity));
     deferred, found := table_find(*world.deferred_entities, entity.raw);
     if found {
         return has_components(*world.deferred_stage, deferred, ctids);
     }
+
     return has_components(*world.stage, entity, ctids);
 }
 
-has_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> bool {
-    return has_components(*world.stage, entity, .[ctid]);
+/**
+ * Returns a pointer to the component of the given type attached to the given entity.
+ */
+get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
+    return get_component(world, entity, #run component_type_id(Component_Type));
 }
-
 get_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *void {
+    assert(is_valid(world, entity));
     deferred, found := table_find(*world.deferred_entities, entity.raw);
     if found {
         return get_component(*world.deferred_stage, deferred, ctid);
@@ -95,11 +172,30 @@ get_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> *vo
     return get_component(*world.stage, entity, ctid);
 }
 
-get_component :: (world: *World, entity: Entity, $Component_Type: Type) -> *Component_Type {
-    return get_component(world, entity, #run component_type_id(Component_Type));
+/**
+ * Adds a new component to the given entity of the given type. If the entity already has the component, the function will simply return the existing component.
+ * 
+ * Component addition is a deferred operation, no queries will see component until the next time queries are resolved.
+ * However, the component can still be retrieved via `get_component`.
+ *
+ * Optionally, an initial value for the component can be passed and it will be immediately initialized before the EcsOnAdd event is broadcast
+ */
+add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_value: Component_Type) -> *Component_Type {
+    result := add_component(world, entity, Component_Type, broadcast = false);
+    << result = initial_value;
+    broadcast_on_component_add(world, entity, #run component_type_id(Component_Type));
+    return result;
 }
+add_component :: (world: *World, entity: Entity, $Component_Type: Type, broadcast := true) -> *Component_Type {
+    ctid :: #run component_type_id(Component_Type);
 
+    return add_component(world, entity, ctid, broadcast);
+}
 add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID, broadcast := true) -> *void{
+    assert(is_valid(world, entity));
+    existing := get_component(world, entity, ctid);
+    if existing != null then return existing;
+
     deferred, found := table_find(*world.deferred_entities, entity.raw);
     if found {
         result := add_component(*world.deferred_stage, deferred, ctid);
@@ -118,19 +214,9 @@ add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID, broadc
     return result;
 }
 
-add_component :: (world: *World, entity: Entity, $Component_Type: Type, broadcast := true) -> *Component_Type {
-    ctid :: #run component_type_id(Component_Type);
-
-    return add_component(world, entity, ctid, broadcast);
-}
-
-add_component :: (world: *World, entity: Entity, $Component_Type: Type, initial_value: Component_Type) -> *Component_Type {
-    result := add_component(world, entity, Component_Type, broadcast = false);
-    << result = initial_value;
-    broadcast_on_component_add(world, entity, #run component_type_id(Component_Type));
-    return result;
-}
-
+/**
+ * Adds all component types in a bundle struct to an entity, initializing all the components to the values contained in the bundle struct.
+ */
 add_components_from_bundle :: (world: *World, entity: Entity, bundle: $T) {
     #assert(type_info(T).type == .STRUCT); // Attempting to add a bundle that is not a struct. Did you accidentally pass a type instead of an instance of the type?
 
@@ -154,6 +240,9 @@ add_components_from_bundle :: (world: *World, entity: Entity, bundle: $T) {
     }
 }
 
+/**
+ * Removes all component types in a bundle struct from an entity.
+ */
 remove_components_from_bundle :: (world: *World, entity: Entity, $bundle: Type) {
     #assert(type_info(T).type == .STRUCT); // Attempting to use a bundle that is not a struct. Did you accidentally pass a type instead of an instance of the type?
 
@@ -177,6 +266,10 @@ remove_components_from_bundle :: (world: *World, entity: Entity, $bundle: Type) 
     }
 }
 
+/**
+ * Spawns an entity with all the initial components and corresponding values from a bundle struct.
+ * @todo: this function currently doesn't interact with EcsOnAdd in the best way, it will call OnAdd before the values are set on the components which isn't really ideal.
+ */
 spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
     #assert(type_info(T).type == .STRUCT); // Attempting to add a bundle that is not a struct. Did you accidentally pass a type instead of an instance of the type?
 
@@ -203,7 +296,7 @@ spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
         return builder_to_string(*sb);
     }
 
-    entity := _spawn_entity(world, Types);
+    entity := spawn_entity_with_ctids(world, Types);
 
     #insert -> string {
         sb: String_Builder;
@@ -226,7 +319,17 @@ spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
     return entity;
 }
 
+/**
+ * Removes a component type from an entity, returning true if the entity had that component.
+ *
+ * This is a deferred operation, any component removals will not be visible to queries until the next time deferred operations are resolved.
+ * However, immediate calls to `has_component`/`get_component` will return false/null for this type.
+ */
+remove_component :: (world: *World, entity: Entity, $Component_Type: Type) -> bool {
+    return remove_component(world, entity, #run component_type_id(Component_Type));
+}
 remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> bool {
+    assert(is_valid(world, entity));
     deferred, found := table_find(*world.deferred_entities, entity.raw);
     if found {
         removed := remove_component(*world.deferred_stage, deferred, ctid);
@@ -247,35 +350,6 @@ remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> 
         broadcast_on_component_remove(world, entity, ctid);
     }
     return removed;
-}
-
-remove_component :: (world: *World, entity: Entity, $Component_Type: Type) -> bool {
-    return remove_component(world, entity, #run component_type_id(Component_Type));
-}
-
-_spawn_entity :: (world: *World, initial_archetype: [] Component_Type_ID) -> Entity {
-    sorted_ctids: [..] Component_Type_ID;
-    sorted_ctids.allocator = temp;
-    array_copy(*sorted_ctids, initial_archetype);
-    quick_sort(sorted_ctids, (x) => x.unique_id);
-
-    entity: Entity;
-    if world.should_defer {
-        entity = add_entity(*world.stage, .[]);
-
-        deferred_entity := add_entity(*world.deferred_stage, sorted_ctids);
-
-        array_add(*world.deferred_ops, .{.SPAWN, entity, .{}, null});
-        table_add(*world.deferred_entities, entity.raw, deferred_entity);
-    } else {
-        entity = add_entity(*world.stage, sorted_ctids);
-    }
-
-    for initial_archetype {
-        broadcast_on_component_add(world, entity, it);
-    }
-
-    return entity;
 }
 
 

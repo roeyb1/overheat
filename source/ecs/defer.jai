@@ -22,12 +22,12 @@ process_deferred_operations :: (world: *World) {
         if #complete it.type == {
             case .DESTROY;
                 assert(!table_contains(*world.deferred_entities, it.entity.raw), "Deferred entities should be deleted immediately and not enter the deferred queue");
-                if ensure(is_entity_valid(world, it.entity), "Destroyed entity is not valid") {
+                if ensure(is_valid(world, it.entity), "Destroyed entity is not valid") {
                     destroy_entity(world, it.entity);
                 }
             case .SPAWN;
                 // It's possible that the entity was destoyed in the staging world before we could copy it to the main world, very unlikely though
-                if ensure(is_entity_valid(world, it.entity), "Spawned entity is not valid anymore") {
+                if ensure(is_valid(world, it.entity), "Spawned entity is not valid anymore") {
                     deferred, found := table_find(*world.deferred_entities, it.entity.raw);
                     assert(found);
                     copy_entity_between_deferred(world, it.entity, deferred);
@@ -38,12 +38,12 @@ process_deferred_operations :: (world: *World) {
                 }
             case .REMOVE_COMPONENT;
                 // it's possible that the entity was destroyed before component removal was queued
-                if is_entity_valid(world, it.entity) {
+                if is_valid(world, it.entity) {
                     remove_component(*world.stage, it.entity, it.type_id);
                 }
             case .ADD_COMPONENT;
                 // it's possible that the entity was destroyed before component removal was queued
-                if is_entity_valid(world, it.entity) {
+                if is_valid(world, it.entity) {
                     ptr := add_component(*world.stage, it.entity, it.type_id);
                     memcpy(ptr, it.component_data, it.type_id.runtime_size);
                 }

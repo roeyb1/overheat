@@ -29,7 +29,7 @@ follow_entity :: (q: Query) {
         target_pos := Vector2.{0, 0};
 
         if followers[it].mode == .ENTITY {
-            if !is_entity_valid(q.world, followers[it].entity) then continue;
+            if !is_valid(q.world, followers[it].entity) then continue;
 
             target_pos_component := get_component(q.world, followers[it].entity, Position);
             assert(target_pos_component != null, "Attempting to follow an entity that doesn't have a position component!");
