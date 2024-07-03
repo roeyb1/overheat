@@ -572,7 +572,8 @@ DONE
         opt_write: string;
         if it.notes.count >= 4 {
             if contains(it.notes[3].text, "OptionalWrite") {
-                opt_write_valid, opt_write := parse_opt_write_types(it.notes[3].text);
+                opt_write_valid: bool;
+                opt_write_valid, opt_write = parse_opt_write_types(it.notes[3].text);
                 assert(opt_write_valid, "System opt-write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[3].text);
             }
         }
