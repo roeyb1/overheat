@@ -113,6 +113,7 @@ resolve_overlap :: (q: Query) {
             }
         }
     }
+
     array_reset(*collision_list.pairs);
 } @System(PostUpdate) @Write() @Read(Collision_List) @OptionalWrite(Position)
 

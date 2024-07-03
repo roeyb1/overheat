@@ -463,6 +463,8 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             // Indicate to the newly joined player what it's ID is and who is in the world:
             {
                 conn_established: ConnectionEstablished_Packet;
+                conn_established.existing_players.allocator = temp;
+                conn_established.existing_enemies.allocator = temp;
                 conn_established.networking_id = new_networking_id;
 
                 for q : make_iter(*g_world, Player, Networking_ID, Position) {

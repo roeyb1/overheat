@@ -351,5 +351,4 @@ big_endian :: () -> bool {
     return true;
 }
 
-#import "Basic";
 #import "String";
