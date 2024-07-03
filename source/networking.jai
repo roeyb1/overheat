@@ -580,6 +580,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
         case .CONNECTION_ESTABLISHED;
             conn_established: ConnectionEstablished_Packet;
             conn_established.existing_players.allocator = temp;
+            conn_established.existing_enemies.allocator = temp;
 
             byte_buffer_read(buffer, *conn_established);
 
@@ -590,13 +591,16 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             g_local_player = init_player(conn_established.networking_id, g_player_start);
 
-            for player_data : conn_established.existing_players {
-                player := init_player(player_data.networking_id, player_data.position);
-                log("Existing player initialized %", get_component(*g_world, player, Name).name);
-            }
+            // we can ignore these if we're on the server
+            if !is_server() {
+                for player_data : conn_established.existing_players {
+                    player := init_player(player_data.networking_id, player_data.position);
+                    log("Existing player initialized %", get_component(*g_world, player, Name).name);
+                }
 
-            for enemy_data : conn_established.existing_enemies {
-                enemy := spawn_enemy(*g_world, enemy_data.position, enemy_data.networking_id, enemy_data.type);
+                for enemy_data : conn_established.existing_enemies {
+                    enemy := spawn_enemy(*g_world, enemy_data.position, enemy_data.networking_id, enemy_data.type);
+                }
             }
         case .PLAYER_JOINED;
             player_joined: PlayerJoined_Packet;
