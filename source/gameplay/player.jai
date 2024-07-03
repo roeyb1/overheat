@@ -49,12 +49,12 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     PLAYER_SIZE :: Vector2.{2.3, 2.3};
     PLAYER_COLLIDER_SIZE :: Vector2.{1., 1.};
 
-    entity := spawn_from_bundle(*g_world, Player_Bundle.{
+    entity := spawn_entity_from_bundle(*g_world, Player_Bundle.{
         name = .{ sprint("Player_%", networking_id) },
         position = .{ position },
         interp_position = .{ position, position },
         networking_id = .{ networking_id },
-        invoker = .{ networking_id },
+        invoker = .{ id = networking_id },
         move_speed =  .{ 6 },
         point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 20. },
         sprite = .{ sprite, PLAYER_SIZE, 0, 4, 0 },

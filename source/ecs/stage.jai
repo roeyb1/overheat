@@ -64,6 +64,8 @@ remove_entity :: (stage: *Stage, entity: Entity) {
         remove_archetype_from_active_cache(stage, old_record.archetype_id);
     }
 
+    table_remove(*stage.entity_records, entity.raw);
+
     array_add(*stage.free_entity_indices, entity.index);
 }
 

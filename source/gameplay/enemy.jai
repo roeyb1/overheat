@@ -22,7 +22,7 @@ Enemy_Bundle :: struct @Bundle {
 }
 
 spawn_enemy :: (world: *World, position: Vector2, networking_id: u64, type: Enemy_Type) {
-    entity := spawn_from_bundle(world, Enemy_Bundle.{
+    entity := spawn_entity_from_bundle(world, Enemy_Bundle.{
         position = .{ position },
         interp_position = .{ position, position },
         enemy.type = type,
