@@ -76,7 +76,7 @@ spawn_entity :: (world: *World, $Initial_Archetype: ..Type) -> Entity {
  * Same as `spawn_entity` but takes an array of component type ids instead of a varags list of types.
  * This is useful for initializing an entity with dynamically created ctids, such as in the case of relational components (ex. Child_Of).
  */
-spawn_entity_with_ctids :: (world: *World, initial_archetype: [] Component_Type_ID) -> Entity {
+spawn_entity_with_ctids :: (world: *World, initial_archetype: [] Component_Type_ID, broadcast := true) -> Entity {
     sorted_ctids: [..] Component_Type_ID;
     sorted_ctids.allocator = temp;
     array_copy(*sorted_ctids, initial_archetype);
@@ -268,7 +268,6 @@ remove_components_from_bundle :: (world: *World, entity: Entity, $bundle: Type) 
 
 /**
  * Spawns an entity with all the initial components and corresponding values from a bundle struct.
- * @todo: this function currently doesn't interact with EcsOnAdd in the best way, it will call OnAdd before the values are set on the components which isn't really ideal.
  */
 spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
     #assert(type_info(T).type == .STRUCT); // Attempting to add a bundle that is not a struct. Did you accidentally pass a type instead of an instance of the type?
@@ -296,7 +295,7 @@ spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
         return builder_to_string(*sb);
     }
 
-    entity := spawn_entity_with_ctids(world, Types);
+    entity := spawn_entity_with_ctids(world, Types, broadcast = false);
 
     #insert -> string {
         sb: String_Builder;
@@ -309,6 +308,7 @@ spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
                 member_type_info := cast(*Type_Info_Struct) it.type;
                 if has_note(member_type_info, "Component") {
                     sbprint(*sb, "<< get_component(world, entity, %) = bundle.%;\n", member_type_info.name, it.name);
+                    sbprint(*sb, "broadcast_on_component_add(world, entity, #run component_type_id(%));\n", member_type_info.name);
                 }
             }
         }
