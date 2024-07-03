@@ -12,10 +12,16 @@ Collision_Invoker :: struct @Component {
 Overlap_Pair :: struct @Component {
     a: Entity;
     b: Entity;
+
+    blocking: bool;
 }
 
 Collision_Spatial :: struct @SingletonComponent {
     aabb_tree: AABB_Tree;
+}
+
+Collision_List :: struct @SingletonComponent {
+    pairs: [..] Overlap_Pair;
 }
 
 reset_collision_spatial :: (q: Query) {
@@ -56,7 +62,9 @@ detect_collisions :: (q: Query) {
         translated_aabb := translate(colliders[it], positions[it]);
         overlaps := generate_overlap_pairs_for_entity(spatial, translated_aabb, q.entities[it], invokers[it].id);
 
-        for overlap : overlaps {
+        for * overlap : overlaps {
+            b_collider := get_component(q.world, overlap.b, Collider_AABB);
+            overlap.blocking = b_collider.blocking;
             overlap_entity := spawn_entity_from_bundle(q.world, Overlap_Pair_Bundle.{overlap_pair = overlap});
         }
     }
@@ -72,54 +80,41 @@ sort_hit_pairs :: (q: Query) {
 } @System(PostUpdate) @Write(Hit_Result_List) @Read()
 */
 
-resolve_overlap :: (world: *World, entity: Entity) {
+register_collision_overlap :: (world: *World, entity: Entity) {
+    collision_list := get_singleton(world, Collision_List);
+
     pair := get_component(world, entity, Overlap_Pair);
-    a_pos := get_component(world, pair.a, Position);
-    a_collider := get_component(world, pair.a, Collider_AABB);
-    a_bounds := translate(a_collider, a_pos);
+    if pair.blocking {
+        array_add(*collision_list.pairs, pair);
+    }
+} @Event(EcsOnAdd,Overlap_Pair) @Write(Collision_List)
 
-    b_pos := get_component(world, pair.b, Position);
-    b_collider := get_component(world, pair.b, Collider_AABB);
-    b_bounds := translate(b_collider, b_pos);
+resolve_overlap :: (q: Query) {
+    collision_list := get_singleton(q.world, Collision_List);
+    for pair : collision_list.pairs {
+        a_pos := get_component(q.world, pair.a, Position);
+        a_collider := get_component(q.world, pair.a, Collider_AABB);
+        a_bounds := translate(a_collider, a_pos);
 
-    minkowsky := minkowsky_difference(a_bounds, b_bounds);
-    if is_inside(minkowsky, .{0, 0}) {
-        penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
+        b_pos := get_component(q.world, pair.b, Position);
+        b_collider := get_component(q.world, pair.b, Collider_AABB);
+        b_bounds := translate(b_collider, b_pos);
 
-        // if the second entity has a collision invoker, we will handle half of the resolution here
-        if get_component(world, pair.b, Collision_Invoker) {
-            a_pos.value -= penetration_vector / 2.;
-        } else {
-            a_pos.value -= penetration_vector;
+        minkowsky := minkowsky_difference(a_bounds, b_bounds);
+        if is_inside(minkowsky, .{0, 0}) {
+            penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
+
+            // if the second entity has a collision invoker, we will handle half of the resolution here
+            if get_component(q.world, pair.b, Collision_Invoker) {
+                a_pos.value -= penetration_vector / 2.;
+                b_pos.value += penetration_vector / 2.;
+            } else {
+                a_pos.value -= penetration_vector;
+            }
         }
     }
-} @Event(EcsOnAdd,Overlap_Pair) @Write(Position)
-
-    /*
-resolve_overlap :: (world: *World, entity: Entity) {
-    overlap := get_component(world, entity, Collision_Overlap);
-
-    a_pos := get_component(q.world, pair.a, Position);
-    a_collider := get_component(q.world, pair.a, Collider_AABB);
-    a_bounds := translate(a_collider, a_pos);
-
-    b_pos := get_component(q.world, pair.b, Position);
-    b_collider := get_component(q.world, pair.b, Collider_AABB);
-    b_bounds := translate(b_collider, b_pos);
-
-    minkowsky := minkowsky_difference(a_bounds, b_bounds);
-    if is_inside(minkowsky, .{0, 0}) {
-        penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
-
-        // if the second entity has a collision invoker, we will handle half of the resolution here
-        if get_component(q.world, pair.b, Collision_Invoker) {
-            a_pos.value -= penetration_vector / 2.;
-        } else {
-            a_pos.value -= penetration_vector;
-        }
-    }
-} @System(PostUpdate) @Write(Position) @Read(Hit_Result_List)
-    */
+    array_reset(*collision_list.pairs);
+} @System(PostUpdate) @Write() @Read(Collision_List) @OptionalWrite(Position)
 
 generate_overlap_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, self: Entity, sort_key: u64) -> [..] Overlap_Pair {
     result: [..] Overlap_Pair;
