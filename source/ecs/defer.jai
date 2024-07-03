@@ -37,7 +37,7 @@ process_deferred_operations :: (world: *World) {
                     assert(success);
 
                     for ctid : world.stage.archetypes[record.archetype_id].type_ids {
-                        broadcast_on_component_remove(world, it.entity, ctid);
+                        broadcast_on_component_add(world, it.entity, ctid);
                     }
                 }
             case .REMOVE_COMPONENT;
