@@ -7,6 +7,7 @@ Collider_AABB :: struct @Component {
 Collision_Invoker :: struct @Component {
     // globally unique id that is shared across network (server and clients should all match for a given entity)
     id: u64;
+    generate_overlap_events := false;
 }
 
 Overlap_Pair :: struct @Component {
@@ -22,11 +23,11 @@ Collision_Spatial :: struct @SingletonComponent {
 }
 
 Collision_List :: struct @SingletonComponent {
-    /** list of all overlaps, including blocking */
-    pairs: [..] Overlap_Pair;
-
-    /** filtered list of only blocking overlaps */
+    /** Filtered + sorted list of only blocking overlaps */
     blocking_pairs: [..] Overlap_Pair;
+
+    /** Filtered + sorted list of only the overlaps that should generate events. */
+    event_pairs: [..] Overlap_Pair;
 }
 
 reset_collision_spatial :: (q: Query) {
@@ -73,7 +74,9 @@ detect_collisions :: (q: Query) {
             overlap.blocking = b_collider.blocking;
             overlap.sort_key = invokers[it].id;
 
-            array_add(*collision_list.pairs, overlap);
+            if invokers[it].generate_overlap_events {
+                array_add(*collision_list.event_pairs, overlap);
+            }
             if overlap.blocking {
                 array_add(*collision_list.blocking_pairs, overlap);
             }
@@ -84,12 +87,13 @@ detect_collisions :: (q: Query) {
 sort_hit_pairs :: (q: Query) {
     hit_list := get_singleton(q.world, Collision_List);
 
-    quick_sort(hit_list.pairs, (hit) => hit.sort_key);
+    quick_sort(hit_list.blocking_pairs, (hit) => hit.sort_key);
+    quick_sort(hit_list.event_pairs, (hit) => hit.sort_key);
 } @System(OnUpdate) @Write(Collision_List) @Read()
 
 emit_overlap_events :: (q: Query) {
     collision_list := get_singleton(q.world, Collision_List);
-    for pair : collision_list.pairs {
+    for pair : collision_list.event_pairs {
         overlap_entity := spawn_entity_from_bundle(q.world, Overlap_Pair_Bundle.{overlap_pair = pair});
     }
 } @System(OnValidate) @Write() @Read(Collision_List) @OptionalWrite(Overlap_Pair)
@@ -120,8 +124,8 @@ resolve_overlap :: (q: Query) {
         }
     }
 
-    array_reset(*collision_list.pairs);
     array_reset(*collision_list.blocking_pairs);
+    array_reset(*collision_list.event_pairs);
 } @System(PostUpdate) @Write() @Read(Collision_List) @OptionalWrite(Position)
 
 generate_overlap_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, self: Entity, sort_key: u64) -> [..] Overlap_Pair {
