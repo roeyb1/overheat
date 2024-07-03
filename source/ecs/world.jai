@@ -94,8 +94,10 @@ spawn_entity_with_ctids :: (world: *World, initial_archetype: [] Component_Type_
         entity = add_entity(*world.stage, sorted_ctids);
     }
 
-    for initial_archetype {
-        broadcast_on_component_add(world, entity, it);
+    if broadcast {
+        for initial_archetype {
+            broadcast_on_component_add(world, entity, it);
+        }
     }
 
     return entity;
@@ -269,7 +271,7 @@ remove_components_from_bundle :: (world: *World, entity: Entity, $bundle: Type) 
 /**
  * Spawns an entity with all the initial components and corresponding values from a bundle struct.
  */
-spawn_from_bundle :: (world: *World, bundle: $T) -> Entity {
+spawn_entity_from_bundle :: (world: *World, bundle: $T) -> Entity {
     #assert(type_info(T).type == .STRUCT); // Attempting to add a bundle that is not a struct. Did you accidentally pass a type instead of an instance of the type?
 
     #insert -> string {

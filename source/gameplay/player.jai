@@ -49,7 +49,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     PLAYER_SIZE :: Vector2.{2.3, 2.3};
     PLAYER_COLLIDER_SIZE :: Vector2.{1., 1.};
 
-    entity := spawn_from_bundle(*g_world, Player_Bundle.{
+    entity := spawn_entity_from_bundle(*g_world, Player_Bundle.{
         name = .{ sprint("Player_%", networking_id) },
         position = .{ position },
         interp_position = .{ position, position },
