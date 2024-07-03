@@ -144,34 +144,29 @@ generate_overlap_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB,
     return result;
 }
 
-find_nearest_matching_predicate :: (world: *World, point: Vector2, self: Entity, pred: #type (entity: Entity, data: *void) -> (bool), data: *void) -> Entity, bool {
-    // @Speed accelerate with AABB tree
-    candidates: [..] Entity;
-    candidates.allocator = temp;
-    distances: [..] float;
-    distances.allocator = temp;
+find_nearest_matching_predicate_within_range :: (world: *World, point: Vector2, radius: float, self: Entity, pred: #type (entity: Entity, data: *void) -> (bool), data: *void) -> Entity, bool {
+    spatial := get_singleton(world, Collision_Spatial);
 
-    for q : make_iter(world, Position) {
-        positions := query_get(q, Position);
-        for 0..q.count-1 {
-            if q.entities[it] != self {
-                if pred(q.entities[it], data) {
-                    array_add(*candidates, q.entities[it]);
-                    array_add(*distances, length(point - positions[it]));
-                }
+    candidates := find_overlaps(*spatial.aabb_tree, make_aabb(point, make_vector2(2 * radius)), self);
+
+    min_entity := INVALID_ENTITY;
+    min_distance := FLOAT32_MAX;
+    for candidates {
+        if pred(it.entity, data) {
+            position := box_center(it.bounds);
+            dist := distance(point, position);
+            if dist < min_distance {
+                min_entity = it.entity;
+                min_distance = dist;
             }
         }
     }
 
-    if distances.count == 0 {
+    if min_entity == INVALID_ENTITY {
         return INVALID_ENTITY, false;
     }
 
-    min_index := 0;
-    for 0..distances.count-1 {
-        if distances[it] < distances[min_index] then min_index = it;
-    }
-    return candidates[min_index], true;
+    return min_entity, true;
 }
 
 #load "aabb_tree.jai";
