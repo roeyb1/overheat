@@ -45,13 +45,12 @@ build_collision_spatial :: (q: Query) {
     }
 } @System(OnValidate) @Write(Collision_Spatial) @Read(Position,Collider_AABB) @Optional(Collision_Invoker)
 
+Overlap_Pair_Bundle :: struct @Bundle {
+    overlap_pair: Overlap_Pair;
+    transient: Transient;
+}
+
 detect_collisions :: (q: Query) {
-
-    Overlap_Pair_Bundle :: struct @Bundle {
-        overlap_pair: Overlap_Pair;
-        transient: Transient;
-    }
-
     invokers := query_get(q, Collision_Invoker);
     positions := query_get(q, Position);
     colliders := query_get(q, Collider_AABB);
