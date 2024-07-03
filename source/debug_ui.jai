@@ -37,7 +37,9 @@ show_stats_overlay :: () {
     if ImGui.Begin("Stats", null, .NoMove | .NoDecoration | .AlwaysAutoResize | .NoSavedSettings | .NoFocusOnAppearing | .NoNav) {
         ImGui.TextUnformatted("Stats");
         ImGui.Separator();
-        ImGui.Text("FPS: %",  cast(u32)(1. / g_smooth_delta_time));
+        ImGui.Text("Average FPS: % (% ms)",  cast(u32)(1. / g_smooth_delta_time), formatFloat(g_smooth_delta_time * 1000., trailing_width = 2));
+        ImGui.Text("Sim FPS: % (% ms)",  cast(u32)(1. / g_sim_timer), formatFloat(g_sim_timer * 1000., trailing_width = 2));
+        ImGui.Text("Render FPS: % (% ms)",  cast(u32)(1. / g_render_timer), formatFloat(g_render_timer * 1000, trailing_width = 2));
     }
     ImGui.End();
 }

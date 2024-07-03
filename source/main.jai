@@ -6,6 +6,9 @@ g_smooth_delta_time: float = 0.016;
 last_time: float64;
 g_interp_alpha: float = 0.;
 
+g_sim_timer: float64 = 0.016;
+g_render_timer: float64 = 0.016;
+
 FIXED_TIMESTEP :: 0.016;
 
 g_should_exit: bool = false;
@@ -79,10 +82,15 @@ main :: () {
             ImGui.EndPopup();
         }
 
-        execute(*g_world, .PreRender);
-        execute(*g_world, .OnRender);
+        {
+            scoped_timer(*g_render_timer);
 
-        rendering_end_frame();
+            execute(*g_world, .PreRender);
+            execute(*g_world, .OnRender);
+
+            rendering_end_frame();
+        }
+
         reset_temporary_storage();
 
         g_frame_number += 1;
@@ -129,6 +137,8 @@ main :: () {
 
         // Run simulation on a fixed timestep for determinism 
         while accumulated_time >= FIXED_TIMESTEP {
+            scoped_smooth_timer(*g_sim_timer, 1. / 16.);
+
             execute(*g_world, .PreUpdate);
             execute(*g_world, .OnUpdate);
             execute(*g_world, .OnValidate);
@@ -137,11 +147,14 @@ main :: () {
         }
         g_interp_alpha = accumulated_time / FIXED_TIMESTEP;
 
-        execute(*g_world, .PreRender);
-        execute(*g_world, .OnRender);
+        {
+            scoped_smooth_timer(*g_render_timer, 1. / 16.);
 
+            execute(*g_world, .PreRender);
+            execute(*g_world, .OnRender);
 
-        rendering_end_frame();
+            rendering_end_frame();
+        }
 
         // Reset temporary storage at the end of each frame
         reset_temporary_storage();

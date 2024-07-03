@@ -63,5 +63,6 @@ TempNew :: ($T: Type, $initialized := true) -> *T {
 sbprint :: print_to_builder;
 
 #load "handle_manager.jai";
+#load "timer.jai";
 
 ENABLE_ENSURE :: true;
