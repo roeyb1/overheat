@@ -1,17 +1,8 @@
-Project :: struct @Component {
+Projectile:: struct @Component {
     direction: Vector2;
 }
 
-Project_Bundle :: struct @Bundle {
-    skill_definition: Skill_Definition;
-    networking_id: Networking_ID;
-    name: Name;
-    fragments: Fragments;
-    to_cast: To_Cast;
-    cooldown: Cooldown;
-}
-
-add_project :: (world: *World, skill: Entity, value: s64, casting_entity: Entity) {
+add_project:: (world: *World, skill: Entity, value: s64, casting_entity: Entity) {
 
     //future fragments will be applied to the projectile instead of the casting player
     << get_component(world, skill, Target_Entity) = .{skill};
@@ -23,7 +14,6 @@ add_project :: (world: *World, skill: Entity, value: s64, casting_entity: Entity
         PLAYER_SIZE :: Vector2.{2.3, 2.3};
         add_component(world, skill, Sprite, .{sprite, PLAYER_SIZE, 0, 4, 0});
 
-
         spawn_location := get_component(world, casting_entity, Position);
         add_component(world, skill, Position, .{spawn_location});
 
@@ -32,7 +22,7 @@ add_project :: (world: *World, skill: Entity, value: s64, casting_entity: Entity
         direction := unit_vector(targeting-spawn_location);
 
     
-        add_component(world, skill, Project, .{direction});
+        add_component(world, skill, Projectile, .{direction});
         add_component(world, skill, Velocity);
 
         add_component(world, skill, Move_Speed, .{base_value = 1});
@@ -42,11 +32,11 @@ add_project :: (world: *World, skill: Entity, value: s64, casting_entity: Entity
     }
 }
 
-project_movement :: (q: Query) {
-    projects := query_get(q, Project);
+projectile_movement :: (q: Query) {
+    projectiles := query_get(q, Projectile);
     movement_speeds := query_get(q, Move_Speed);
     velocities := query_get(q, Velocity);
     for 0..q.count-1 {
-        velocities[it].value = projects[it].direction * movement_speeds[it].value;
+        velocities[it].value = projectiles[it].direction * movement_speeds[it].value;
     }
-} @System(OnUpdate) @Write(Velocity) @Read(Project,Move_Speed)
+} @System(OnUpdate) @Write(Velocity) @Read(Projectile,Move_Speed)

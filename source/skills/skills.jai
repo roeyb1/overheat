@@ -180,5 +180,5 @@ broadcast_skill_targeting :: (networking_id: Networking_ID, position: Vector2) {
 
 #load "skill_fragments/ignite.jai";
 #load "skill_fragments/haste.jai";
-#load "skill_fragments/project.jai";
+#load "skill_fragments/projectile.jai";
 
