@@ -35,7 +35,7 @@ draw_player_health :: (q: Query) {
         ImGui.SetNextWindowPos(.{style.FramePadding.x + style.WindowPadding.y, window_size.y - (HEALTH_BAR_SIZE.y + style.WindowPadding.y + 2 * style.FramePadding.y)});
         if ImGui.Begin("HUDHealthBar", null, .NoTitleBar | .NoScrollbar |.NoCollapse | .NoSavedSettings | .AlwaysAutoResize | .NoResize | .NoMove) {
             ImGui.PushStyleColor(.PlotHistogram, HEALTH_COLOR);
-            ImGui.ProgressBar(healths[it].value / healths[it].max, HEALTH_BAR_SIZE, "");
+            ProgressBarV("Health", healths[it].value, HEALTH_BAR_SIZE, 0., healths[it].max, flags = .DisplayValue);
             ImGui.PopStyleColor();
         }
         ImGui.End();
@@ -44,7 +44,7 @@ draw_player_health :: (q: Query) {
 
         if ImGui.Begin("HUDResourceBar", null, .NoTitleBar | .NoScrollbar |.NoCollapse | .NoSavedSettings | .AlwaysAutoResize | .NoResize | .NoMove) {
             ImGui.PushStyleColor(.PlotHistogram, RESOURCE_COLOR);
-            ImGui.ProgressBar(healths[it].value / healths[it].max, HEALTH_BAR_SIZE, "");
+            ProgressBarV("Mana", healths[it].value, HEALTH_BAR_SIZE, 0., healths[it].max, flags = .DisplayValue);
             ImGui.PopStyleColor();
         }
         ImGui.End();
