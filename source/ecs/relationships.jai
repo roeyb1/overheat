@@ -31,7 +31,7 @@ spawn_child_entity :: (world: *World, parent: Entity, $component_types: ..Type) 
     array_copy(*ctids, archetype);
     array_add(*ctids, pair_ctid(Child_Of, cast(u32) parent.index));
 
-    child := _spawn_entity(world, ctids);
+    child := spawn_entity_with_ctids(world, ctids);
 
     child_of := get_component(world, child, Child_Of);
     child_of.parent = parent;

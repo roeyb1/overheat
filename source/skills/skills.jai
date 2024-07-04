@@ -63,7 +63,7 @@ initialize_skills :: (world: *World, entity: Entity, number_of_skills: s64, netw
     inventory := get_component(world, entity, Skill_Inventory);
     for 0 .. number_of_skills-1 {
 
-        new_skill_definition := spawn_from_bundle(*g_world, Skill_Definition_Bundle.{
+        new_skill_definition := spawn_entity_from_bundle(*g_world, Skill_Definition_Bundle.{
             name = .{sprint("skill no.%", it)},
             networking_id = .{networking_id},
             cooldown = .{0.5,0},
@@ -101,7 +101,7 @@ fire_skill :: (world: *World, skill: Entity, casting_entity: Networking_ID) {
         valid,player := get_player_by_networking_id(world,casting_entity);
 
         if valid {
-            skill_instance := spawn_from_bundle(*g_world, Skill_Instance_Bundle.{
+            skill_instance := spawn_entity_from_bundle(*g_world, Skill_Instance_Bundle.{
             target_entity = .{player},
             });
 
@@ -147,9 +147,10 @@ use_skill0 :: (q: Query) {
     }
 } @System(PreUpdate) @Write() @Read(Player_Commands,Skill_Inventory)
 
-get_mouse_worldspace :: () -> Vector2{
-    camera := get_component(*g_world, main_view_camera, Camera);
-    cam_pos := get_component(*g_world, main_view_camera, Position);
+get_mouse_worldspace :: () -> Vector2 {
+    viewport := get_singleton(*g_world, Game_Viewport);
+    camera := get_component(*g_world, viewport.main_camera, Camera);
+    cam_pos := get_component(*g_world, viewport.main_camera, Position);
     s_x, s_y := get_mouse_cursor_pos();
     v := viewspace_to_worldspace(camera.projection, cam_pos, .{cast(float)s_x, cast(float)s_y});
     return v;
