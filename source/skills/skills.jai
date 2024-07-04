@@ -28,21 +28,14 @@ Skill_Fragment :: struct {
 }
 
 Skill_Fragment_Types :: enum u8 {
-    NONE;
-    PROJECT;
-    IGNITE;
+    None;
+    Projectile;
+    Ignite;
     Haste;
-    NBR;  
 }
 
-//need a better way this will blow cock when the enum has 100 entries
-SKILL_FRAGMENT_NAMES ::
-    string .[
-    "",   
-    "Project",
-    "Ignite",
-    "Haste",
-    ];
+SKILL_FRAGMENT_NAMES :: #run enum_names(Skill_Fragment_Types);
+NUM_SKILL_FRAGMENTS :: #run enum_highest_value(Skill_Fragment_Types);
 
 
 Skill_Definition_Bundle :: struct @Bundle {
@@ -82,8 +75,6 @@ skills_to_fire :: (q: Query) {
 
     for 0..q.count-1 {
         if(casted_skills[it].value){
-            print("you casted % \n",names[it].name);
-
             fire_skill(q.world, q.entities[it],networking_ids[it]);
 
             casted_skills[it].value = false;
@@ -114,11 +105,11 @@ fire_skill :: (world: *World, skill: Entity, casting_entity: Networking_ID) {
 
 add_component_by_fragment :: (world: *World, skill: Entity,  casting_entity: Entity, fragment: Skill_Fragment) {
     if fragment.type == {
-        case .PROJECT;
+        case .Projectile;
      
             add_project(world,skill,3,casting_entity);
 
-        case .IGNITE;
+        case .Ignite;
 
             add_ignite(world,skill,3);
         case .Haste;

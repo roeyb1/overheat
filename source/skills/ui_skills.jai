@@ -104,7 +104,7 @@ show_ui_skills :: (q: Query) {
                             }
                             if (ImGui.Button(temp_c_string("add"), .{40, 30}))
                             {
-                                array_add(*skills_ui.fragments.value, .{.NONE,0});
+                                array_add(*skills_ui.fragments.value, .{.None,0});
                             }
                             ImGui.SameLine();
                             if (ImGui.Button(temp_c_string("remove"), .{70, 30}))
@@ -113,7 +113,7 @@ show_ui_skills :: (q: Query) {
                             }
                             ImGui.Separator();
                                 //assumes no dupliates be carefull
-                                current: [Skill_Fragment_Types.NBR] string;
+                                current: [NUM_SKILL_FRAGMENTS] string;
                                 for skills_ui.fragments.value {
                                     current[it_index] = SKILL_FRAGMENT_NAMES[it.type];
                                 }
@@ -146,7 +146,7 @@ show_ui_skills :: (q: Query) {
                                                 assert(payload.DataSize == size_of(int));
                                                 payload_n := <<cast(*int)payload.Data; 
 
-                                                skills_ui.fragments.value[cast(int)payload_n] = .{.NONE,0};
+                                                skills_ui.fragments.value[cast(int)payload_n] = .{.None,0};
                                                 
                                             }
                                             ImGui.EndDragDropTarget();
