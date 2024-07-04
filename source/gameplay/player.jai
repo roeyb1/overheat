@@ -144,7 +144,6 @@ update_player_controllers :: (q: Query) {
     for 0..q.count-1 {
         // @todo: is there a better way to block movement while attacking?
         current_anim_state := anim_states[it].state;
-        //log("good night i am % and my speed is %", get_component(q.world, q.entities[it], Name).name, get_component(q.world, q.entities[it], Move_Speed).value);
         velocity_from_input := player_commands[it].move_vector * move_speeds[it].value;
         if current_anim_state == .ATTACK || current_anim_state == .ATTACK_WIND_UP {
             velocity_from_input = .{0, 0};

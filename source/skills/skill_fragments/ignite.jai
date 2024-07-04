@@ -5,7 +5,6 @@ Ignite :: struct @Component {
 
 add_ignite :: (world: *World, entity: Entity, value: s64) {
     add_component(world, entity, Ignite);
-    print("HEYA IM IGNITE\n");
 }
 
 ignite :: (q: Query) {
