@@ -30,9 +30,6 @@ Skill_Fragment :: struct {
 Skill_Fragment_Types :: enum u8 {
     NONE;
     PROJECT;
-    SELF;
-    TOUCH;
-    FOCUS;
     IGNITE;
     Haste;
     NBR;  
@@ -43,9 +40,6 @@ SKILL_FRAGMENT_NAMES ::
     string .[
     "",   
     "Project",
-    "Self",
-    "Touch",
-    "Focus",
     "Ignite",
     "Haste",
     ];
@@ -123,15 +117,7 @@ add_component_by_fragment :: (world: *World, skill: Entity,  casting_entity: Ent
         case .PROJECT;
      
             add_project(world,skill,3,casting_entity);
-        case .TOUCH;
-     
-            add_touch(world,skill,3,casting_entity);
-        case .SELF;
 
-            add_self(world,skill,3,casting_entity);
-        case .FOCUS;
-
-            add_focus(world, skill,3);
         case .IGNITE;
 
             add_ignite(world,skill,3);
@@ -192,9 +178,6 @@ broadcast_skill_targeting :: (networking_id: Networking_ID, position: Vector2) {
 }
 
 #load "skill_fragments/ignite.jai";
-#load "skill_fragments/focus.jai";
 #load "skill_fragments/haste.jai";
 #load "skill_fragments/project.jai";
-#load "skill_fragments/touch.jai";
-#load "skill_fragments/self.jai";
 
