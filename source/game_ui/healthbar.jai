@@ -9,7 +9,7 @@ draw_enemy_health_bar :: (q: Query) {
 
     HEALTHBAR_SIZE :: #run ui_size(Vector2.{50, 5});
 
-    ImGui.PushStyleColor(.PlotHistogram, ImGui.IM_COL32(255, 0, 0));
+    ImGui.PushStyleColor(.PlotHistogram, HEALTH_COLOR);
     ImGui.PushStyleVar(.FrameRounding, 2);
 
     for 0..q.count-1 {
@@ -41,9 +41,6 @@ draw_local_player_health_bar :: (q: Query) {
     camera_pos := get_component(q.world, viewport.main_camera, Position);
 
     HEALTHBAR_SIZE :: #run ui_size(Vector2.{50, 6});
-
-    HEALTH_COLOR :: #run ImGui.IM_COL32(255, 0, 0);
-    RESOURCE_COLOR :: #run ImGui.IM_COL32(66, 150, 250);
 
     ImGui.PushStyleVar(.FrameRounding, 2);
     ImGui.PushStyleVar(.ItemSpacing, .{0, 0});
