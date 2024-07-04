@@ -5,3 +5,4 @@ ui_size :: inline (size: Vector2) -> ImGui.ImVec2 {
 }
 
 #load "healthbar.jai";
+#load "hud.jai";
