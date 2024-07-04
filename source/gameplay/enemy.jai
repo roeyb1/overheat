@@ -19,6 +19,7 @@ Enemy_Bundle :: struct @Bundle {
     invoker: Collision_Invoker;
     collider: Collider_AABB;
     networking_id: Networking_ID;
+    health: Health;
 }
 
 spawn_enemy :: (world: *World, position: Vector2, networking_id: u64, type: Enemy_Type) {
@@ -27,6 +28,7 @@ spawn_enemy :: (world: *World, position: Vector2, networking_id: u64, type: Enem
         interp_position = .{ position, position },
         enemy.type = type,
         networking_id.id = networking_id,
+        health = .{100., 100.},
     });
 
     add_components_from_bundle(world, entity, Follower.{
@@ -50,7 +52,7 @@ spawn_enemy :: (world: *World, position: Vector2, networking_id: u64, type: Enem
             add_component(world, entity, Skeleton_Animation);
         case .BAT;
             size = Vector2.{2.3, 2.3};
-            collider_size = Vector2.{0.6, 0.6};
+            collider_size = Vector2.{0.6, 0.8};
             sprite = load_spritesheet("assets/enemies/bat2.png", 96, 0, 0, 15, 4);
             add_component(world, entity, Bat_Animation);
     }

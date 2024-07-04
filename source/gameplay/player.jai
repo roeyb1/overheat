@@ -37,6 +37,7 @@ Player_Bundle :: struct @Bundle {
     player_controller: Player_Controller;
     sprite: Sprite;
     collider: Collider_AABB;
+    health: Health;
 }
 
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
@@ -59,6 +60,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 20. },
         sprite = .{ sprite, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
+        health = .{75., 100.},
     });
 
     // if this is a local player:
