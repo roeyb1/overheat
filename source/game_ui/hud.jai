@@ -2,20 +2,20 @@ draw_player_action_bar :: (q: Query) {
     // @todo: hook this into skill system when it's ready
     NUM_SKILLS :: 5;
 
-    SKILL_BUTTON_SIZE :: #run ui_size(.{25, 25});
+    skill_button_size := ui_size(.{25, 25});
 
-    BAR_OFFSET :: #run ui_size(.{0, -1});
+    bar_offset := ui_size(.{0, -1});
 
     skill_icon := get_texture("assets/ui/arrow_nova_skill.png");
 
-    bar_width := (ImGui.GetStyle().FramePadding.x + ImGui.GetStyle().ItemSpacing.x + SKILL_BUTTON_SIZE.x) * NUM_SKILLS;
+    bar_width := (ImGui.GetStyle().FramePadding.x + ImGui.GetStyle().ItemSpacing.x + skill_button_size.x) * NUM_SKILLS;
 
     window_size := ImGui.ImVec2.{cast(float)g_window_width, cast(float)g_window_height};
-    ImGui.SetNextWindowPos(.{ (window_size.x - bar_width) / 2. + ImGui.GetStyle().ItemSpacing.x, window_size.y - (SKILL_BUTTON_SIZE.y + 2 * ImGui.GetStyle().FramePadding.y + 2 * ImGui.GetStyle().WindowPadding.y) + BAR_OFFSET.y});
+    ImGui.SetNextWindowPos(.{ (window_size.x - bar_width) / 2. + ImGui.GetStyle().ItemSpacing.x, window_size.y - (skill_button_size.y + 2 * ImGui.GetStyle().FramePadding.y + 2 * ImGui.GetStyle().WindowPadding.y) + bar_offset.y});
 
     if ImGui.Begin("##ActionBar", null, .NoTitleBar | .NoScrollbar |.NoCollapse | .NoSavedSettings | .AlwaysAutoResize | .NoResize | .NoMove) {
         for 0..NUM_SKILLS-1 {
-            ImGui.ImageButton(temp_c_string(tprint("%##ActionBarSkill", it)), cast(ImGui.ImTextureID) get_texture_view_handle(skill_icon), SKILL_BUTTON_SIZE, .{0, 1.}, .{1, 0});
+            ImGui.ImageButton(temp_c_string(tprint("%##ActionBarSkill", it)), cast(ImGui.ImTextureID) get_texture_view_handle(skill_icon), skill_button_size, .{0, 1.}, .{1, 0});
             ImGui.SameLine();
         }
     }
@@ -27,24 +27,24 @@ draw_player_health :: (q: Query) {
 
     window_size := ImGui.ImVec2.{cast(float)g_window_width, cast(float)g_window_height};
 
-    HEALTH_BAR_SIZE :: #run ui_size(.{100, 100});
+    health_bar_size := ui_size(.{100, 100});
 
     style := ImGui.GetStyle();
 
     for 0..q.count-1 {
-        ImGui.SetNextWindowPos(.{style.FramePadding.x + style.WindowPadding.y, window_size.y - (HEALTH_BAR_SIZE.y + style.WindowPadding.y + 2 * style.FramePadding.y)});
+        ImGui.SetNextWindowPos(.{style.FramePadding.x + style.WindowPadding.y, window_size.y - (health_bar_size.y + style.WindowPadding.y + 2 * style.FramePadding.y)});
         if ImGui.Begin("HUDHealthBar", null, .NoTitleBar | .NoScrollbar |.NoCollapse | .NoSavedSettings | .AlwaysAutoResize | .NoResize | .NoMove) {
             ImGui.PushStyleColor(.PlotHistogram, HEALTH_COLOR);
-            ProgressBarV("Health", healths[it].value, HEALTH_BAR_SIZE, 0., healths[it].max, flags = .DisplayValue);
+            ProgressBarV("Health", healths[it].value, health_bar_size, 0., healths[it].max, flags = .DisplayValue);
             ImGui.PopStyleColor();
         }
         ImGui.End();
 
-        ImGui.SetNextWindowPos(.{window_size.x - (HEALTH_BAR_SIZE.x + style.FramePadding.x + 2 * style.WindowPadding.y), window_size.y - (HEALTH_BAR_SIZE.y + style.WindowPadding.y + 2 * style.FramePadding.y)});
+        ImGui.SetNextWindowPos(.{window_size.x - (health_bar_size.x + style.FramePadding.x + 2 * style.WindowPadding.y), window_size.y - (health_bar_size.y + style.WindowPadding.y + 2 * style.FramePadding.y)});
 
         if ImGui.Begin("HUDResourceBar", null, .NoTitleBar | .NoScrollbar |.NoCollapse | .NoSavedSettings | .AlwaysAutoResize | .NoResize | .NoMove) {
             ImGui.PushStyleColor(.PlotHistogram, RESOURCE_COLOR);
-            ProgressBarV("Mana", healths[it].value, HEALTH_BAR_SIZE, 0., healths[it].max, flags = .DisplayValue);
+            ProgressBarV("Mana", healths[it].value, health_bar_size, 0., healths[it].max, flags = .DisplayValue);
             ImGui.PopStyleColor();
         }
         ImGui.End();

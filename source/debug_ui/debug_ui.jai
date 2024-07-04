@@ -1,10 +1,12 @@
 show_system_graph := false;
 show_imgui_demo_window := false;
 show_stats := false;
+show_settings := false;
 
 render_debug_ui :: () {
     if ImGui.BeginMainMenuBar() {
         if ImGui.BeginMenu("Tools") {
+            if ImGui.MenuItem("Settings", null, *show_settings) {}
             if ImGui.MenuItem("Stats", null, *show_stats) {}
             if ImGui.MenuItem("View System Graph", null, *show_system_graph) {}
             ImGui.EndMenu();
@@ -16,6 +18,9 @@ render_debug_ui :: () {
         ImGui.EndMainMenuBar();
     }
 
+    if show_settings {
+        show_settings_window();
+    }
     if show_stats {
         show_stats_overlay();
     }
@@ -24,6 +29,16 @@ render_debug_ui :: () {
     }
     if show_imgui_demo_window {
         ImGui.ShowDemoWindow(*show_imgui_demo_window);
+    }
+}
+
+show_settings_window :: () {
+    if !ImGui.IsPopupOpen("Settings") {
+        ImGui.OpenPopup("Settings");
+    }
+    if ImGui.BeginPopupModal("Settings", *show_settings, .AlwaysAutoResize | .NoMove) {
+        ImGui.SliderFloat("UI Scale", *UI_SCALE, 0.5, 5.);
+        ImGui.EndPopup();
     }
 }
 
