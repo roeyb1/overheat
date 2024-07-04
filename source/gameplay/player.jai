@@ -3,6 +3,7 @@
 Player :: struct @Component {}
 
 Local_Player :: struct @Component {}
+Remote_Player :: struct @Component {}
 
 Player_Controller :: struct @Component {
     // Keep track of the velocity added due to user input
@@ -37,6 +38,7 @@ Player_Bundle :: struct @Bundle {
     player_controller: Player_Controller;
     sprite: Sprite;
     collider: Collider_AABB;
+    health: Health;
 }
 
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
@@ -59,11 +61,14 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 20. },
         sprite = .{ sprite, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
+        health = .{90., 100.},
     });
 
     // if this is a local player:
     if g_client.local_client_id == networking_id {
         add_component(*g_world, entity, Local_Player);
+    } else {
+        add_component(*g_world, entity, Remote_Player);
     }
 
     return entity;

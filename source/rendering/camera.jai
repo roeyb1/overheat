@@ -7,6 +7,10 @@ Camera :: struct @Component {
     entity_to_track: Entity;
 }
 
+Game_Viewport :: struct @SingletonComponent {
+    main_camera: Entity;
+}
+
 // #todo: we probably want this value to vary so that the window size can't just show you more of the world.
 // The number of tiles visible should mostly remain a constant value
 PIXELS_PER_METER :: 64;

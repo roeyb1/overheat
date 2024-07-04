@@ -4,6 +4,7 @@ Health_Change_Queue :: struct @Component {
 
 Health :: struct @Component {
     value: float;
+    max: float;
 }
 
 modify_health :: (q: Query) {

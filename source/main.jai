@@ -18,7 +18,6 @@ g_frame_number: u64 = 0;
 g_world: World;
 
 g_local_player: Entity;
-main_view_camera: Entity;
 
 main :: () {
     log_initialize();
@@ -45,7 +44,8 @@ main :: () {
     last_time = seconds_since_init();
 
     // The following few lines should probably be moved elsewhere. They initialize some specific things which could maybe tied into a global world init function?
-    main_view_camera = spawn_entity(*g_world, Position, Camera);
+    viewport := get_singleton(*g_world, Game_Viewport);
+    viewport.main_camera = spawn_entity(*g_world, Position, Camera);
 
     accumulated_time := 0.0;
 
@@ -97,9 +97,8 @@ main :: () {
     }
 
     {
-
-        camera := get_component(*g_world, main_view_camera, Camera);
-        cam_pos := get_component(*g_world, main_view_camera, Position);
+        camera := get_component(*g_world, viewport.main_camera, Camera);
+        cam_pos := get_component(*g_world, viewport.main_camera, Position);
         << cam_pos = .{ g_player_start };
         camera.entity_to_track = g_local_player;
     }
@@ -176,11 +175,12 @@ update_positions :: (q: Query) {
 } @System(OnUpdate) @Write(Position) @Read(Velocity)
 
 render_scene :: (q: Query) {
-    pos := get_component(q.world, main_view_camera, Position);
-    cam := get_component(q.world, main_view_camera, Camera);
+    viewport := get_singleton(q.world, Game_Viewport);
+    pos := get_component(q.world, viewport.main_camera, Position);
+    cam := get_component(q.world, viewport.main_camera, Camera);
 
     render_scene(cam.projection, pos);
-} @System(OnRender) @Write() @Read(Position,Camera)
+} @System(OnRender) @Write() @Read(Game_Viewport) @OptionalRead(Position,Camera)
 
 on_player_component_added :: (world: *World, entity: Entity) {
     log("Player added!");
@@ -200,7 +200,8 @@ using Random :: #import "Random";
 #load "networking.jai";
 #load "hal/hal_window.jai";
 #load "hal/hal_input.jai";
-#load "imgui.jai";
+#load "debug_ui/imgui.jai";
+#load "debug_ui/debug_ui.jai";
 #load "rendering/rendering.jai";
 #load "rendering/camera.jai";
 #load "unit_test.jai";
@@ -219,10 +220,10 @@ using Random :: #import "Random";
 #load "gameplay/enemy.jai";
 #load "gameplay/follower.jai";
 #load "physics/collision.jai";
-#load "debug_ui.jai";
 #load "levels/ldtk_import.jai";
 #load "animation/sprite_animation.jai";
 #load "animation/player_anim_sm.jai";
 #load "animation/skeleton_anim_sm.jai";
 #load "animation/bat_anim_sm.jai";
 #load "animation/animation_definitions.jai";
+#load "game_ui/game_ui.jai";
