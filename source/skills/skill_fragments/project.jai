@@ -2,6 +2,15 @@ Project :: struct @Component {
     direction: Vector2;
 }
 
+Project_Bundle :: struct @Bundle {
+    skill_definition: Skill_Definition;
+    networking_id: Networking_ID;
+    name: Name;
+    fragments: Fragments;
+    to_cast: To_Cast;
+    cooldown: Cooldown;
+}
+
 add_project :: (world: *World, skill: Entity, value: s64, casting_entity: Entity) {
 
     << get_component(world, skill, Target_Entity) = .{skill};

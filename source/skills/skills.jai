@@ -51,15 +51,32 @@ SKILL_FRAGMENT_NAMES ::
     ];
 
 
+Skill_Definition_Bundle :: struct @Bundle {
+    skill_definition: Skill_Definition;
+    networking_id: Networking_ID;
+    name: Name;
+    fragments: Fragments;
+    to_cast: To_Cast;
+    cooldown: Cooldown;
+}
+
+Skill_Instance_Bundle :: struct @Bundle {
+    target_entity: Target_Entity;
+}
+
 //take a skill component directly
 initialize_skills :: (world: *World, entity: Entity, number_of_skills: s64, networking_id: u64) {
     inventory := get_component(world, entity, Skill_Inventory);
     for 0 .. number_of_skills-1 {
-        skill := spawn_entity(world, Skill_Definition, Networking_ID, Name, Fragments, To_Cast, Cooldown);
-        << get_component(world, skill, Name) = .{sprint("skill no.%", it)};
-        << get_component(world, skill, Networking_ID) = .{networking_id};
-        << get_component(world, skill, Cooldown) = .{0.5,0};
-        array_add(*inventory.skills, skill);
+
+        new_skill_definition := spawn_from_bundle(*g_world, Skill_Definition_Bundle.{
+            name = .{sprint("skill no.%", it)},
+            networking_id = .{networking_id},
+            cooldown = .{0.5,0},
+        });
+
+        array_add(*inventory.skills, new_skill_definition
+        );
     }
 }
 
@@ -90,8 +107,9 @@ fire_skill :: (world: *World, skill: Entity, casting_entity: Networking_ID) {
         valid,player := get_player_by_networking_id(world,casting_entity);
 
         if valid {
-            skill_instance := spawn_entity(world, Skill, Target_Entity);
-            << get_component(world, skill_instance ,Target_Entity) = .{player};
+            skill_instance := spawn_from_bundle(*g_world, Skill_Instance_Bundle.{
+            target_entity = .{player},
+            });
 
             for get_component(world, skill, Fragments).value {
                 add_component_by_fragment(world ,skill_instance, player, it);
