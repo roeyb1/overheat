@@ -59,6 +59,8 @@ spawn_enemy :: (world: *World, position: Vector2, networking_id: u64, type: Enem
 
     << get_component(world, entity, Sprite) = .{sprite, size, 0, 4, 0};
     << get_component(world, entity, Collider_AABB) = .{aabb = make_aabb(.{0, 0}, collider_size), blocking = false};
+
+    compute_attribute(get_component(*g_world,entity,Move_Speed));
 }
 
 spawn_enemy_pack :: (world: *World, center: Vector2, radius: float, type: Enemy_Type) {

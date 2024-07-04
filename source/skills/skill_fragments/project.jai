@@ -24,6 +24,8 @@ add_project :: (world: *World, skill: Entity, value: s64, casting_entity: Entity
 
     add_component(world, skill, Move_Speed, .{base_value = 1});
     add_component(world, skill, Interp_Position, .{spawn_location,spawn_location});
+
+    compute_attribute(get_component(*g_world,skill,Move_Speed));
 }
 
 project_movement :: (q: Query) {

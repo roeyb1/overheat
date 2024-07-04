@@ -215,7 +215,7 @@ using Random :: #import "Random";
 #load "gameplay/direction.jai";
 #load "gameplay/input.jai";
 #load "gameplay/player.jai";
-#load "gameplay/attributes.jai";
+#load "gameplay/attributes/attributes.jai";
 #load "gameplay/damage.jai";
 #load "gameplay/enemy.jai";
 #load "gameplay/follower.jai";
