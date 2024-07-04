@@ -683,10 +683,10 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
                 }
             }
         case .TARGETING_INFO;
-        targeting_info: Targeting_Info_Packet;
-        byte_buffer_read(buffer, *targeting_info);
+            targeting_info: Targeting_Info_Packet;
+            byte_buffer_read(buffer, *targeting_info);
 
-        for q : make_iter(*g_world, Networking_ID, Player, Current_Target) {
+            for q : make_iter(*g_world, Networking_ID, Player, Current_Target) {
                 networking_ids := query_get(q, Networking_ID);
                 current_targets := query_get(q, Current_Target);
 
@@ -696,7 +696,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
                         break;
                     }
                 }
-        }
+            }
         case;
     }
 }

@@ -178,20 +178,10 @@ show_ui_skills :: (q: Query) {
 } @System(PreRender) @Write() @Read(Skills_UI)
 
 broadcast_skill_change :: (networking_id: Networking_ID, skill_to_update: s64, skill_info: [..] Skill_Fragment) {
-
     player_skill_update_packet: Player_Skill_Update_Packet;
     player_skill_update_packet.networking_id = networking_id.id;
     player_skill_update_packet.skill_to_update = skill_to_update;
     player_skill_update_packet.skill_info = skill_info;
 
     networking_send_packet(*player_skill_update_packet);
-    
 }
-
-
-
-
-
-    
-
-

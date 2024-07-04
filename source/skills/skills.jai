@@ -62,19 +62,17 @@ initialize_skills :: (world: *World, entity: Entity, number_of_skills: s64, netw
             cooldown = .{0.5,0},
         });
 
-        array_add(*inventory.skills, new_skill_definition
-        );
+        array_add(*inventory.skills, new_skill_definition);
     }
 }
 
 skills_to_fire :: (q: Query) {
-
     casted_skills := query_get(q, To_Cast);
     names := query_get(q, Name);
     networking_ids := query_get(q, Networking_ID);
 
     for 0..q.count-1 {
-        if(casted_skills[it].value){
+        if casted_skills[it].value {
             fire_skill(q.world, q.entities[it],networking_ids[it]);
 
             casted_skills[it].value = false;
@@ -148,15 +146,15 @@ get_mouse_worldspace :: () -> Vector2 {
 }
 
 get_player_by_networking_id :: (world: *World, networking_id: Networking_ID) -> bool,Entity {
-    for q : make_iter(world, Player, Networking_ID)
-        {
-            networking_ids := query_get(q, Networking_ID);
-            for 0..q.count-1 {
-                if networking_ids[it].id == networking_id.id {
-                    return true,q.entities[it];
-                }
+    for q : make_iter(world, Player, Networking_ID) {
+        networking_ids := query_get(q, Networking_ID);
+        for 0..q.count-1 {
+            if networking_ids[it].id == networking_id.id {
+                return true,q.entities[it];
             }
         }
+    }
+
     return false,.{};
 }
 
