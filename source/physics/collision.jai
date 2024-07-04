@@ -19,7 +19,7 @@ Overlap_Pair :: struct @Component {
 }
 
 Collision_Spatial :: struct @SingletonComponent {
-    aabb_tree: AABB_Tree;
+    aabb_tree: BoundingTree(Entity);
 }
 
 Collision_List :: struct @SingletonComponent {
@@ -47,7 +47,7 @@ build_collision_spatial :: (q: Query) {
     for 0..q.count-1 {
         bounds := translate(colliders[it], positions[it]);
 
-        insert(*spatial.aabb_tree, bounds, q.entities[it]);
+        create_proxy(*spatial.aabb_tree, bounds, q.entities[it]);
     }
 } @System(OnValidate) @Write(Collision_Spatial) @Read(Position,Collider_AABB) @Optional(Collision_Invoker)
 
@@ -132,13 +132,13 @@ generate_overlap_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB,
     result: [..] Overlap_Pair;
     result.allocator = temp;
 
-    overlaps := find_overlaps(*spatial.aabb_tree, bounds, self);
+    for query(*spatial.aabb_tree, bounds) {
+        if it == self then continue;
 
-    for overlaps {
         pair: *Overlap_Pair = array_add(*result);
         pair.a = self;
 
-        pair.b = it.entity;
+        pair.b = it;
     }
 
     return result;
@@ -146,17 +146,17 @@ generate_overlap_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB,
 
 find_nearest_matching_predicate_within_range :: (world: *World, point: Vector2, radius: float, self: Entity, pred: #type (entity: Entity, data: *void) -> (bool), data: *void) -> Entity, bool {
     spatial := get_singleton(world, Collision_Spatial);
-
-    candidates := find_overlaps(*spatial.aabb_tree, make_aabb(point, make_vector2(2 * radius)), self);
-
     min_entity := INVALID_ENTITY;
     min_distance := FLOAT32_MAX;
-    for candidates {
-        if pred(it.entity, data) {
-            position := box_center(it.bounds);
+    for query(*spatial.aabb_tree, make_aabb(point, make_vector2(radius))) {
+        if it == self then continue;
+
+        if pred(it, data) {
+            bounds := spatial.aabb_tree.nodes[it_index].aabb;
+            position := box_center(bounds);
             dist := distance(point, position);
             if dist < min_distance {
-                min_entity = it.entity;
+                min_entity = it;
                 min_distance = dist;
             }
         }
@@ -168,5 +168,3 @@ find_nearest_matching_predicate_within_range :: (world: *World, point: Vector2, 
 
     return min_entity, true;
 }
-
-#load "aabb_tree.jai";

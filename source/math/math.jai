@@ -39,6 +39,14 @@ area :: inline (aabb: AABB) -> float {
     return (aabb.max.x - aabb.min.x) * (aabb.max.y - aabb.min.y);
 } @NoProfile
 
+surface_area :: inline (aabb: AABB) -> float {
+    return (aabb.max.x - aabb.min.x) * (aabb.max.y - aabb.min.y);
+} @NoProfile
+
+merge :: inline (a: AABB, b: AABB) -> AABB {
+    return a + b;
+}
+
 translate:: inline (using box: AABB, translation: Vector2) -> AABB {
     return .{min = min + translation, max = max + translation };
 }
@@ -126,3 +134,5 @@ degrees :: inline (angle: float) -> float {
 equals :: inline (a: float, b: float, ERROR_MARGIN := 0.0001) -> bool {
     return abs(a - b) <= ERROR_MARGIN;
 }
+
+#load "aabb_tree.jai";
