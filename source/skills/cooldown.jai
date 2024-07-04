@@ -3,7 +3,7 @@ Cooldown :: struct @Component {
     current_value: float;
 }
 
-update_Cooldown :: (q: Query) {
+update_cooldown :: (q: Query) {
     cooldowns := query_get(q, Cooldown);
     for 0..q.count-1 {
 
