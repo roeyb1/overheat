@@ -3,6 +3,7 @@
 Player :: struct @Component {}
 
 Local_Player :: struct @Component {}
+Remote_Player :: struct @Component {}
 
 Player_Controller :: struct @Component {
     // Keep track of the velocity added due to user input
@@ -66,6 +67,8 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     // if this is a local player:
     if g_client.local_client_id == networking_id {
         add_component(*g_world, entity, Local_Player);
+    } else {
+        add_component(*g_world, entity, Remote_Player);
     }
 
     return entity;
