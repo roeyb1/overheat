@@ -15,7 +15,7 @@ draw_player_action_bar :: (q: Query) {
 
     if ImGui.Begin("##ActionBar", null, .NoTitleBar | .NoScrollbar |.NoCollapse | .NoSavedSettings | .AlwaysAutoResize | .NoResize | .NoMove) {
         for 0..NUM_SKILLS-1 {
-            ImGui.ImageButton(temp_c_string(tprint("%##ActionBarSkill", it)), cast(ImGui.ImTextureID) get_texture_view_handle(skill_icon), SKILL_BUTTON_SIZE);
+            ImGui.ImageButton(temp_c_string(tprint("%##ActionBarSkill", it)), cast(ImGui.ImTextureID) get_texture_view_handle(skill_icon), SKILL_BUTTON_SIZE, .{0, 1.}, .{1, 0});
             ImGui.SameLine();
         }
     }
