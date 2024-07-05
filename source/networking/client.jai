@@ -1,4 +1,3 @@
-
 client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     if packet_type == {
         case .CONNECTION_ESTABLISHED;
@@ -41,35 +40,26 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             assert(player_commands_packet.node_id != g_client.local_client_id, 
                 "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
 
-            for q : make_iter(*g_world, Networking_ID, Player_Commands) {
-                player_commands := query_get(q, Player_Commands);
-                networking_ids := query_get(q, Networking_ID);
+            entity, found := table_find(*entity_node_id_table, player_commands_packet.node_id);
+            assert(found, "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
 
-                for 0..q.count-1 {
-                    if networking_ids[it].id == player_commands_packet.node_id {
-                        player_commands[it] = player_commands_packet.commands;
-                    }
-                }
-            }
+            player_commands := get_component(*g_world, entity, Player_Commands);
+            assert(player_commands != null);
+            << player_commands = player_commands_packet.commands;
         case .PLAYER_LEFT;
             player_left: PlayerLeft_Packet;
             byte_buffer_read(buffer, *player_left);
 
-            player_to_kill: Entity;
+            entity, found := table_find(*entity_node_id_table, player_left.node_id);
+            assert(found, "Received a Player Left packet for an entity which is not registered in the networking system. How did this happen!?");
 
-            for q : make_iter(*g_world, Networking_ID, Player, Name) {
-                networking_ids := query_get(q, Networking_ID);
-                names := query_get(q, Name);
-
-                for 0..q.count-1 {
-                    if networking_ids[it].id == player_left.node_id {
-                        destroy_entity(*g_world, q.entities[it]);
-
-                        log("% has left the game.", names[it].name);
-                        break;
-                    }
-                }
+            name := get_component(*g_world, entity, Name);
+            if name {
+                log("% has left the game.", name.name);
             }
+
+            destroy_entity(*g_world, entity);
         case;
     }
 }
+
