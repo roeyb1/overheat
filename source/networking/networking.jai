@@ -667,5 +667,3 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
 #import "gns";
 #import "Command_Line";
-
-#load "byte_buffer.jai";

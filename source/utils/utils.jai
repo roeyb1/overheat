@@ -64,5 +64,6 @@ sbprint :: print_to_builder;
 
 #load "handle_manager.jai";
 #load "timer.jai";
+#load "byte_buffer.jai";
 
 ENABLE_ENSURE :: true;

@@ -197,7 +197,7 @@ using Random :: #import "Random";
 #load "utils/utils.jai";
 #load "math/math.jai";
 #load "logging.jai";
-#load "networking.jai";
+#load "networking/networking.jai";
 #load "hal/hal_window.jai";
 #load "hal/hal_input.jai";
 #load "debug_ui/imgui.jai";
