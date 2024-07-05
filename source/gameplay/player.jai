@@ -15,10 +15,10 @@ Networking_ID :: struct @Component {
 }
 
 Player_Commands :: struct @Component {
-    move_vector: Vector2;
+    move_vector: Vector2; @Sync
 
-    main_attack: bool;
-    secondary_attack: bool;
+    main_attack: bool; @Sync
+    secondary_attack: bool; @Sync
 }
 
 Player_Bundle :: struct @Bundle {

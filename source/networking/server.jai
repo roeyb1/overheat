@@ -12,3 +12,11 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
         case;
     }
 }
+
+server_post_simulate :: () {
+    assert(is_server());
+
+    snapshot := generate_full_snapshot(*g_world);
+
+    // @todo store the snapshot
+}

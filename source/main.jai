@@ -142,6 +142,10 @@ main :: () {
             execute(*g_world, .OnUpdate);
             execute(*g_world, .OnValidate);
             execute(*g_world, .PostUpdate);
+
+            if is_server() {
+                server_post_simulate();
+            }
             accumulated_time -= FIXED_TIMESTEP;
         }
         g_interp_alpha = accumulated_time / FIXED_TIMESTEP;

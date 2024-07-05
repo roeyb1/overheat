@@ -28,6 +28,11 @@ has_note :: (ti: *Type_Info_Struct, note: string) -> bool {
     return false;
 }
 
+has_note :: (ti: *Type_Info_Struct_Member, note: string) -> bool {
+    for ti.notes  if it == note  return true;
+    return false;
+}
+
 view_of_c_string :: (c_string : *s8) -> string {
     ret : string;
     

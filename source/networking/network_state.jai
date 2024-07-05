@@ -1,36 +1,68 @@
-// @note: node ids are not per-world, therefore we don't need to keep a table per-world.
-// two different node ids may point to the same entity id from different worlds
-entity_node_id_table: Table(Node_ID, Entity, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
-Node_ID :: struct {
-    id: u64;
+Node_Field :: struct {
+    field_id: Component_Type_ID;
+
+    // component data stored in a byte buffer. @todo this is pretty innefficient since each node field will have it's own unique storage... good enough for now though I suppose
+    data: ByteBuffer;
 }
+
 
 Node_State :: struct {
-    
+    fields: [..] Node_Field;
 }
 
-Network_State :: struct {
+State_Snapshot :: struct {
     state: Table(Node_ID, Node_State, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 }
 
-node_id_hash :: inline (id: Node_ID) -> u32 {
-    return get_hash(id.id);
-}
 
-compare_node_id :: inline (a: Node_ID, b: Node_ID) -> bool {
-    return a == b;
-}
+generate_full_snapshot :: (world: *World) -> State_Snapshot {
+    result: State_Snapshot;
 
-operator== :: inline (a: Node_ID, b: Node_ID) -> bool {
-    return a.id == b.id;
-}
+    #insert -> string {
+        INSERT_STRING :: #string DONE 
+            for q : make_iter(world, Networking_ID, %1) {
+                datas := query_get(q, %1);
+                networking_ids := query_get(q, Networking_ID);
 
-on_entity_begin_networking :: (world: *World, entity: Entity) {
-    networking_id := get_component(world, entity, Networking_ID);
-    table_add(*entity_node_id_table, networking_id.id, entity);
+                for 0..q.count-1 {
+                    state := find_or_add(*result.state, networking_ids[it].id);
 
-    if is_server() {
-        // @todo: emit a full sync for this node
+                    field := array_add(*state.fields);
+                    field.field_id = #run component_type_id(%1);
+
+                    byte_buffer_write(*field.data, *datas[it]);
+                }
+            }
+        DONE
+
+        sb: String_Builder;
+
+        for ALL_COMPONENT_TYPES {
+            has_sync_fields := false;
+            ti := cast(*Type_Info_Struct) it;
+            for * member : ti.members {
+                if has_note(member, "Sync") {
+                    has_sync_fields = true;
+                    break;
+                }
+            }
+
+            if !has_sync_fields then continue;
+
+            sbprint(*sb, INSERT_STRING, it);
+        }
+
+        return builder_to_string(*sb);
     }
-} @Event(EcsOnAdd,Networking_ID)
+
+    return result;
+}
+
+free :: (snapshot: *State_Snapshot) {
+    for snapshot.state {
+        for field : it.fields {
+            free(*field.data);
+        }
+    }
+}
