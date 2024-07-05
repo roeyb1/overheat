@@ -124,7 +124,7 @@ use_skill0 :: (q: Query) {
 
     
     for 0..q.count-1 {
-        skill := skill_inventories[it].skills[0];
+        skill := skill_inventories[it].skills[0]; //@Todo shit
 
 
         if get_component(q.world, q.entities[it],Local_Player){

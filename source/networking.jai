@@ -51,6 +51,7 @@ ConnectionEstablished_Packet :: struct {
     // #hack: using the player joined packet to avoid adding a new struct
     existing_players: [..] PlayerJoined_Packet;
     existing_enemies: [..] Enemy_Init_Data_Packet;
+    existing_skills: [..] Player_Skill_Update_Packet;
 }
 
 /** Packet sent from the server to all clients indicating a new player has joined the game. */
@@ -207,7 +208,7 @@ networking_send_packet :: (client: *Server.ClientConnection, packet_data: *$Type
         buffer.buff.allocator = temp;
 
         packet_type := Type.PACKET_TYPE;
-        byte_buffer_write(*buffer, *packet_type);
+        byte_buffer_write(*buffer, *packet_type); 
         byte_buffer_write(*buffer, packet_data);
 
         Sockets.SendMessageToConnection(client.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
@@ -510,6 +511,19 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                     }
                 }
 
+                for q: make_iter(*g_world, Player, Skill_Inventory) {
+                    skill_inventories := query_get(q, Skill_Inventory);
+
+                    for 0..q.count-1 {
+                        for skill_inventories[it].skills{
+                            skill_data := array_add(*conn_established.existing_skills);
+                            skill_data.networking_id = get_component(*g_world, it, Networking_ID).id;
+                            skill_data.skill_info = get_component(*g_world, it, Fragments).value;
+                            skill_data.skill_to_update = it_index;
+                        }
+                    }
+                }
+
                 networking_send_packet(*new_client, *conn_established);
             }
 
@@ -619,6 +633,22 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
                 for enemy_data : conn_established.existing_enemies {
                     enemy := spawn_enemy(*g_world, enemy_data.position, enemy_data.networking_id, enemy_data.type);
+                }
+
+                for skill_data : conn_established.existing_skills {
+                    for q : make_iter(*g_world, Networking_ID, Player, Skill_Inventory) {
+                    networking_ids := query_get(q, Networking_ID);
+                    skill_inventories := query_get(q, Skill_Inventory);
+
+                        for 0..q.count-1 {
+                            if networking_ids[it].id == skill_data.networking_id {
+                                fragments := get_component(q.world,skill_inventories[it].skills[skill_data.skill_to_update],Fragments);
+                                array_copy(*fragments.value,skill_data.skill_info);
+                                log("% has changed skills to %.", networking_ids[it].id,fragments.value);
+                                break;
+                            }
+                        }
+                    }   
                 }
             }
         case .PLAYER_JOINED;
