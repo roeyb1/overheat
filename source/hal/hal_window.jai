@@ -7,7 +7,7 @@ g_window_resized_this_frame := true;
 window_system_init :: () {
     SDL_Init(SDL_INIT_VIDEO);
 
-    g_window = SDL_CreateWindow("Overheat", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, g_window_width, g_window_height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    g_window = SDL_CreateWindow(temp_c_string(tprint("Overheat - %", ifx is_server() then "Server" else "Client")), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, g_window_width, g_window_height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     assert(g_window != null);
 }
 
