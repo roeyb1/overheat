@@ -399,14 +399,13 @@ write_struct_members :: (out_buffer: *ByteBuffer, data: *void, members: [] Type_
         last_offset = member.offset_in_bytes;
 
         if member.flags & .CONSTANT then continue;
-        if !ignore_notes && out_buffer.only_note.count > 0 && member.notes.count == 0 then continue;
+        if !ignore_notes {
+            if out_buffer.only_note.count > 0 && !has_note(member, out_buffer.only_note) then continue;
+            if out_buffer.skip_note.count > 0 && has_note(member, out_buffer.skip_note) then continue;
+        }
 
         for note : member.notes {
             if note == "NoSerialize" then continue member;
-            if !ignore_notes {
-                if out_buffer.only_note.count > 0 && note != out_buffer.only_note then continue member;
-                if out_buffer.skip_note.count > 0 && note == out_buffer.skip_note then continue member;
-            }
         }
         
         byte_buffer_write(out_buffer, data + member.offset_in_bytes, member.type, ignore_notes = true);
@@ -420,14 +419,13 @@ read_struct_members :: (buffer: *ByteBuffer, data_out: *void, members: [] Type_I
         last_offset = member.offset_in_bytes;
 
         if member.flags & .CONSTANT then continue;
-        if !ignore_notes && buffer.only_note.count > 0 && member.notes.count == 0 then continue;
+        if !ignore_notes {
+            if buffer.only_note.count > 0 && !has_note(member, buffer.only_note) then continue;
+            if buffer.skip_note.count > 0 && has_note(member, buffer.skip_note) then continue;
+        }
 
         for note : member.notes {
             if note == "NoSerialize" then continue member;
-            if !ignore_notes {
-                if buffer.only_note.count > 0 && note != buffer.only_note then continue member;
-                if buffer.skip_note.count > 0 && note == buffer.skip_note then continue member;
-            }
         }
         
         byte_buffer_read(buffer, data_out + member.offset_in_bytes, member.type, ignore_notes = true);

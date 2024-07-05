@@ -12,7 +12,6 @@ Enemy_Bundle :: struct @Bundle {
     enemy: Enemy;
     position: Position;
     velocity: Velocity;
-    interp_position: Interp_Position;
     sprite: Sprite;
     animator: Sprite_Animator;
     direction: Direction;
@@ -25,7 +24,6 @@ Enemy_Bundle :: struct @Bundle {
 spawn_enemy :: (world: *World, position: Vector2, node_id: Node_ID, type: Enemy_Type) {
     entity := spawn_entity_from_bundle(world, Enemy_Bundle.{
         position = .{ position },
-        interp_position = .{ position, position },
         enemy.type = type,
         networking_id.id = node_id,
         health = .{100., 100.},

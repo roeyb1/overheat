@@ -1,3 +1,8 @@
+last_snapshot: State_Snapshot;
+current_snapshot: State_Snapshot;
+
+last_snapshot_time: float64;
+
 client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     if packet_type == {
         case .CONNECTION_ESTABLISHED;
@@ -60,15 +65,80 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             destroy_entity(*g_world, entity);
         case .SNAPSHOT;
-            snapshot_packet: State_Snapshot_Packet;
-            byte_buffer_read(buffer, *snapshot_packet);
+            if !is_server() {
+                snapshot_packet: State_Snapshot_Packet;
+                byte_buffer_read(buffer, *snapshot_packet);
 
-            snapshot := from_packet(snapshot_packet);
+                last_snapshot = current_snapshot;
+                current_snapshot = from_packet(snapshot_packet);
+                last_snapshot_time = seconds_since_init();
 
-            apply_snapshot(*g_world, snapshot);
-
+                apply_snapshot(*g_world, current_snapshot);
+                
+                g_sim_frame_number = snapshot_packet.sequence_number;
+            }
             //free(*snapshot);
         case;
+    }
+}
+
+interpolate_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alpha: float) {
+    #insert -> string {
+        INSERT_STRING :: #string DONE 
+            for q : make_iter(world, Networking_ID, %1) {
+                datas := query_get(q, %1);
+                networking_ids := query_get(q, Networking_ID);
+
+                for 0..q.count-1 {
+                    state_a, success_a := table_find(*a.state, networking_ids[it].id);
+                    state_b, success_b := table_find(*b.state, networking_ids[it].id);
+
+                    if !success_a || !success_b then continue;
+
+                    field_a: *Node_Field = null;
+                    for * fields_it : state_a.fields {
+                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_a = fields_it;
+                    }
+
+                    field_b: *Node_Field = null;
+                    for * fields_it : state_b.fields {
+                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_b = fields_it;
+                    }
+                    if field_a == null || field_b == null then continue;
+
+                    field_a.data.only_note = "Interp";
+                    field_b.data.only_note = "Interp";
+
+                    a_data: %1;
+                    b_data: %1;
+                    field_a.data.cursor = 0;
+                    byte_buffer_read(*field_a.data, *a_data);
+                    field_b.data.cursor = 0;
+                    byte_buffer_read(*field_b.data, *b_data);
+
+                    datas[it] = lerp(a_data, b_data, alpha);
+                }
+            }
+        DONE
+
+        sb: String_Builder;
+
+        for ALL_COMPONENT_TYPES {
+            has_interp_fields := false;
+            ti := cast(*Type_Info_Struct) it;
+            for * member : ti.members {
+                if has_note(member, "Sync") && has_note(member, "Interp") {
+                    has_interp_fields = true;
+                    break;
+                }
+            }
+
+            if !has_interp_fields then continue;
+
+            sbprint(*sb, INSERT_STRING, it);
+        }
+
+        return builder_to_string(*sb);
     }
 }
 
@@ -92,6 +162,7 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
                     assert(field != null);
 
                     field.data.only_note = "Sync";
+                    field.data.cursor = 0;
 
                     byte_buffer_read(*field.data, *datas[it]);
                 }

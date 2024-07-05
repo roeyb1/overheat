@@ -27,7 +27,6 @@ Player_Bundle :: struct @Bundle {
     name: Name;
     player_commands: Player_Commands;
     position: Position;
-    interp_position: Interp_Position;
     networking_id: Networking_ID;
     move_speed: Move_Speed;
     point_light: Point_Light;
@@ -54,7 +53,6 @@ init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
     entity := spawn_entity_from_bundle(*g_world, Player_Bundle.{
         name = .{ sprint("Player_%", node_id.id) },
         position = .{ position },
-        interp_position = .{ position, position },
         networking_id = .{ node_id },
         invoker = .{ id = node_id.id },
         move_speed =  .{ 6 },

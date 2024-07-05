@@ -1,4 +1,3 @@
-
 Node_Field :: struct {
     field_id: u64;
 
@@ -23,6 +22,8 @@ State_Snapshot_Packet :: struct {
         state: Node_State;
     }
     pairs: [..] State_Pair;
+
+    sequence_number: u64;
 }
 
 generate_full_snapshot :: (world: *World) -> State_Snapshot {

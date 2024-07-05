@@ -14,6 +14,7 @@ FIXED_TIMESTEP :: 0.016;
 g_should_exit: bool = false;
 
 g_frame_number: u64 = 0;
+g_sim_frame_number: u64 = 0;
 
 g_world: World;
 
@@ -21,6 +22,11 @@ g_local_player: Entity;
 
 main :: () {
     log_initialize();
+
+    for ALL_COMPONENT_TYPES {
+        ti := cast (*Type_Info_Struct) it;
+        log("% %", it_index, ti.name);
+    }
 
     register_events();
 
@@ -135,25 +141,34 @@ main :: () {
         execute(*g_world, .PostLoad);
 
         // Run simulation on a fixed timestep for determinism 
-        while accumulated_time >= FIXED_TIMESTEP {
-            scoped_smooth_timer(*g_sim_timer, 1. / 16.);
+        if is_server() {
+            while accumulated_time >= FIXED_TIMESTEP {
+                scoped_smooth_timer(*g_sim_timer, 1. / 16.);
 
-            if is_server() {
                 execute(*g_world, .PreUpdate);
                 execute(*g_world, .OnUpdate);
                 execute(*g_world, .OnValidate);
                 execute(*g_world, .PostUpdate);
 
-                snapshot := generate_full_snapshot(*g_world);
-                snapshot_packet := to_packet(snapshot);
+                free(*last_snapshot);
+                last_snapshot = current_snapshot;
+                current_snapshot = generate_full_snapshot(*g_world);
+                last_snapshot_time = seconds_since_init();
+
+                snapshot_packet := to_packet(current_snapshot);
+                snapshot_packet.sequence_number = g_sim_frame_number;
         
                 networking_broadcast(*snapshot_packet);
 
-                free(*snapshot);
+                g_sim_frame_number += 1;
+                accumulated_time -= FIXED_TIMESTEP;
             }
-            accumulated_time -= FIXED_TIMESTEP;
         }
-        g_interp_alpha = accumulated_time / FIXED_TIMESTEP;
+
+        g_interp_alpha = cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP;
+        if g_sim_frame_number > 16 {
+            interpolate_states(*g_world, last_snapshot, current_snapshot, g_interp_alpha);
+        }
 
         {
             scoped_smooth_timer(*g_render_timer, 1. / 16.);
@@ -217,7 +232,6 @@ using Random :: #import "Random";
 #load "assets.jai";
 #load "ecs/ecs.jai";
 #load "gameplay/components.jai";
-#load "gameplay/position_interp.jai";
 #load "gameplay/direction.jai";
 #load "gameplay/input.jai";
 #load "gameplay/player.jai";
