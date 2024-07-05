@@ -30,8 +30,10 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
 
                     field := array_add(*state.fields);
                     field.field_id = #run component_type_id(%1);
+                    field.data.only_note = "Sync";
 
                     byte_buffer_write(*field.data, *datas[it]);
+                    field.data.cursor = 0;
                 }
             }
         DONE

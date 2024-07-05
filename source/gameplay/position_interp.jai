@@ -1,6 +1,6 @@
 Interp_Position :: struct @Component {
-    previous: Vector2;
-    current: Vector2;
+    previous: Vector2; @Sync
+    current: Vector2; @Sync
 }
 
 reset_interped_position_overrides :: (q: Query) {

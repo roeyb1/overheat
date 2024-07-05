@@ -63,3 +63,47 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     }
 }
 
+apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
+    #insert -> string {
+        INSERT_STRING :: #string DONE 
+            for q : make_iter(world, Networking_ID, %1) {
+                datas := query_get(q, %1);
+                networking_ids := query_get(q, Networking_ID);
+
+                for 0..q.count-1 {
+                    state, success := table_find(*snapshot.state, networking_ids[it].id);
+                    assert(success);
+
+                    field: *Node_Field = null;
+                    for * fields_it : state.fields {
+                        if fields_it.field_id == #run component_type_id(%1) then field = fields_it;
+                    }
+                    assert(field != null);
+
+                    field.data.only_note = "Sync";
+
+                    byte_buffer_read(*field.data, *datas[it]);
+                }
+            }
+        DONE
+
+        sb: String_Builder;
+
+        for ALL_COMPONENT_TYPES {
+            has_sync_fields := false;
+            ti := cast(*Type_Info_Struct) it;
+            for * member : ti.members {
+                if has_note(member, "Sync") {
+                    has_sync_fields = true;
+                    break;
+                }
+            }
+
+            if !has_sync_fields then continue;
+
+            sbprint(*sb, INSERT_STRING, it);
+        }
+
+        return builder_to_string(*sb);
+    }
+}

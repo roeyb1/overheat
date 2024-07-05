@@ -138,14 +138,16 @@ main :: () {
         while accumulated_time >= FIXED_TIMESTEP {
             scoped_smooth_timer(*g_sim_timer, 1. / 16.);
 
+            snapshot := generate_full_snapshot(*g_world);
+
             execute(*g_world, .PreUpdate);
             execute(*g_world, .OnUpdate);
             execute(*g_world, .OnValidate);
             execute(*g_world, .PostUpdate);
 
-            if is_server() {
-                server_post_simulate();
-            }
+            apply_snapshot(*g_world, snapshot);
+            free(*snapshot);
+
             accumulated_time -= FIXED_TIMESTEP;
         }
         g_interp_alpha = accumulated_time / FIXED_TIMESTEP;

@@ -12,11 +12,11 @@ ByteBuffer :: struct {
     skip_note: string;
 }
 
-byte_buffer_write :: (out_buffer: *ByteBuffer, data: *$Type) {
-    byte_buffer_write(out_buffer, data, type_info(Type));
+byte_buffer_write :: (out_buffer: *ByteBuffer, data: *$Type, ignore_notes := false) {
+    byte_buffer_write(out_buffer, data, type_info(Type), ignore_notes);
 }
 
-byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info) {
+byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info, ignore_notes := false) {
     if info.type == {
         // handle primitive types the same way:
         case .BOOL; #through ;
@@ -36,7 +36,7 @@ byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info) {
             }
             assert(array_count != -1);
 
-            byte_buffer_write(out_buffer, *array_count, type_info(s64));
+            byte_buffer_write(out_buffer, *array_count, type_info(s64), ignore_notes);
 
             array_data: *void = ifx array_info.array_type == .RESIZABLE {
                 (cast(*[] int) data).data;
@@ -45,12 +45,12 @@ byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info) {
             };
 
             for 0..array_count-1 {
-                byte_buffer_write(out_buffer, array_data, array_info.element_type);
+                byte_buffer_write(out_buffer, array_data, array_info.element_type, ignore_notes);
                 array_data += array_info.element_type.runtime_size;
             }
         case .STRUCT;
             struct_info := cast(*Type_Info_Struct) info;
-            write_struct_members(out_buffer, data, struct_info.members);
+            write_struct_members(out_buffer, data, struct_info.members, ignore_notes);
         case .POINTER;
             assert(false, "Pointer serialization is forbidden");
         case;
@@ -58,11 +58,11 @@ byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info) {
     }
 }
 
-byte_buffer_read :: (buffer: *ByteBuffer, data: *$Type) {
-    byte_buffer_read(buffer, data, type_info(Type));
+byte_buffer_read :: (buffer: *ByteBuffer, data: *$Type, ignore_notes := false) {
+    byte_buffer_read(buffer, data, type_info(Type), ignore_notes);
 }
 
-byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info) {
+byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ignore_notes := false) {
     if info.type == {
         // handle primitive types the same way:
         case .BOOL; #through ;
@@ -76,7 +76,7 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info) {
             array_info := cast(*Type_Info_Array) info;
 
             array_count: s64;
-            byte_buffer_read(buffer, *array_count, type_info(s64));
+            byte_buffer_read(buffer, *array_count, type_info(s64), ignore_notes);
             
             // otherwise, use the data pointer already stored there
 			array_data := data_out;
@@ -102,12 +102,12 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info) {
             }
 
             for 0..array_count-1 {
-                byte_buffer_read(buffer, array_data, array_info.element_type);
+                byte_buffer_read(buffer, array_data, array_info.element_type, ignore_notes);
                 array_data += array_info.element_type.runtime_size;
             }
         case .STRUCT;
             struct_info := cast(*Type_Info_Struct) info;
-            read_struct_members(buffer, data_out, struct_info.members);
+            read_struct_members(buffer, data_out, struct_info.members, ignore_notes);
         case .POINTER;
             assert(false, "Pointer serialization is forbidden");
         case;
@@ -358,6 +358,29 @@ test_binary_serialization :: (ctx: *TestContext) {
         test_expect_equals(0, read_actual.z);
         test_expect_equals(test_data.type, read_actual.type);
     }
+
+    StructWithBool :: struct {
+        vec: Vector2;
+        val: bool;
+    }
+
+    {
+        test_data := StructWithBool.{.{1, 2}, true};
+
+        buffer: ByteBuffer;
+        defer free(*buffer);
+
+        byte_buffer_write(*buffer, *test_data, type_info(StructWithBool));
+
+        test_expect_equals(9, buffer.buff.count);
+
+        buffer.cursor = 0;
+        read_actual: StructWithBool;
+        byte_buffer_read(*buffer, *read_actual, type_info(StructWithBool));
+
+        test_expect_equals(test_data.vec, read_actual.vec);
+        test_expect_equals(test_data.val, read_actual.val);
+    }
 } @UnitTest
 
 #scope_file
@@ -367,33 +390,46 @@ BasicEnum :: enum u8 {
     Bar;
 }
 
-write_struct_members :: (out_buffer: *ByteBuffer, data: *void, members: [] Type_Info_Struct_Member) {
+write_struct_members :: (out_buffer: *ByteBuffer, data: *void, members: [] Type_Info_Struct_Member, ignore_notes := false) {
+    // we need to store the last offset because #place will place members at weird locations and we want to ignore members
+    last_offset := 0;
     for * member : members {
+        if member.offset_in_bytes < last_offset then continue;
+        last_offset = member.offset_in_bytes;
+
         if member.flags & .CONSTANT then continue;
-        if out_buffer.only_note.count > 0 && member.notes.count == 0 then continue;
+        if !ignore_notes && out_buffer.only_note.count > 0 && member.notes.count == 0 then continue;
 
         for note : member.notes {
             if note == "NoSerialize" then continue member;
-            if out_buffer.only_note.count > 0 && note != out_buffer.only_note then continue member;
-            if out_buffer.skip_note.count > 0 && note == out_buffer.skip_note then continue member;
+            if !ignore_notes {
+                if out_buffer.only_note.count > 0 && note != out_buffer.only_note then continue member;
+                if out_buffer.skip_note.count > 0 && note == out_buffer.skip_note then continue member;
+            }
         }
         
-        byte_buffer_write(out_buffer, data + member.offset_in_bytes, member.type);
+        byte_buffer_write(out_buffer, data + member.offset_in_bytes, member.type, ignore_notes = true);
     }
 }
 
-read_struct_members :: (buffer: *ByteBuffer, data_out: *void, members: [] Type_Info_Struct_Member) {
+read_struct_members :: (buffer: *ByteBuffer, data_out: *void, members: [] Type_Info_Struct_Member, ignore_notes := false) {
+    last_offset := 0;
     for * member : members {
+        if member.offset_in_bytes < last_offset then continue;
+        last_offset = member.offset_in_bytes;
+
         if member.flags & .CONSTANT then continue;
-        if buffer.only_note.count > 0 && member.notes.count == 0 then continue;
+        if !ignore_notes && buffer.only_note.count > 0 && member.notes.count == 0 then continue;
 
         for note : member.notes {
             if note == "NoSerialize" then continue member;
-            if buffer.only_note.count > 0 && note != buffer.only_note then continue member;
-            if buffer.skip_note.count > 0 && note == buffer.skip_note then continue member;
+            if !ignore_notes {
+                if buffer.only_note.count > 0 && note != buffer.only_note then continue member;
+                if buffer.skip_note.count > 0 && note == buffer.skip_note then continue member;
+            }
         }
         
-        byte_buffer_read(buffer, data_out + member.offset_in_bytes, member.type);
+        byte_buffer_read(buffer, data_out + member.offset_in_bytes, member.type, ignore_notes = true);
     }
 }
 
