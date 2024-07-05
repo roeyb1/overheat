@@ -91,6 +91,7 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ign
                     if buffer.allocator.proc == null    buffer.allocator = context.allocator;
                     push_allocator(buffer.allocator);
                     result.data = realloc(null, array_count * array_info.element_type.runtime_size, 0);
+                    memset(result.data, 0, array_count * array_info.element_type.runtime_size);
                 }
                 result.count = array_count;
                 result.allocated = array_count;

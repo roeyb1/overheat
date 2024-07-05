@@ -136,7 +136,7 @@ broadcast_local_player_commands :: (q: Query) {
         player_command_packet.commands = player_commands[it];
         networking_send_packet(*player_command_packet);
     }
-} @System(OnUpdate) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
+} @System(PostLoad) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
 
 
 #import "Math";

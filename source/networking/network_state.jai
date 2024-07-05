@@ -1,6 +1,6 @@
 
 Node_Field :: struct {
-    field_id: Component_Type_ID;
+    field_id: u64;
 
     // component data stored in a byte buffer. @todo this is pretty innefficient since each node field will have it's own unique storage... good enough for now though I suppose
     data: ByteBuffer;
@@ -15,6 +15,15 @@ State_Snapshot :: struct {
     state: Table(Node_ID, Node_State, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 }
 
+State_Snapshot_Packet :: struct {
+    PACKET_TYPE :: PacketType.SNAPSHOT;
+    // we can't serialize tables yet, so we rely on the list of pairs when serializing the state on the network
+    State_Pair :: struct {
+        node_id: Node_ID;
+        state: Node_State;
+    }
+    pairs: [..] State_Pair;
+}
 
 generate_full_snapshot :: (world: *World) -> State_Snapshot {
     result: State_Snapshot;
@@ -29,7 +38,7 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
                     state := find_or_add(*result.state, networking_ids[it].id);
 
                     field := array_add(*state.fields);
-                    field.field_id = #run component_type_id(%1);
+                    field.field_id = #run component_type_id(%1).unique_id;
                     field.data.only_note = "Sync";
 
                     byte_buffer_write(*field.data, *datas[it]);
@@ -67,4 +76,22 @@ free :: (snapshot: *State_Snapshot) {
             free(*field.data);
         }
     }
+}
+
+to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
+    result: State_Snapshot_Packet;
+    for snapshot.state {
+        pair := array_add(*result.pairs);
+        pair.node_id = it_index;
+        pair.state = it;
+    }
+    return result;
+}
+
+from_packet :: (packet: State_Snapshot_Packet) -> State_Snapshot {
+    result: State_Snapshot;
+    for packet.pairs {
+        table_add(*result.state, it.node_id, it.state);
+    }
+    return result;
 }

@@ -67,6 +67,7 @@ PacketType :: enum u8 #specified {
     PLAYER_LEFT             :: 3;
     PLAYER_COMMANDS         :: 4;
     ENEMY_INIT_DATA         :: 5;
+    SNAPSHOT                :: 6;
 }
 
 /** Packet sent from the server to the client assigning it a player id. */

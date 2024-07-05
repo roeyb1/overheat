@@ -59,6 +59,15 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             }
 
             destroy_entity(*g_world, entity);
+        case .SNAPSHOT;
+            snapshot_packet: State_Snapshot_Packet;
+            byte_buffer_read(buffer, *snapshot_packet);
+
+            snapshot := from_packet(snapshot_packet);
+
+            apply_snapshot(*g_world, snapshot);
+
+            //free(*snapshot);
         case;
     }
 }
@@ -72,11 +81,13 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
 
                 for 0..q.count-1 {
                     state, success := table_find(*snapshot.state, networking_ids[it].id);
-                    assert(success);
+                    // it's fine if we don't have an entry for the entity, since it may not exist on the client yet
+                    // @todo: this should really be an assert tho
+                    if !success then continue;
 
                     field: *Node_Field = null;
                     for * fields_it : state.fields {
-                        if fields_it.field_id == #run component_type_id(%1) then field = fields_it;
+                        if fields_it.field_id == #run component_type_id(%1).unique_id then field = fields_it;
                     }
                     assert(field != null);
 

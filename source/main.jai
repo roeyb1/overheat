@@ -138,16 +138,19 @@ main :: () {
         while accumulated_time >= FIXED_TIMESTEP {
             scoped_smooth_timer(*g_sim_timer, 1. / 16.);
 
-            snapshot := generate_full_snapshot(*g_world);
+            if is_server() {
+                execute(*g_world, .PreUpdate);
+                execute(*g_world, .OnUpdate);
+                execute(*g_world, .OnValidate);
+                execute(*g_world, .PostUpdate);
 
-            execute(*g_world, .PreUpdate);
-            execute(*g_world, .OnUpdate);
-            execute(*g_world, .OnValidate);
-            execute(*g_world, .PostUpdate);
+                snapshot := generate_full_snapshot(*g_world);
+                snapshot_packet := to_packet(snapshot);
+        
+                networking_broadcast(*snapshot_packet);
 
-            apply_snapshot(*g_world, snapshot);
-            free(*snapshot);
-
+                free(*snapshot);
+            }
             accumulated_time -= FIXED_TIMESTEP;
         }
         g_interp_alpha = accumulated_time / FIXED_TIMESTEP;
