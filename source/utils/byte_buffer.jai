@@ -5,6 +5,11 @@ ByteBuffer :: struct {
     buff: [..] u8;
     cursor: s64;
     allocator: Allocator; @NoSerialize;
+
+    // if only-note is set, it will only serialize members with the note
+    only_note: string;
+    // if skip note is set, it will skip serializing members that have that note (besides @NoSerialize which will always be skipped)
+    skip_note: string;
 }
 
 byte_buffer_write :: (out_buffer: *ByteBuffer, data: *$Type) {
@@ -283,6 +288,76 @@ test_binary_serialization :: (ctx: *TestContext) {
 
         test_expect_equals(test_nested_data.data.x, actual_nested_data.data.x);
     }
+
+    SkipStruct :: struct {
+        type: BasicEnum;
+        x: u32; @Skip
+        y: u16;
+        z: u64;
+    }
+
+    // Test simple struct serialization with skippped member
+    {
+        test_data := SkipStruct.{.Bar, 10, 20, 30};
+        assert(size_of(SkipStruct) == 24);
+        assert(size_of(BasicEnum) == size_of(u8));
+
+        buffer: ByteBuffer;
+        buffer.skip_note = "Skip";
+        defer free(*buffer);
+
+        byte_buffer_write(*buffer, *test_data, type_info(SkipStruct));
+
+        expected_data := u8.[1, 0, 20, 0, 0, 0, 0, 0, 0, 0, 30];
+
+        for 0..buffer.buff.count-1 {
+            assert(buffer.buff[it] == expected_data[it]);
+        }
+
+        buffer.cursor = 0;
+        read_actual: SkipStruct;
+        byte_buffer_read(*buffer, *read_actual, type_info(SkipStruct));
+
+        test_expect_equals(0, read_actual.x);
+        test_expect_equals(test_data.y, read_actual.y);
+        test_expect_equals(test_data.z, read_actual.z);
+        test_expect_equals(test_data.type, read_actual.type);
+    }
+
+
+    OnlyStruct :: struct {
+        type: BasicEnum; @Only
+        x: u32;
+        y: u16; @Only
+        z: u64;
+    }
+    // Test simple struct serialization with only members
+    {
+        test_data := OnlyStruct.{.Bar, 10, 20, 30};
+        assert(size_of(OnlyStruct) == 24);
+        assert(size_of(BasicEnum) == size_of(u8));
+
+        buffer: ByteBuffer;
+        buffer.only_note = "Only";
+        defer free(*buffer);
+
+        byte_buffer_write(*buffer, *test_data, type_info(OnlyStruct));
+
+        expected_data := u8.[1, 0, 20];
+
+        for 0..buffer.buff.count-1 {
+            assert(buffer.buff[it] == expected_data[it]);
+        }
+
+        buffer.cursor = 0;
+        read_actual: OnlyStruct;
+        byte_buffer_read(*buffer, *read_actual, type_info(OnlyStruct));
+
+        test_expect_equals(0, read_actual.x);
+        test_expect_equals(test_data.y, read_actual.y);
+        test_expect_equals(0, read_actual.z);
+        test_expect_equals(test_data.type, read_actual.type);
+    }
 } @UnitTest
 
 #scope_file
@@ -295,7 +370,13 @@ BasicEnum :: enum u8 {
 write_struct_members :: (out_buffer: *ByteBuffer, data: *void, members: [] Type_Info_Struct_Member) {
     for * member : members {
         if member.flags & .CONSTANT then continue;
-        for note : member.notes    if note == "NoSerialize" then continue member;
+        if out_buffer.only_note.count > 0 && member.notes.count == 0 then continue;
+
+        for note : member.notes {
+            if note == "NoSerialize" then continue member;
+            if out_buffer.only_note.count > 0 && note != out_buffer.only_note then continue member;
+            if out_buffer.skip_note.count > 0 && note == out_buffer.skip_note then continue member;
+        }
         
         byte_buffer_write(out_buffer, data + member.offset_in_bytes, member.type);
     }
@@ -304,7 +385,13 @@ write_struct_members :: (out_buffer: *ByteBuffer, data: *void, members: [] Type_
 read_struct_members :: (buffer: *ByteBuffer, data_out: *void, members: [] Type_Info_Struct_Member) {
     for * member : members {
         if member.flags & .CONSTANT then continue;
-        for note : member.notes    if note == "NoSerialize" then continue member;
+        if buffer.only_note.count > 0 && member.notes.count == 0 then continue;
+
+        for note : member.notes {
+            if note == "NoSerialize" then continue member;
+            if buffer.only_note.count > 0 && note != buffer.only_note then continue member;
+            if buffer.skip_note.count > 0 && note == buffer.skip_note then continue member;
+        }
         
         byte_buffer_read(buffer, data_out + member.offset_in_bytes, member.type);
     }
