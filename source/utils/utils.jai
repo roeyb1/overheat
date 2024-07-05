@@ -28,6 +28,20 @@ has_note :: (ti: *Type_Info_Struct, note: string) -> bool {
     return false;
 }
 
+view_of_c_string :: (c_string : *s8) -> string {
+    ret : string;
+    
+    if (c_string == null)
+    {
+        return ret;
+    }
+    
+    ret.data = xx c_string;
+    ret.count = c_style_strlen(xx c_string);
+    return ret;
+}
+
+
 array_find :: (arr: [] $T, val: T, pred: (a: T, b: T) -> bool) -> bool, s64 {
     for v : arr if pred(v, val) then return true, it_index;
     return false, -1;

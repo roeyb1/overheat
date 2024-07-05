@@ -50,7 +50,7 @@ main :: () {
     accumulated_time := 0.0;
 
     // Only update networking while we attempt to connect to the server and don't yet have a player:
-    while g_client.local_client_id == INVALID_NETWORKING_ID {
+    while g_client.local_client_id == INVALID_NODE_ID {
         FrameMark();
 
         now := seconds_since_init();

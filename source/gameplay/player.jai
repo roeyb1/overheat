@@ -11,7 +11,7 @@ Player_Controller :: struct @Component {
 }
 
 Networking_ID :: struct @Component {
-    id: u64;
+    id: Node_ID;
 }
 
 Player_Commands :: struct @Component {
@@ -41,8 +41,8 @@ Player_Bundle :: struct @Bundle {
     health: Health;
 }
 
-init_player :: (networking_id: u64, position: Vector2) -> Entity {
-    sprite := ifx g_client.local_client_id == networking_id {
+init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
+    sprite := ifx g_client.local_client_id == node_id {
         load_spritesheet("assets/players/player_character1.png",48, 0, 0,23,4);
     } else {
         load_spritesheet("assets/players/player_character2.png", 48, 0, 0,23,4);
@@ -52,11 +52,11 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     PLAYER_COLLIDER_SIZE :: Vector2.{1., 1.};
 
     entity := spawn_entity_from_bundle(*g_world, Player_Bundle.{
-        name = .{ sprint("Player_%", networking_id) },
+        name = .{ sprint("Player_%", node_id.id) },
         position = .{ position },
         interp_position = .{ position, position },
-        networking_id = .{ networking_id },
-        invoker = .{ id = networking_id },
+        networking_id = .{ node_id },
+        invoker = .{ id = node_id.id },
         move_speed =  .{ 6 },
         point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 20. },
         sprite = .{ sprite, PLAYER_SIZE, 0, 4, 0 },
@@ -65,7 +65,7 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
     });
 
     // if this is a local player:
-    if g_client.local_client_id == networking_id {
+    if g_client.local_client_id == node_id {
         add_component(*g_world, entity, Local_Player);
     } else {
         add_component(*g_world, entity, Remote_Player);
@@ -132,7 +132,7 @@ broadcast_local_player_commands :: (q: Query) {
 
     for 0..q.count-1 {
         player_command_packet: Player_Commands_Packet;
-        player_command_packet.networking_id = networking_ids[it].id;
+        player_command_packet.node_id = networking_ids[it].id;
         player_command_packet.commands = player_commands[it];
         networking_send_packet(*player_command_packet);
     }

@@ -1,6 +1,6 @@
 #scope_export
 
-INVALID_NETWORKING_ID :: 0;
+INVALID_NODE_ID :: Node_ID.{0};
 
 Client :: struct {
     endpoint: IPAddr;
@@ -8,7 +8,7 @@ Client :: struct {
 
     should_disconnect: bool = false;
 
-    local_client_id: u64 = INVALID_NETWORKING_ID;
+    local_client_id: Node_ID = INVALID_NODE_ID;
 }
 
 Server :: struct {
@@ -19,7 +19,7 @@ Server :: struct {
 
     ClientConnection :: struct {
         connection: NetConnection;
-        networking_id: u64;
+        node_id: Node_ID;
     }
     clients: [..] ClientConnection;
 
@@ -44,7 +44,7 @@ PacketType :: enum u8 #specified {
 ConnectionEstablished_Packet :: struct {
     PACKET_TYPE :: PacketType.CONNECTION_ESTABLISHED;
 
-    networking_id: u64;
+    node_id: Node_ID;
 
     // #hack: using the player joined packet to avoid adding a new struct
     existing_players: [..] PlayerJoined_Packet;
@@ -55,27 +55,27 @@ ConnectionEstablished_Packet :: struct {
 PlayerJoined_Packet :: struct {
     PACKET_TYPE :: PacketType.PLAYER_JOINED;
 
-    networking_id: u64;
+    node_id: Node_ID;
     position: Vector2;
 }
 
 PlayerLeft_Packet :: struct {
     PACKET_TYPE :: PacketType.PLAYER_LEFT;
 
-    networking_id: u64;
+    node_id: Node_ID;
 }
 
 Player_Commands_Packet :: struct {
     PACKET_TYPE :: PacketType.PLAYER_COMMANDS;
 
-    networking_id: u64;
+    node_id: Node_ID;
     commands: Player_Commands;
 }
 
 Enemy_Init_Data_Packet :: struct {
     PACKET_TYPE :: PacketType.ENEMY_INIT_DATA;
 
-    networking_id: u64;
+    node_id: Node_ID;
     position: Vector2;
     type: Enemy_Type;
 }
@@ -200,10 +200,10 @@ is_server :: inline () -> bool {
     return g_is_server;
 }
 
-get_unique_networking_id :: () -> u64 {
+get_unique_node_id :: () -> Node_ID {
     assert(is_server());
     g_server.next_valid_networking_id += 1;
-    return g_server.next_valid_networking_id-1;
+    return .{g_server.next_valid_networking_id-1};
 }
 
 #scope_file
@@ -406,10 +406,10 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 end_debug_view := view_of_c_string(info.m_info.m_szEndDebug.data);
 
                 if info.m_info.m_eState == .ProblemDetectedLocally {
-                    client_disconnection_message = sprint("% connection dropped", client_connection.networking_id);
+                    client_disconnection_message = sprint("% connection dropped", client_connection.node_id);
                 } else {
                     // check reason if it's "usual" or "unusual".
-                    client_disconnection_message = sprint("% disconnected", client_connection.networking_id);
+                    client_disconnection_message = sprint("% disconnected", client_connection.node_id);
                 }
 
                 log("Client Connection % %, reason %: %", 
@@ -418,11 +418,11 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                     info.m_info.m_eEndReason, 
                     end_debug_view);
 
-                networking_id := server.clients[client_index].networking_id;
+                node_id := server.clients[client_index].node_id;
 
                 array_unordered_remove_by_index(*server.clients, client_index);
 
-                player_left := PlayerLeft_Packet.{networking_id};
+                player_left := PlayerLeft_Packet.{node_id};
                 networking_broadcast(*player_left);
             } else {
                 assert(info.m_eOldState == .Connecting);
@@ -451,12 +451,12 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 return;
             }
 
-            new_networking_id := get_unique_networking_id();
-            assert(new_networking_id != INVALID_NETWORKING_ID);
+            new_networking_id := get_unique_node_id();
+            assert(new_networking_id != INVALID_NODE_ID);
 
             new_client: Server.ClientConnection;
             new_client.connection = info.m_conn;
-            new_client.networking_id = new_networking_id;
+            new_client.node_id = new_networking_id;
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
 
@@ -465,7 +465,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.existing_players.allocator = temp;
                 conn_established.existing_enemies.allocator = temp;
-                conn_established.networking_id = new_networking_id;
+                conn_established.node_id = new_networking_id;
 
                 for q : make_iter(*g_world, Player, Networking_ID, Position) {
                     networking_ids := query_get(q, Networking_ID);
@@ -473,7 +473,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
 
                     for 0..q.count-1 {
                         player_data := array_add(*conn_established.existing_players);
-                        player_data.networking_id = networking_ids[it].id;
+                        player_data.node_id = networking_ids[it].id;
                         player_data.position = positions[it];
                     }
                 }
@@ -485,7 +485,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
 
                     for 0..q.count-1 {
                         enemy_data := array_add(*conn_established.existing_enemies);
-                        enemy_data.networking_id = networking_ids[it].id;
+                        enemy_data.node_id = networking_ids[it].id;
                         enemy_data.position = positions[it];
                         enemy_data.type = enemies[it].type;
                     }
@@ -497,7 +497,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             // Notify all clients about the newly joined player:
             {
                 player_joined: PlayerJoined_Packet = ---;
-                player_joined.networking_id = new_networking_id;
+                player_joined.node_id = new_networking_id;
                 player_joined.position = g_player_start;
                 networking_broadcast(*player_joined);
             }
@@ -561,109 +561,9 @@ gns_debug_callback :: (level: DebugOutputLevel, msg: *s8) -> void #c_call {
     }
 }
 
-view_of_c_string :: (c_string : *s8) -> string {
-    ret : string;
-    
-    if (c_string == null)
-    {
-        return ret;
-    }
-    
-    ret.data = xx c_string;
-    ret.count = c_style_strlen(xx c_string);
-    return ret;
-}
-
-// #todo: refactor this handler into some functions that can exist independently and are dispatched via generated code
-client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
-    if packet_type == {
-        case .CONNECTION_ESTABLISHED;
-            conn_established: ConnectionEstablished_Packet;
-            conn_established.existing_players.allocator = temp;
-            conn_established.existing_enemies.allocator = temp;
-
-            byte_buffer_read(buffer, *conn_established);
-
-            assert(conn_established.networking_id != INVALID_NETWORKING_ID);
-
-            g_client.local_client_id = conn_established.networking_id;
-            log("Local player was assigned id %", conn_established.networking_id);
-
-            g_local_player = init_player(conn_established.networking_id, g_player_start);
-
-            // we can ignore these if we're on the server
-            if !is_server() {
-                for player_data : conn_established.existing_players {
-                    player := init_player(player_data.networking_id, player_data.position);
-                    log("Existing player initialized %", get_component(*g_world, player, Name).name);
-                }
-
-                for enemy_data : conn_established.existing_enemies {
-                    enemy := spawn_enemy(*g_world, enemy_data.position, enemy_data.networking_id, enemy_data.type);
-                }
-            }
-        case .PLAYER_JOINED;
-            player_joined: PlayerJoined_Packet;
-            byte_buffer_read(buffer, *player_joined);
-
-            init_player(player_joined.networking_id, player_joined.position);
-
-            log("New player has joined the game: %", player_joined.networking_id);
-
-        case .PLAYER_COMMANDS;
-            player_commands_packet: Player_Commands_Packet;
-            byte_buffer_read(buffer, *player_commands_packet);
-
-            assert(player_commands_packet.networking_id != g_client.local_client_id, 
-                "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
-
-            for q : make_iter(*g_world, Networking_ID, Player_Commands) {
-                player_commands := query_get(q, Player_Commands);
-                networking_ids := query_get(q, Networking_ID);
-
-                for 0..q.count-1 {
-                    if networking_ids[it].id == player_commands_packet.networking_id {
-                        player_commands[it] = player_commands_packet.commands;
-                    }
-                }
-            }
-        case .PLAYER_LEFT;
-            player_left: PlayerLeft_Packet;
-            byte_buffer_read(buffer, *player_left);
-
-            player_to_kill: Entity;
-
-            for q : make_iter(*g_world, Networking_ID, Player, Name) {
-                networking_ids := query_get(q, Networking_ID);
-                names := query_get(q, Name);
-
-                for 0..q.count-1 {
-                    if networking_ids[it].id == player_left.networking_id {
-                        destroy_entity(*g_world, q.entities[it]);
-
-                        log("% has left the game.", names[it].name);
-                        break;
-                    }
-                }
-            }
-        case;
-    }
-}
-
-server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
-    if packet_type == {
-        case .PLAYER_COMMANDS;
-            player_commands_packet: Player_Commands_Packet;
-            byte_buffer_read(buffer, *player_commands_packet);
-            for * g_server.clients {
-                // let the client be authoritative about its movement, don't send movement packets back to the client they came from
-                if it.networking_id != player_commands_packet.networking_id {
-                    Sockets.SendMessageToConnection(it.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
-                }
-            }
-        case;
-    }
-}
-
 #import "gns";
 #import "Command_Line";
+
+#load "server.jai";
+#load "client.jai";
+#load "network_state.jai";
