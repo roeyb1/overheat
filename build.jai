@@ -400,6 +400,13 @@ message_loop :: (w: Workspace) {
                         array_add(*event_functions, header);
                     }
                 }
+
+                for tc : typechecked.structs {
+                    info := tc.expression.defined_type;
+                    if has_note_substr(info, "Component") {
+                        array_add(*component_type_names, info.name);
+                    }
+                }
                 
             case .PHASE;
                 phase := cast(*Message_Phase) message;
@@ -423,6 +430,11 @@ message_loop :: (w: Workspace) {
                     if !generated_event_functions {
                         generate_event_functions(message.workspace);
                         generated_event_functions = true;
+                    }
+
+                    if !generated_component_types {
+                        generate_component_types(message.workspace);
+                        generated_component_types = true;
                     }
                 }
             }
@@ -468,6 +480,16 @@ has_note :: (header: *Code_Procedure_Header, note: string) -> bool {
 
 has_note_substr :: (header: *Code_Procedure_Header, note_substr: string) -> bool {
     for header.notes  if contains(it.text, note_substr)  return true;
+    return false;
+}
+
+has_note :: (ti: *Type_Info_Struct, note: string) -> bool {
+    for ti.notes  if it == note  return true;
+    return false;
+}
+
+has_note_substr :: (ti: *Type_Info_Struct, note: string) -> bool {
+    for ti.notes  if contains(it, note) return true;
     return false;
 }
 
@@ -635,6 +657,20 @@ DONE
     add_build_string(builder_to_string(*sb), w);
 }
 
+generate_component_types :: (w: Workspace) {
+    sb: String_Builder;
+
+    quick_sort(component_type_names, compare_strings);
+
+    sbprint(*sb, "ALL_COMPONENT_TYPES :: Type.[");
+    for component_type_names {
+        sbprint(*sb, "%, ", it);
+    }
+    sbprint(*sb, "];\n");
+
+    add_build_string(builder_to_string(*sb), w);
+}
+
 unit_test_functions: [..] *Code_Procedure_Header;
 generated_unit_test_actions := false;
 
@@ -647,6 +683,8 @@ generated_system_functions := false;
 event_functions: [..] *Code_Procedure_Header;
 generated_event_functions := false;
 
+component_type_names: [..] string;
+generated_component_types := false;
 
 is_absolute_path :: (path: string) -> bool { // This routine is probably not as correct as we'd like. We'd like to put in a better one! But maybe we will stop doing the cwd thing, or do it differently; hard to say.
     if !path return false;
@@ -679,6 +717,7 @@ shuffle :: (array: [] $T) {
 #import "Compiler";
 #import "File_Utilities";
 #import "Metaprogram_Plugins";
+#import "Sort";
 
 #load "source/rendering/shader_compilation.jai";
 

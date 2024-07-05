@@ -358,13 +358,13 @@ remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> 
 
 //------------------------- TESTING -------------------------   
 
+Test :: struct @Component {
+    x: u32 = 10;
+}
+Test2 :: struct @Component {
+    x: u32;
+}
 test_entity_components :: (ctx: *TestContext) {
-    Test :: struct {
-        x: u32 = 10;
-    }
-    Test2 :: struct {
-        x: u32;
-    }
     world: World;
 
     e1 := spawn_entity(*world);
@@ -414,14 +414,6 @@ test_entity_components :: (ctx: *TestContext) {
     test_expect_equals(e4.index, e5.index);
     test_expect_not_equals(e4.generation, e5.generation);
 } @UnitTest
-
-#load "component_storage.jai";
-#load "entity.jai";
-#load "query.jai";
-#load "archetype.jai";
-#load "event.jai";
-#load "defer.jai";
-#load "stage.jai";
 
 #scope_file
 

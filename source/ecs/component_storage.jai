@@ -41,24 +41,18 @@ compare_ctids :: (a: [] Component_Type_ID, b: [] Component_Type_ID) -> bool {
 }
 
 NULL_COMPONENT_ID : u64 : 0;
-NEXT_CTID : u64 = 1;
 
-component_type_id :: inline () -> Component_Type_ID {
-    return Component_Type_ID.{
-        unique_id = NULL_COMPONENT_ID,
-        runtime_size = 0,
-        debug_name = "INVALID",
-        initializer = null,
-    };
-}
-component_type_id :: inline ($c: Type) -> Component_Type_ID {
+component_type_id :: inline ($c: Type) -> Component_Type_ID 
+{
     assert(type_info(c).type == .STRUCT, "Only struct types are supported as component types!");
 
     ti :: type_info(c);
     is_singleton :: #run has_note(ti, "SingletonComponent");
 
     UNIQUE_ID :: #run -> u64 {
-        return atomic_add(*NEXT_CTID, 1);
+        found, index := array_find(ALL_COMPONENT_TYPES, c);
+        assert(found, "Component type not found: %", ti.name);
+        return cast(u64) index + 1;
     }
 
     assert(UNIQUE_ID != NULL_COMPONENT_ID);
