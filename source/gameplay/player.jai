@@ -40,10 +40,10 @@ Player_Bundle :: struct @Bundle {
 }
 
 init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
-    sprite := ifx g_client.local_client_id == node_id {
-        load_spritesheet("assets/players/player_character1.png",48, 0, 0,23,4);
+    spritesheet := ifx g_client.local_client_id == node_id {
+        "assets/players/player_character1.png";
     } else {
-        load_spritesheet("assets/players/player_character2.png", 48, 0, 0,23,4);
+        "assets/players/player_character2.png";
     }
 
     PLAYER_SIZE :: Vector2.{2.3, 2.3};
@@ -52,11 +52,10 @@ init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
     entity := spawn_entity_from_bundle(*g_world, Player_Bundle.{
         name = .{ sprint("Player_%", node_id.id) },
         position = .{ position },
-        networking_id = .{ node_id },
         invoker = .{ id = node_id.id },
         move_speed =  .{ 6 },
         point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 20. },
-        sprite = .{ sprite, PLAYER_SIZE, 0, 4, 0 },
+        sprite = .{ spritesheet, null, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
         health = .{90., 100.},
     });

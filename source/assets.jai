@@ -24,6 +24,11 @@ load_all_assets :: () {
     g_default_grid = load_texture("assets/grid.png");
     g_point_light_texture = load_texture("assets/point_light.png");
 
+    load_spritesheet("assets/players/player_character1.png",48, 0, 0,23,4);
+    load_spritesheet("assets/players/player_character2.png", 48, 0, 0,23,4);
+    load_spritesheet("assets/enemies/skeleton.png", 32, 0, 0, 10, 4);
+    load_spritesheet("assets/enemies/bat2.png", 96, 0, 0, 15, 4);
+
     log("Asset loading complete");
 }
 

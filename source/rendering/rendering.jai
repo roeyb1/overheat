@@ -7,13 +7,23 @@ Flip_Flags :: enum_flags u8 {
 }
 
 Sprite :: struct @Component {
-    sheet: *SpriteSheet = null;
+    sheet_path: string; @Sync
+
+    sheet: *SpriteSheet; @NoSerialize
+
     scale: Vector2 = .{1, 1};
     index: u32 = 0;
     z_order: u16 = 0;
 
     flip: Flip_Flags = 0;
 }
+
+on_sprite_added :: (world: *World, entity: Entity) {
+    sprite := get_component(world, entity, Sprite);
+    assert(sprite != null);
+
+    sprite.sheet = get_spritesheet(sprite.sheet_path);
+} @Event(EcsOnAdd,Sprite)
 
 // Copy over the sprite data required for rendering so we don't need to directly reference it
 Sprite_Draw_Cmd :: struct {

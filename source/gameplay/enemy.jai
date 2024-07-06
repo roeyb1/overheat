@@ -12,7 +12,6 @@ Enemy_Bundle :: struct @Bundle {
     enemy: Enemy;
     position: Position;
     velocity: Velocity;
-    sprite: Sprite;
     animator: Sprite_Animator;
     direction: Direction;
     invoker: Collision_Invoker;
@@ -40,22 +39,22 @@ spawn_enemy :: (world: *World, position: Vector2, node_id: Node_ID, type: Enemy_
 
     size: Vector2;
     collider_size: Vector2;
-    sprite: *SpriteSheet;
+    spritesheet_path: string;
 
     if type == {
         case .SKELETON;
             size = Vector2.{1.0, 1.0};
             collider_size = Vector2.{0.6, 0.6};
-            sprite = load_spritesheet("assets/enemies/skeleton.png", 32, 0, 0, 10, 4);
+            spritesheet_path = "assets/enemies/skeleton.png";
             add_component(world, entity, Skeleton_Animation);
         case .BAT;
             size = Vector2.{2.3, 2.3};
             collider_size = Vector2.{0.6, 0.8};
-            sprite = load_spritesheet("assets/enemies/bat2.png", 96, 0, 0, 15, 4);
+            spritesheet_path = "assets/enemies/bat2.png";
             add_component(world, entity, Bat_Animation);
     }
 
-    << get_component(world, entity, Sprite) = .{sprite, size, 0, 4, 0};
+    sprite := add_component(world, entity, Sprite, .{spritesheet_path, null, size, 0, 4, 0});
     << get_component(world, entity, Collider_AABB) = .{aabb = make_aabb(.{0, 0}, collider_size), blocking = false};
 }
 

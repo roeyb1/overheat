@@ -119,17 +119,17 @@ import_ldtk_level :: (world: *World) {
             {
                 index := find_index_from_left(layer.__tilesetRelPath, "tilemaps");
                 str_slice := slice(layer.__tilesetRelPath, index, layer.__tilesetRelPath.count - index);
-                tileset_filename = tprint("assets/%", str_slice);
+                tileset_filename = sprint("assets/%", str_slice);
             }
-            layer_spritesheet := load_spritesheet(tileset_filename, TILE_PIXEL_SIZE, 0, 0, 0, 0);
+            load_spritesheet(tileset_filename, TILE_PIXEL_SIZE, 0, 0, 0, 0);
 
-            spawn_entities_for_tiles(world, layer.autoLayerTiles, layer.__gridSize, layer.__cHei, layer_spritesheet, layer_index);
-            spawn_entities_for_tiles(world, layer.gridTiles, layer.__gridSize, layer.__cHei, layer_spritesheet, layer_index);
+            spawn_entities_for_tiles(world, layer.autoLayerTiles, layer.__gridSize, layer.__cHei, tileset_filename, layer_index);
+            spawn_entities_for_tiles(world, layer.gridTiles, layer.__gridSize, layer.__cHei, tileset_filename, layer_index);
         }
     }
 }
 
-spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32, layer_height: u32, layer_spritesheet: *SpriteSheet, layer_index: s64) {
+spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32, layer_height: u32, layer_spritesheet: string, layer_index: s64) {
     tile_size := 2. * cast(float) TILE_PIXEL_SIZE / cast(float) PIXELS_PER_METER;
     for tile : tiles {
         x := (cast(float) tile.px[0] / cast(float) TILE_PIXEL_SIZE);
@@ -140,7 +140,7 @@ spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32,
         pos := add_component(world, tile_entity, Position, .{.{x, y}});
 
         sprite: Sprite;
-        sprite.sheet = layer_spritesheet;
+        sprite.sheet_path = layer_spritesheet;
         sprite.z_order = cast(u16) layer_index;
         sprite.scale = make_vector2(tile_size);
         sprite.index = tile.t;
