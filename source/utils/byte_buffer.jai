@@ -66,7 +66,7 @@ byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info, ig
         case;
             assert(false, "Unsupported type");
     }
-}
+} @NoProfile
 
 byte_buffer_read :: (buffer: *ByteBuffer, data: *$Type, ignore_notes := false) {
     byte_buffer_read(buffer, data, type_info(Type), ignore_notes);
@@ -124,7 +124,7 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ign
         case;
             assert(false, "Unsupported type");
     }
-}
+} @NoProfile
 
 free :: (byte_buff: *ByteBuffer) {
     free(byte_buff.buff.data);
@@ -322,7 +322,7 @@ test_binary_serialization :: (ctx: *TestContext) {
         expected_data := u8.[1, 0, 20, 0, 0, 0, 0, 0, 0, 0, 30];
 
         for 0..buffer.buff.count-1 {
-            assert(buffer.buff[it] == expected_data[it]);
+            test_expect_equals(expected_data[it], buffer.buff[it]);
         }
 
         buffer.cursor = 0;
@@ -420,7 +420,7 @@ write_struct_members :: (out_buffer: *ByteBuffer, data: *void, members: [] Type_
         
         byte_buffer_write(out_buffer, data + member.offset_in_bytes, member.type, ignore_notes = true);
     }
-}
+} @NoProfile
 
 read_struct_members :: (buffer: *ByteBuffer, data_out: *void, members: [] Type_Info_Struct_Member, ignore_notes := false) {
     last_offset := 0;
@@ -440,7 +440,7 @@ read_struct_members :: (buffer: *ByteBuffer, data_out: *void, members: [] Type_I
         
         byte_buffer_read(buffer, data_out + member.offset_in_bytes, member.type, ignore_notes = true);
     }
-}
+} @NoProfile
 
 /** Appends data with a big endian byte ordering */
 write_value :: (using out_buffer: *ByteBuffer, data: *u8, size: s64) {
@@ -456,7 +456,7 @@ write_value :: (using out_buffer: *ByteBuffer, data: *u8, size: s64) {
     }
 
     out_buffer.cursor += size;
-}
+} @NoProfile
 read_value :: (using buffer: *ByteBuffer, out_data: *u8, size: s64) {
     if big_endian() {
         for 0..size-1 {
@@ -469,7 +469,7 @@ read_value :: (using buffer: *ByteBuffer, out_data: *u8, size: s64) {
         }
     }
     cursor += size;
-}
+} @NoProfile
 
 /** Quick and dirty test to see what byte order this machine is on.
     This is really stupid.. surely the language can tell me..
