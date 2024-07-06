@@ -61,7 +61,7 @@ update_camera_positions :: (q: Query) {
         // cubic easing function based on distance. further camera -> accelerate faster
         speed_factor := 1. - pow(1 - alpha, 3.);
 
-        camera_positions[it].value = lerp(camera_positions[it], target_location, speed_factor * SMOOTH_SPEED * cast(float) FIXED_TIMESTEP);
+        camera_positions[it].value = lerp(camera_positions[it], target_location, speed_factor * SMOOTH_SPEED * cast(float) g_delta_time);
     }
 } @System(PreRender) @Write(Position) @Read(Camera)
 

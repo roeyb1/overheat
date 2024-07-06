@@ -62,7 +62,6 @@ on_entity_end_networking :: (world: *World, entity: Entity) {
 PacketType :: enum u8 #specified {
     INVALID                 :: 0;
     CONNECTION_ESTABLISHED  :: 1;
-    PLAYER_LEFT             :: 3;
     PLAYER_COMMANDS         :: 4;
     SNAPSHOT                :: 6;
 }
