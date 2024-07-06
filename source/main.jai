@@ -9,7 +9,7 @@ g_interp_alpha: float = 0.;
 g_sim_timer: float64 = 0.016;
 g_render_timer: float64 = 0.016;
 
-FIXED_TIMESTEP :: 0.016;
+FIXED_TIMESTEP :: 0.100;
 
 g_should_exit: bool = false;
 
@@ -165,8 +165,8 @@ main :: () {
             }
         }
 
-        g_interp_alpha = cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP;
-        if g_sim_frame_number > 16 {
+        g_interp_alpha = clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
+        if last_snapshot.state.count > 0 && current_snapshot.state.count > 0 {
             interpolate_states(*g_world, last_snapshot, current_snapshot, g_interp_alpha);
         }
 

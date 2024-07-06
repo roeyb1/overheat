@@ -12,6 +12,16 @@ ByteBuffer :: struct {
     skip_note: string;
 }
 
+copy :: (buffer: *ByteBuffer) -> ByteBuffer {
+    result: ByteBuffer;
+
+    array_copy(*result.buff, buffer.buff);
+    result.only_note = buffer.only_note;
+    result.skip_note = buffer.skip_note;
+
+    return result;
+}
+
 byte_buffer_write :: (out_buffer: *ByteBuffer, data: *$Type, ignore_notes := false) {
     byte_buffer_write(out_buffer, data, type_info(Type), ignore_notes);
 }

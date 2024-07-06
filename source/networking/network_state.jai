@@ -92,7 +92,13 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
 from_packet :: (packet: State_Snapshot_Packet) -> State_Snapshot {
     result: State_Snapshot;
     for packet.pairs {
-        table_add(*result.state, it.node_id, it.state);
+        new_state := table_add(*result.state, it.node_id, .{});
+        // deep copy the state and all the fields, they were allocated from temp buffers
+        for field : it.state.fields {
+            new_field := array_add(*new_state.fields);
+            new_field.field_id = field.field_id;
+            new_field.data = copy(*field.data);
+        }
     }
     return result;
 }
