@@ -11,9 +11,9 @@ Sprite :: struct @Component {
 
     sheet: *SpriteSheet; @NoSerialize
 
-    scale: Vector2 = .{1, 1};
+    scale: Vector2 = .{1, 1}; @Sync;
     index: u32 = 0;
-    z_order: u16 = 0;
+    z_order: u16 = 0; @Sync
 
     flip: Flip_Flags = 0;
 }

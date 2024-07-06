@@ -1,9 +1,9 @@
 
 /** Point light is a component that can be added to an entity to make it render a as a radial, point source light light */
 Point_Light :: struct @Component {
-    color: Vector3;
-    radius: float;
-    intensity: float;
+    color: Vector3; @Sync
+    radius: float; @Sync
+    intensity: float; @Sync
 }
 
 g_point_light_texture: TextureHandle;

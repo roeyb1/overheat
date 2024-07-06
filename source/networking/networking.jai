@@ -487,6 +487,8 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
 
+            init_player(new_networking_id, g_player_start);
+
             // Indicate to the newly joined player what it's ID is
             {
                 conn_established: ConnectionEstablished_Packet;

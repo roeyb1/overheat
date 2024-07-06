@@ -37,14 +37,12 @@ Player_Bundle :: struct @Bundle {
     sprite: Sprite;
     collider: Collider_AABB;
     health: Health;
+    networking_id: Networking_ID;
+    remote: Remote_Player;
 }
 
 init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
-    spritesheet := ifx g_client.local_client_id == node_id {
-        "assets/players/player_character1.png";
-    } else {
-        "assets/players/player_character2.png";
-    }
+    spritesheet := "assets/players/player_character1.png";
 
     PLAYER_SIZE :: Vector2.{2.3, 2.3};
     PLAYER_COLLIDER_SIZE :: Vector2.{1., 1.};
@@ -58,18 +56,8 @@ init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
         sprite = .{ spritesheet, null, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
         health = .{90., 100.},
+        networking_id = .{node_id},
     });
-
-    // if this is a local player:
-    if g_client.local_client_id == node_id {
-        add_component(*g_world, entity, Local_Player);
-    } else {
-        add_component(*g_world, entity, Remote_Player);
-    }
-
-    // @todo: move this back into the bundle, for now we moved it to the end of init player to ensure it's all set up before replicating.
-    // replicating new nodes will be deferred anyways so this shouldn't be necessary when the system is fleshed out.
-    add_component(*g_world, entity, Networking_ID, .{node_id});
 
     return entity;
 }
@@ -138,5 +126,18 @@ broadcast_local_player_commands :: (q: Query) {
     }
 } @System(PostLoad) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
 
+on_player_component_added :: (world: *World, entity: Entity) {
+    log("Player % has joined the game", get_component(world, entity, Name).name);
+    networking_id := get_component(world, entity, Networking_ID);
+    assert(networking_id != null);
+    if networking_id.id == g_client.local_client_id {
+        remove_component(*g_world, entity, Remote_Player);
+        add_component(*g_world, entity, Local_Player);
+
+        sprite := get_component(world, entity, Sprite);
+        sprite.sheet = null;
+        sprite.sheet_path = "assets/players/player_character1.png";
+    }
+} @Event(EcsOnAdd,Player)
 
 #import "Math";

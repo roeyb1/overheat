@@ -3,8 +3,8 @@ Health_Change_Queue :: struct @Component {
 }
 
 Health :: struct @Component {
-    value: float;
-    max: float;
+    value: float; @Sync
+    max: float; @Sync
 }
 
 modify_health :: (q: Query) {

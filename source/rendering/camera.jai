@@ -31,6 +31,17 @@ update_camera_projections :: (q: Query) {
     }
 } @System(PreRender) @Write(Camera) @Read()
 
+set_camera_follow_target :: (world: *World, entity: Entity) {
+    viewport := get_singleton(*g_world, Game_Viewport);
+
+    camera := get_component(*g_world, viewport.main_camera, Camera);
+    cam_pos := get_component(*g_world, viewport.main_camera, Position);
+
+    << cam_pos = .{ g_player_start };
+    camera.entity_to_track = entity;
+
+} @Event(EcsOnAdd,Local_Player)
+
 update_camera_positions :: (q: Query) {
     SMOOTH_SPEED :: 15.;
 

@@ -1,13 +1,13 @@
 Collider_AABB :: struct @Component {
-    #as using aabb: AABB;
+    #as using aabb: AABB; @Sync
 
-    blocking: bool;
+    blocking: bool; @Sync
 }
 
 Collision_Invoker :: struct @Component {
     // globally unique id that is shared across network (server and clients should all match for a given entity)
-    id: u64;
-    generate_overlap_events := false;
+    id: u64; @Sync
+    generate_overlap_events := false; @Sync
 }
 
 Overlap_Pair :: struct @Component {

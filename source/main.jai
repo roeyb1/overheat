@@ -18,8 +18,6 @@ g_sim_frame_number: u64 = 0;
 
 g_world: World;
 
-g_local_player: Entity;
-
 main :: () {
     log_initialize();
 
@@ -102,12 +100,6 @@ main :: () {
         g_frame_number += 1;
     }
 
-    {
-        camera := get_component(*g_world, viewport.main_camera, Camera);
-        cam_pos := get_component(*g_world, viewport.main_camera, Position);
-        << cam_pos = .{ g_player_start };
-        camera.entity_to_track = g_local_player;
-    }
     
 
     while true {
@@ -205,10 +197,6 @@ render_scene :: (q: Query) {
 
     render_scene(cam.projection, pos);
 } @System(OnRender) @Write() @Read(Game_Viewport) @OptionalRead(Position,Camera)
-
-on_player_component_added :: (world: *World, entity: Entity) {
-    log("Player % has joined the game", get_component(world, entity, Name).name);
-} @Event(EcsOnAdd,Player)
 
 
 using Basic :: #import "Basic";

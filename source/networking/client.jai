@@ -15,8 +15,6 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             g_client.local_client_id = conn_established.node_id;
             log("Local player was assigned id %", conn_established.node_id);
 
-            g_local_player = init_player(conn_established.node_id, g_player_start);
-
         case .PLAYER_COMMANDS;
             player_commands_packet: Player_Commands_Packet;
             byte_buffer_read(buffer, *player_commands_packet);
@@ -148,7 +146,7 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
         entity := spawn_entity(world);
         add_component(world, entity, Networking_ID, .{it_index});
         for ctid_list {
-            add_component(world, entity, it);
+            add_component(world, entity, it, broadcast=false);
         }
     }
 
@@ -196,5 +194,24 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
         }
 
         return builder_to_string(*sb);
+    }
+
+    for snapshot.new_entities {
+        ctid_list: [..] Component_Type_ID;
+        ctid_list.allocator = temp;
+        for it {
+            for ctid : ALL_COMPONENT_TYPE_IDS {
+                if ctid.unique_id == it {
+                    array_add(*ctid_list, ctid);
+                }
+            }
+        }
+        node_id := it_index;
+        entity, found := table_find(*entity_node_id_table, node_id);
+        assert(found);
+
+        for ctid_list {
+            broadcast_on_component_add(world, entity, it);
+        }
     }
 }
