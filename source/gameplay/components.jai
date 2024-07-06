@@ -2,10 +2,6 @@ Position :: struct @Component {
     using #as value: Vector2; @Sync @Interp
 }
 
-lerp :: (a: Position, b: Position, alpha: float) -> Position {
-    return .{lerp(a.value, b.value, alpha)};
-}
-
 Velocity :: struct @Component {
     using #as value: Vector2; @Sync
 }

@@ -120,7 +120,16 @@ interpolate_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alph
                     field_b.data.cursor = 0;
                     byte_buffer_read(*field_b.data, *b_data);
 
-                    datas[it] = lerp(a_data, b_data, alpha);
+                    #insert -> string {
+                        sb: String_Builder;
+                        for member : type_info(%1).members {
+                            if has_note(*member, "Interp") {
+                                sbprint(*sb, "datas[it].%%1 = lerp(a_data.%%1, b_data.%%1, alpha);", member.name);
+                            }
+                        }
+
+                        return builder_to_string(*sb);
+                    }
                 }
             }
         DONE
