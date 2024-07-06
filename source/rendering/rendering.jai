@@ -18,13 +18,6 @@ Sprite :: struct @Component {
     flip: Flip_Flags = 0;
 }
 
-on_sprite_added :: (world: *World, entity: Entity) {
-    sprite := get_component(world, entity, Sprite);
-    assert(sprite != null);
-
-    sprite.sheet = get_spritesheet(sprite.sheet_path);
-} @Event(EcsOnAdd,Sprite)
-
 // Copy over the sprite data required for rendering so we don't need to directly reference it
 Sprite_Draw_Cmd :: struct {
     sheet: *SpriteSheet;
