@@ -135,7 +135,6 @@ interpolate_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alph
 }
 
 apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
-    /*
     for snapshot.new_entities {
         ctid_list: [..] Component_Type_ID;
         ctid_list.allocator = temp;
@@ -152,7 +151,6 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
             add_component(world, entity, it);
         }
     }
-    */
 
     #insert -> string {
         INSERT_STRING :: #string DONE 

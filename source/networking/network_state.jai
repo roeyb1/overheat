@@ -58,6 +58,7 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
 
         entry := table_add(*result.new_entities, it, types);
     }
+    added_nodes.count = 0;
 
     #insert -> string {
         INSERT_STRING :: #string DONE 
