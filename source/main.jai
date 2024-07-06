@@ -80,6 +80,8 @@ client_main :: () {
         execute(*g_world, .PostLoad);
 
         g_interp_alpha = clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
+        last_snapshot := *snapshot_ring[(snapshot_index -1) % SNAPSHOT_RING_SIZE];
+        current_snapshot := *snapshot_ring[(snapshot_index) % SNAPSHOT_RING_SIZE];
         if last_snapshot.state.count > 0 && current_snapshot.state.count > 0 {
             interpolate_states(*g_world, last_snapshot, current_snapshot, g_interp_alpha);
         }
@@ -114,8 +116,6 @@ server_main :: () {
     accumulated_time := 0.0;
 
     while true {
-        FrameMark();
-
         now := seconds_since_init();
         g_delta_time = cast(float) (now - last_time);
         smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
@@ -130,13 +130,9 @@ server_main :: () {
 
         networking_update();
 
-        execute(*g_world, .Init);
-
-        execute(*g_world, .OnLoad);
-        execute(*g_world, .PostLoad);
-
         // Run simulation on a fixed timestep for determinism 
         while accumulated_time >= FIXED_TIMESTEP {
+            FrameMark();
             scoped_smooth_timer(*g_sim_timer, 1. / 16.);
 
             execute(*g_world, .PreUpdate);
@@ -144,15 +140,13 @@ server_main :: () {
             execute(*g_world, .OnValidate);
             execute(*g_world, .PostUpdate);
 
-            free(*last_snapshot);
-            last_snapshot = current_snapshot;
-            current_snapshot = generate_full_snapshot(*g_world, added_nodes);
+            push_new_snapshot(generate_full_snapshot(*g_world, added_nodes));
 
             added_nodes.count = 0;
             removed_nodes.count = 0;
             last_snapshot_time = seconds_since_init();
 
-            snapshot_packet := to_packet(current_snapshot);
+            snapshot_packet := to_packet(current_snapshot());
             snapshot_packet.sequence_number = g_sim_frame_number;
     
             networking_broadcast(*snapshot_packet);

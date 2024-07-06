@@ -46,8 +46,9 @@ State_Snapshot_Packet :: struct {
     using data: State_Snapshot_Packet_Data;
 }
 
-last_snapshot: State_Snapshot;
-current_snapshot: State_Snapshot;
+SNAPSHOT_RING_SIZE :: 16;
+snapshot_ring: [SNAPSHOT_RING_SIZE] State_Snapshot;
+snapshot_index: u64 = 0;
 
 last_snapshot_time: float64;
 
@@ -116,6 +117,18 @@ generate_full_snapshot :: (world: *World, new_nodes: [..] Node_ID) -> State_Snap
     }
 
     return result;
+}
+
+push_new_snapshot :: (snapshot: State_Snapshot) {
+    free(*snapshot_ring[(snapshot_index - 1) % SNAPSHOT_RING_SIZE]);
+    snapshot_index += 1;
+    snapshot_ring[snapshot_index % SNAPSHOT_RING_SIZE] = snapshot;
+
+    last_snapshot_time = seconds_since_init();
+}
+
+current_snapshot :: () -> *State_Snapshot {
+    return *snapshot_ring[snapshot_index % SNAPSHOT_RING_SIZE];
 }
 
 free :: (snapshot: *State_Snapshot) {

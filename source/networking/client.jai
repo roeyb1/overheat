@@ -40,16 +40,9 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             snapshot_packet: State_Snapshot_Packet;
             byte_buffer_read(buffer, *snapshot_packet);
 
+            push_new_snapshot(from_packet(snapshot_packet));
 
-            if last_snapshot.state.count > 0 {
-                free(*last_snapshot);
-            }
-
-            last_snapshot = current_snapshot;
-            current_snapshot = from_packet(snapshot_packet);
-            last_snapshot_time = seconds_since_init();
-
-            apply_snapshot(*g_world, current_snapshot);
+            apply_snapshot(*g_world, current_snapshot());
             
             g_sim_frame_number = snapshot_packet.sequence_number;
         case;

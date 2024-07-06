@@ -64,5 +64,35 @@
             "cwd": "${workspaceRoot}/bin/win",
             "preLaunchTask": "build server (Release)"
         },
+        {
+            "name": "Client (Profile)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "overheat-client.exe",
+            "args": [],
+            "console":"integratedTerminal",
+            "logging": {
+                "moduleLoad": true,
+                "trace": true
+            },
+            "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
+            "cwd": "${workspaceRoot}/bin/win",
+            "preLaunchTask": "build client (Profile)"
+        },
+        {
+            "name": "Server (Profile)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "overheat-server.exe",
+            "args": [],
+            "console":"integratedTerminal",
+            "logging": {
+                "moduleLoad": true,
+                "trace": true
+            },
+            "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
+            "cwd": "${workspaceRoot}/bin/win",
+            "preLaunchTask": "build server (Profile)"
+        },
     ]
 }

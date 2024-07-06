@@ -136,11 +136,6 @@
             }
         },
         {
-            "label": "build (Profiling)",
-            "type": "shell",
-            "command": "jai ${workspaceFolder}/build.jai - -profile"
-        },
-        {
             "label": "build client (Release)",
             "type": "shell",
             "command": "jai ${workspaceFolder}/build.jai - -release -client"
@@ -149,6 +144,16 @@
             "label": "build server (Release)",
             "type": "shell",
             "command": "jai ${workspaceFolder}/build.jai - -release -server"
+        },
+        {
+            "label": "build client (Profile)",
+            "type": "shell",
+            "command": "jai ${workspaceFolder}/build.jai - -profile -client"
+        },
+        {
+            "label": "build server (Profile)",
+            "type": "shell",
+            "command": "jai ${workspaceFolder}/build.jai - -profile -server"
         }
     ]
 }
