@@ -96,6 +96,7 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ign
                 append(*sb, byte);
             }
             {
+                if buffer.allocator.proc == null    buffer.allocator = context.allocator;
                 push_allocator(buffer.allocator);
                 << str = builder_to_string(*sb);
             }
@@ -119,6 +120,7 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ign
                     push_allocator(buffer.allocator);
                     result.data = realloc(null, array_count * array_info.element_type.runtime_size, 0);
                     memset(result.data, 0, array_count * array_info.element_type.runtime_size);
+                    result.allocator = buffer.allocator;
                 }
                 result.count = array_count;
                 result.allocated = array_count;
