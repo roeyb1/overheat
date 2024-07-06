@@ -57,7 +57,7 @@ update_bat_anim_state :: (q: Query) {
                 assert(false, "NYI");
         }
     }
-} @System(OnUpdate) @Write(Bat_Animation,Sprite_Animator) @Read(Enemy,Velocity)
+} @System(PreRender) @Write(Bat_Animation,Sprite_Animator) @Read(Enemy,Velocity)
 
 #scope_file
 
