@@ -8,14 +8,6 @@ Gameplay_Inputs :: enum {
     SECONDARY_ATTACK;
 }
 
-Input_States :: struct @SingletonComponent {
-    states: [NUM_BUTTON_STATES] Key_Current_State;
-    
-    mouse_delta_x: int;
-    mouse_delta_y: int;
-    mouse_delta_z: int;
-}
-
 is_button_down :: (input_states: *Input_States, gameplay_input: Gameplay_Inputs) -> bool {
     return get_button_state(input_states, gameplay_input) & .DOWN != 0;
 }

@@ -24,23 +24,10 @@ g_world: World;
 
 #if CLIENT {
 client_main :: () {
-    log_initialize();
-
-    register_events();
-
-    execute_unit_tests();
-
-    // set the working direction to be the root of the project (should always two directories up from the executable)
-    working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
-    set_working_directory(working_dir);
-
-    register_system_functions();
-
     window_system_init();
     imgui_init();
 
     rendering_init();
-    networking_init();
 
     load_all_assets();
     import_ldtk_level(*g_world);
@@ -52,55 +39,6 @@ client_main :: () {
     viewport.main_camera = spawn_entity(*g_world, Position, Camera);
 
     accumulated_time := 0.0;
-
-    // Only update networking while we attempt to connect to the server and don't yet have a player:
-    while g_client.local_client_id == INVALID_NODE_ID {
-        FrameMark();
-
-        now := seconds_since_init();
-        g_delta_time = cast(float) (now - last_time);
-        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
-        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
-        last_time = now;
-
-        hal_input_update();
-        window_system_update();
-
-        if g_should_exit {
-            break;
-        }
-
-        networking_update();
-
-        rendering_begin_frame();
-        ImGui.NewFrame();
-
-        execute(*g_world, .Init);
-
-        // show connecting popup modal
-        if !ImGui.IsPopupOpen("Connecting...") {
-            ImGui.OpenPopup("Connecting...");
-        }
-        if ImGui.BeginPopupModal("Connecting...", null, .AlwaysAutoResize | .NoMove) {
-            ImGui.Text("Connecting to server...");
-            ImGui.EndPopup();
-        }
-
-        {
-            scoped_timer(*g_render_timer);
-
-            execute(*g_world, .PreRender);
-            execute(*g_world, .OnRender);
-
-            rendering_end_frame();
-        }
-
-        reset_temporary_storage();
-
-        g_frame_number += 1;
-    }
-
-    
 
     while true {
         FrameMark();
@@ -127,8 +65,17 @@ client_main :: () {
 
         render_debug_ui();
 
-        execute(*g_world, .Init);
+        if g_client.local_client_id == INVALID_NODE_ID {
+            if !ImGui.IsPopupOpen("Connecting...") {
+                ImGui.OpenPopup("Connecting...");
+            }
+            if ImGui.BeginPopupModal("Connecting...", null, .AlwaysAutoResize | .NoMove) {
+                ImGui.Text("Connecting to server...");
+                ImGui.EndPopup();
+            }
+        }
 
+        execute(*g_world, .Init);
         execute(*g_world, .OnLoad);
         execute(*g_world, .PostLoad);
 
@@ -159,20 +106,6 @@ client_main :: () {
 
 #if SERVER {
 server_main :: () {
-    log_initialize();
-
-    register_events();
-
-    execute_unit_tests();
-
-    // set the working direction to be the root of the project (should always two directories up from the executable)
-    working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
-    set_working_directory(working_dir);
-
-    register_system_functions();
-
-    networking_init();
-
     load_all_assets();
     import_ldtk_level(*g_world);
 
@@ -239,6 +172,22 @@ server_main :: () {
 }
 
 main :: () {
+    log_initialize();
+    register_events();
+    execute_unit_tests();
+
+    // set the working direction to be the root of the project (should always two directories up from the executable)
+    working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
+    set_working_directory(working_dir);
+
+    register_system_functions();
+
+    for ALL_COMPONENT_TYPES {
+        log("% %", it_index + 1, (cast(*Type_Info_Struct)it).name);
+    }
+
+    networking_init();
+
     #if SERVER {
         server_main();
     } else {
@@ -278,10 +227,8 @@ using Random :: #import "Random";
 
 #if CLIENT {
 #load "hal/hal_input.jai";
-#load "gameplay/input.jai";
 #load "debug_ui/debug_ui.jai";
 #load "game_ui/game_ui.jai";
-
 #load "rendering/camera.jai";
 #load "hal/hal_window.jai";
 #load "debug_ui/imgui.jai";
@@ -295,13 +242,7 @@ using Random :: #import "Random";
 #load "unit_test.jai";
 #load "assets.jai";
 #load "ecs/ecs.jai";
-#load "gameplay/components.jai";
-#load "gameplay/direction.jai";
-#load "gameplay/player.jai";
-#load "gameplay/attributes.jai";
-#load "gameplay/damage.jai";
-#load "gameplay/enemy.jai";
-#load "gameplay/follower.jai";
+#load "gameplay/gameplay.jai";
 #load "physics/collision.jai";
 #load "levels/ldtk_import.jai";
 #load "animation/sprite_animation.jai";
