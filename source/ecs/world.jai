@@ -320,6 +320,23 @@ spawn_entity_from_bundle :: (world: *World, bundle: $T) -> Entity {
                 member_type_info := cast(*Type_Info_Struct) it.type;
                 if has_note(member_type_info, "Component") {
                     sbprint(*sb, "<< get_component(world, entity, %) = bundle.%;\n", member_type_info.name, it.name);
+                }
+            }
+        }
+
+        return builder_to_string(*sb);
+    }
+
+    #insert -> string {
+        sb: String_Builder;
+
+        ti :: cast(*Type_Info_Struct) type_info(T);
+
+        for ti.members {
+            // components can only be structs
+            if it.type.type == .STRUCT {
+                member_type_info := cast(*Type_Info_Struct) it.type;
+                if has_note(member_type_info, "Component") {
                     sbprint(*sb, "broadcast_on_component_add(world, entity, #run component_type_id(%));\n", member_type_info.name);
                 }
             }
