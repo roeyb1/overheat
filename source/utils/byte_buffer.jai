@@ -95,8 +95,11 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ign
                 byte_buffer_read(buffer, *byte, ignore_notes);
                 append(*sb, byte);
             }
-            << str = builder_to_string(*sb);
-        case .ARRAY;
+            {
+                push_allocator(buffer.allocator);
+                << str = builder_to_string(*sb);
+            }
+    case .ARRAY;
             array_info := cast(*Type_Info_Array) info;
 
             array_count: s64;
