@@ -199,6 +199,15 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
 
                 player_left := PlayerLeft_Packet.{node_id};
                 networking_broadcast(*player_left);
+
+                entity, found := table_find(*entity_node_id_table, player_left.node_id);
+                assert(found, "Received a Player Left packet for an entity which is not registered in the networking system. How did this happen!?");
+
+                name := get_component(*g_world, entity, Name);
+                if name {
+                    log("% has left the game.", name.name);
+                }
+                destroy_entity(*g_world, entity);
             } else {
                 assert(info.m_eOldState == .Connecting);
             }

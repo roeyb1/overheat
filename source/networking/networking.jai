@@ -62,10 +62,8 @@ on_entity_end_networking :: (world: *World, entity: Entity) {
 PacketType :: enum u8 #specified {
     INVALID                 :: 0;
     CONNECTION_ESTABLISHED  :: 1;
-    PLAYER_JOINED           :: 2;
     PLAYER_LEFT             :: 3;
     PLAYER_COMMANDS         :: 4;
-    ENEMY_INIT_DATA         :: 5;
     SNAPSHOT                :: 6;
 }
 
@@ -88,14 +86,6 @@ Player_Commands_Packet :: struct {
 
     node_id: Node_ID;
     commands: Player_Commands;
-}
-
-Enemy_Init_Data_Packet :: struct {
-    PACKET_TYPE :: PacketType.ENEMY_INIT_DATA;
-
-    node_id: Node_ID;
-    position: Vector2;
-    type: Enemy_Type;
 }
 
 networking_init :: () -> bool {
