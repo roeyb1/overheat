@@ -35,7 +35,11 @@ byte_buffer_write :: (out_buffer: *ByteBuffer, data: *void, info: *Type_Info, ig
         case .ENUM;
             write_value(out_buffer, data, info.runtime_size);
         case .STRING;
-            // #todo: should be the same as arrays
+            str := cast(*string) data;
+            byte_buffer_write(out_buffer, *str.count, ignore_notes);
+            for 0..str.count-1 {
+                byte_buffer_write(out_buffer, *str.data[it], ignore_notes);
+            }
         case .ARRAY;
             array_info := cast(*Type_Info_Array) info;
 
@@ -82,6 +86,16 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ign
             read_value(buffer, data_out, info.runtime_size);
         case .STRING;
             // #todo: should be the same as arrays
+            str := cast(*string) data_out;
+            sb: String_Builder;
+            str_count: s64;
+            byte_buffer_read(buffer, *str_count, ignore_notes);
+            for 0..str_count-1 {
+                byte: u8;
+                byte_buffer_read(buffer, *byte, ignore_notes);
+                append(*sb, byte);
+            }
+            << str = builder_to_string(*sb);
         case .ARRAY;
             array_info := cast(*Type_Info_Array) info;
 
