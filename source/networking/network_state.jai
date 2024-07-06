@@ -58,7 +58,7 @@ added_nodes: [..] Node_ID;
 // any nodes that were destroyed in the last simulation iter
 removed_nodes: [..] Node_ID;
 
-generate_full_snapshot :: (world: *World, new_nodes: [..] Node_ID) -> State_Snapshot {
+generate_full_snapshot :: (world: *World, new_nodes: [] Node_ID) -> State_Snapshot {
     result: State_Snapshot;
     
     array_append(*result.removed_nodes, removed_nodes);
