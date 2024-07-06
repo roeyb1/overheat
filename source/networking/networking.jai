@@ -55,7 +55,7 @@ on_entity_end_networking :: (world: *World, entity: Entity) {
     table_remove(*entity_node_id_table, networking_id.id);
 
     #if SERVER {
-        // @todo: emit a full sync for this node
+        array_add(*removed_nodes, networking_id.id);
     }
 } @Event(EcsOnRemove,Networking_ID)
 
@@ -73,12 +73,6 @@ ConnectionEstablished_Packet :: struct {
 
     node_id: Node_ID;
     initial_snapshot: State_Snapshot_Packet;
-}
-
-PlayerLeft_Packet :: struct {
-    PACKET_TYPE :: PacketType.PLAYER_LEFT;
-
-    node_id: Node_ID;
 }
 
 Player_Commands_Packet :: struct {

@@ -15,7 +15,9 @@ State_Snapshot :: struct {
 
     // a list of all newly created entities and their component types
     // any synchronized state for those components is included in the state table
-    new_entities: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    new_nodes: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+
+    removed_nodes: [..] Node_ID;
 }
 
 State_Snapshot_Packet_Data :: struct {
@@ -34,6 +36,7 @@ State_Snapshot_Packet_Data :: struct {
     }
 
     newly_added: [..] New_Pair;
+    removed: [..] Node_ID;
 
     sequence_number: u64;
 }
@@ -56,6 +59,8 @@ removed_nodes: [..] Node_ID;
 
 generate_full_snapshot :: (world: *World, new_nodes: [..] Node_ID) -> State_Snapshot {
     result: State_Snapshot;
+    
+    array_append(*result.removed_nodes, removed_nodes);
 
     for new_nodes {
         entity, found := table_find(*entity_node_id_table, it);
@@ -68,7 +73,7 @@ generate_full_snapshot :: (world: *World, new_nodes: [..] Node_ID) -> State_Snap
             array_add(*types, it.unique_id);
         }
 
-        entry := table_add(*result.new_entities, it, types);
+        entry := table_add(*result.new_nodes, it, types);
     }
 
     #insert -> string {
@@ -123,12 +128,15 @@ free :: (snapshot: *State_Snapshot) {
 
 to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
     result: State_Snapshot_Packet;
+
+    array_append(*result.removed, snapshot.removed_nodes);
+
     for snapshot.state {
         pair := array_add(*result.pairs);
         pair.node_id = it_index;
         pair.state = it;
     }
-    for snapshot.new_entities {
+    for snapshot.new_nodes {
         pair := array_add(*result.newly_added);
         pair.node_id = it_index;
         pair.component_types = it;
@@ -138,6 +146,9 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
 
 from_packet :: (packet: State_Snapshot_Packet) -> State_Snapshot {
     result: State_Snapshot;
+
+    array_append(*result.removed_nodes, packet.removed);
+
     for packet.pairs {
         new_state := table_add(*result.state, it.node_id, .{});
         // deep copy the state and all the fields, they were allocated from temp buffers
@@ -148,7 +159,7 @@ from_packet :: (packet: State_Snapshot_Packet) -> State_Snapshot {
         }
     }
     for packet.newly_added {
-        new_entry := table_add(*result.new_entities, it.node_id, it.component_types);
+        new_entry := table_add(*result.new_nodes, it.node_id, it.component_types);
     }
     return result;
 }

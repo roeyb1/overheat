@@ -126,9 +126,11 @@ broadcast_local_player_commands :: (q: Query) {
         networking_send_packet(*player_command_packet);
     }
 } @System(PostLoad) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
+}
 
 on_player_component_added :: (world: *World, entity: Entity) {
     log("Player % has joined the game", get_component(world, entity, Name).name);
+#if CLIENT {
     networking_id := get_component(world, entity, Networking_ID);
     assert(networking_id != null);
     if networking_id.id == g_client.local_client_id {
@@ -139,7 +141,11 @@ on_player_component_added :: (world: *World, entity: Entity) {
         sprite.sheet = null;
         sprite.sheet_path = "assets/players/player_character1.png";
     }
-} @Event(EcsOnAdd,Player)
 }
+} @Event(EcsOnAdd,Player)
+
+on_player_component_removed :: (world: *World, entity: Entity) {
+    log("Player % has left the game", get_component(world, entity, Name).name);
+} @Event(EcsOnRemove,Player)
 
 #import "Math";

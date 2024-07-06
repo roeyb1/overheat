@@ -34,19 +34,6 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_commands := get_component(*g_world, entity, Player_Commands);
             assert(player_commands != null);
             << player_commands = player_commands_packet.commands;
-        case .PLAYER_LEFT;
-            player_left: PlayerLeft_Packet;
-            byte_buffer_read(buffer, *player_left);
-
-            entity, found := table_find(*entity_node_id_table, player_left.node_id);
-            assert(found, "Received a Player Left packet for an entity which is not registered in the networking system. How did this happen!?");
-
-            name := get_component(*g_world, entity, Name);
-            if name {
-                log("% has left the game.", name.name);
-            }
-
-            destroy_entity(*g_world, entity);
         case .SNAPSHOT;
             snapshot_packet: State_Snapshot_Packet;
             byte_buffer_read(buffer, *snapshot_packet);
@@ -140,7 +127,7 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
     new_entities: [..] Node_ID;
     new_entities.allocator = temp;
 
-    for snapshot.new_entities {
+    for snapshot.new_nodes {
         _, found := table_find(*entity_node_id_table, it_index);
         if found then continue;
 
@@ -210,7 +197,7 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
     }
 
     for new_entities {
-        ids, success := table_find(*snapshot.new_entities, it);
+        ids, success := table_find(*snapshot.new_nodes, it);
         assert(success);
 
         ctid_list: [..] Component_Type_ID;
@@ -228,6 +215,12 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
         for ctid_list {
             broadcast_on_component_add(world, entity, it);
         }
+    }
+
+    for snapshot.removed_nodes {
+        entity, found := table_find(*entity_node_id_table, it);
+        assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
+        destroy_entity(world, entity);
     }
 }
 
