@@ -71,6 +71,7 @@ ConnectionEstablished_Packet :: struct {
     PACKET_TYPE :: PacketType.CONNECTION_ESTABLISHED;
 
     node_id: Node_ID;
+    sequence_number: s64;
     initial_snapshot: State_Snapshot_Packet;
 }
 

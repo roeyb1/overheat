@@ -8,6 +8,18 @@ Client :: struct {
 }
 g_client: Client;
 
+server_snapshots: [..] State_Snapshot;
+
+last_snapshot_time: float64;
+
+previous_snapshot :: () -> *State_Snapshot {
+    return *server_snapshots[0];
+}
+
+current_snapshot :: () -> *State_Snapshot {
+    return *server_snapshots[1];
+}
+
 client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     if packet_type == {
         case .CONNECTION_ESTABLISHED;
@@ -18,10 +30,15 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             assert(conn_established.node_id != INVALID_NODE_ID);
 
             g_client.local_client_id = conn_established.node_id;
+            g_sim_frame_number = conn_established.sequence_number;
             log("Local player was assigned id %", conn_established.node_id);
+
+
             snapshot := from_packet(conn_established.initial_snapshot);
-            apply_snapshot(*g_world, from_packet(conn_established.initial_snapshot));
-            free(*snapshot);
+            array_add(*server_snapshots, snapshot);
+            last_snapshot_time = seconds_since_init();
+
+            apply_snapshot(*g_world, snapshot);
 
         case .PLAYER_COMMANDS;
             player_commands_packet: Player_Commands_Packet;
@@ -40,11 +57,16 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             snapshot_packet: State_Snapshot_Packet;
             byte_buffer_read(buffer, *snapshot_packet);
 
-            push_new_snapshot(from_packet(snapshot_packet));
+            if server_snapshots.count > 1 then {
+                free(previous_snapshot());
+                array_ordered_remove_by_index(*server_snapshots, 0);
+            }
+            array_add(*server_snapshots, from_packet(snapshot_packet));
 
             apply_snapshot(*g_world, current_snapshot());
             
             g_sim_frame_number = snapshot_packet.sequence_number;
+            last_snapshot_time = seconds_since_init();
         case;
     }
 }

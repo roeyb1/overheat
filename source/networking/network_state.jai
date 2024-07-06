@@ -38,19 +38,13 @@ State_Snapshot_Packet_Data :: struct {
     newly_added: [..] New_Pair;
     removed: [..] Node_ID;
 
-    sequence_number: u64;
+    sequence_number: s64;
 }
 
 State_Snapshot_Packet :: struct {
     PACKET_TYPE :: PacketType.SNAPSHOT;
     using data: State_Snapshot_Packet_Data;
 }
-
-SNAPSHOT_RING_SIZE :: 16;
-snapshot_ring: [SNAPSHOT_RING_SIZE] State_Snapshot;
-snapshot_index: u64 = 0;
-
-last_snapshot_time: float64;
 
 
 // any nodes that were newly created in the last simulation iter
@@ -117,18 +111,6 @@ generate_full_snapshot :: (world: *World, new_nodes: [] Node_ID) -> State_Snapsh
     }
 
     return result;
-}
-
-push_new_snapshot :: (snapshot: State_Snapshot) {
-    free(*snapshot_ring[(snapshot_index - 1) % SNAPSHOT_RING_SIZE]);
-    snapshot_index += 1;
-    snapshot_ring[snapshot_index % SNAPSHOT_RING_SIZE] = snapshot;
-
-    last_snapshot_time = seconds_since_init();
-}
-
-current_snapshot :: () -> *State_Snapshot {
-    return *snapshot_ring[snapshot_index % SNAPSHOT_RING_SIZE];
 }
 
 free :: (snapshot: *State_Snapshot) {

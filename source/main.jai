@@ -18,7 +18,7 @@ FIXED_TIMESTEP :: 0.100;
 g_should_exit: bool = false;
 
 g_frame_number: u64 = 0;
-g_sim_frame_number: u64 = 0;
+g_sim_frame_number: s64 = 0;
 
 g_world: World;
 
@@ -79,11 +79,23 @@ client_main :: () {
         execute(*g_world, .OnLoad);
         execute(*g_world, .PostLoad);
 
+        while accumulated_time >= FIXED_TIMESTEP {
+            scoped_smooth_timer(*g_sim_timer, 1. / 16.);
+
+            //execute(*g_world, .PreUpdate);
+            //execute(*g_world, .OnUpdate);
+            //execute(*g_world, .OnValidate);
+            //execute(*g_world, .PostUpdate);
+
+
+            accumulated_time -= FIXED_TIMESTEP;
+        }
+
         g_interp_alpha = clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
-        last_snapshot := *snapshot_ring[(snapshot_index -1) % SNAPSHOT_RING_SIZE];
-        current_snapshot := *snapshot_ring[(snapshot_index) % SNAPSHOT_RING_SIZE];
-        if last_snapshot.state.count > 0 && current_snapshot.state.count > 0 {
-            interpolate_states(*g_world, last_snapshot, current_snapshot, g_interp_alpha);
+        if server_snapshots.count > 1 {
+            previous := previous_snapshot();
+            current := current_snapshot();
+            interpolate_states(*g_world, previous_snapshot(), current_snapshot(), g_interp_alpha);
         }
 
         {
@@ -144,7 +156,6 @@ server_main :: () {
 
             added_nodes.count = 0;
             removed_nodes.count = 0;
-            last_snapshot_time = seconds_since_init();
 
             snapshot_packet := to_packet(current_snapshot());
             snapshot_packet.sequence_number = g_sim_frame_number;

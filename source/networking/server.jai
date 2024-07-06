@@ -1,3 +1,25 @@
+SNAPSHOT_RING_SIZE :: 16;
+snapshot_ring: [SNAPSHOT_RING_SIZE] State_Snapshot;
+
+push_new_snapshot :: (snapshot: State_Snapshot) {
+    free(previous_snapshot());
+
+    << current_snapshot() = snapshot;
+}
+
+previous_snapshot :: () -> *State_Snapshot {
+    index := (g_sim_frame_number - 1) % SNAPSHOT_RING_SIZE;
+    if index < 0 {
+        index += (SNAPSHOT_RING_SIZE - 1);
+    }
+    return *snapshot_ring[index];
+}
+
+current_snapshot :: () -> *State_Snapshot {
+    index := g_sim_frame_number % SNAPSHOT_RING_SIZE;
+    return *snapshot_ring[g_sim_frame_number % SNAPSHOT_RING_SIZE];
+}
+
 server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     if packet_type == {
         case .PLAYER_COMMANDS;
@@ -244,6 +266,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             {
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.node_id = new_networking_id;
+                conn_established.sequence_number = g_sim_frame_number;
 
                 nodes_to_treat_as_new: [..] Node_ID;
                 nodes_to_treat_as_new.allocator = temp;
