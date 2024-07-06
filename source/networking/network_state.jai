@@ -43,6 +43,12 @@ State_Snapshot_Packet :: struct {
     using data: State_Snapshot_Packet_Data;
 }
 
+last_snapshot: State_Snapshot;
+current_snapshot: State_Snapshot;
+
+last_snapshot_time: float64;
+
+
 // any nodes that were newly created in the last simulation iter
 added_nodes: [..] Node_ID;
 // any nodes that were destroyed in the last simulation iter

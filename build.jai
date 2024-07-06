@@ -14,7 +14,6 @@ build :: () {
     args := get_build_options().compile_time_command_line;
 
     options := get_build_options(w);
-    options.output_executable_name = "overheat";
 
     // Set up the output directory based on the target operating system:
     {
@@ -111,6 +110,9 @@ build :: () {
     enable_vulkan_debug := false;
     enable_shader_comp := false;
 
+    is_client := false;
+    is_server := false;
+
     intercept_flags: Intercept_Flags;
 
     while index < args.count {
@@ -130,7 +132,10 @@ build :: () {
             case "-";
                 // Everything after this is user arguments.
                 got_user_arguments_delimiter = true;
-            
+            case "-server";
+                is_server = true;
+            case "-client";
+                is_client = true;
             case "-rhivalidation";
                 enable_rhi_validation = true;
 
@@ -255,6 +260,10 @@ build :: () {
         exit(1);
     }
 
+    assert(is_server != is_client);
+
+    options.output_executable_name = sprint("overheat-%", ifx is_server then "server" else "client");
+
     if do_check { // @Copypasta, just to make the plugin name arrays come out the same. This is getting silly!
         if check_bindings array_add(*plugin_names2, "Check");
         else              array_add(*plugin_names2, "Check(CHECK_BINDINGS=false)");
@@ -312,6 +321,14 @@ build :: () {
     // To tell the compiler to give us messages, we need to call compiler_begin_intercept
     // before we add any code to the target workspace.
     compiler_begin_intercept(w, intercept_flags);
+
+    if is_server {
+        add_build_string("SERVER :: true;", w);
+        add_build_string("CLIENT :: false;", w);
+    } else {
+        add_build_string("SERVER :: false;", w);
+        add_build_string("CLIENT :: true;", w);
+    }
 
     if enable_rhi_validation {
         add_build_string("RHI_VALIDATION :: true;", w);

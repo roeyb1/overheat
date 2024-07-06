@@ -1,7 +1,12 @@
-last_snapshot: State_Snapshot;
-current_snapshot: State_Snapshot;
+Client :: struct {
+    endpoint: IPAddr;
+    connection: NetConnection;
 
-last_snapshot_time: float64;
+    should_disconnect: bool = false;
+
+    local_client_id: Node_ID = INVALID_NODE_ID;
+}
+g_client: Client;
 
 client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     if packet_type == {
@@ -43,23 +48,21 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             destroy_entity(*g_world, entity);
         case .SNAPSHOT;
-            if !is_server() {
-                snapshot_packet: State_Snapshot_Packet;
-                byte_buffer_read(buffer, *snapshot_packet);
+            snapshot_packet: State_Snapshot_Packet;
+            byte_buffer_read(buffer, *snapshot_packet);
 
 
-                if last_snapshot.state.count > 0 {
-                    free(*last_snapshot);
-                }
-
-                last_snapshot = current_snapshot;
-                current_snapshot = from_packet(snapshot_packet);
-                last_snapshot_time = seconds_since_init();
-
-                apply_snapshot(*g_world, current_snapshot);
-                
-                g_sim_frame_number = snapshot_packet.sequence_number;
+            if last_snapshot.state.count > 0 {
+                free(*last_snapshot);
             }
+
+            last_snapshot = current_snapshot;
+            current_snapshot = from_packet(snapshot_packet);
+            last_snapshot_time = seconds_since_init();
+
+            apply_snapshot(*g_world, current_snapshot);
+            
+            g_sim_frame_number = snapshot_packet.sequence_number;
         case;
     }
 }
@@ -225,5 +228,125 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
         for ctid_list {
             broadcast_on_component_add(world, entity, it);
         }
+    }
+}
+
+/**
+ * Client -> Server 
+ * Sends a packet of data from the client to the server.
+ */
+networking_send_packet :: (packet_data: *$Type) {
+    buffer: ByteBuffer;
+    buffer.buff.allocator = temp;
+    packet_type := Type.PACKET_TYPE;
+    byte_buffer_write(*buffer, *packet_type);
+    byte_buffer_write(*buffer, packet_data);
+
+    Sockets.SendMessageToConnection(g_client.connection, buffer.buff.data, xx buffer.buff.count, .Reliable, null);
+}
+
+client_init :: (client: *Client) -> bool {
+    // Convert the endpoint to a string for debug/logging:
+    con_addr : [ IPAddr.MaxStringIPAddrSize ] s8;
+    IPAddr.ToString(*client.endpoint, con_addr.data, con_addr.count, /* bWithPort = */ true);
+    con_addr_view := view_of_c_string(con_addr.data);
+
+    log("Client is attempting to connect to server at %...", con_addr_view);
+    options: [1] ConfigValue;
+    ConfigValue.SetPtr(*options[0], .Callback_ConnectionStatusChanged, xx client_net_connection_status_changed_callback);
+    
+    client.connection = Sockets.ConnectByIPAddress(*client.endpoint, options.count, options.data);
+
+    if client.connection == .Invalid {
+        log_error("Client failed to connect to server");
+        return false;
+    }
+
+    return true;
+}
+
+client_update :: (client: *Client) {
+    while !client.should_disconnect {
+        incoming_msgs: [8] *NetworkingMessage;
+        num_msgs := Sockets.ReceiveMessagesOnConnection(client.connection, incoming_msgs.data, incoming_msgs.count);
+
+        if num_msgs == 0 {
+            break;
+        }
+
+        assert(num_msgs > 0);
+        assert(num_msgs <= incoming_msgs.count);
+
+        for 0..num_msgs - 1 {
+            message: *NetworkingMessage = incoming_msgs[it];
+            defer NetworkingMessage.Release(message);
+
+            message_view: [] u8;
+            message_view.data = message.m_pData;
+            message_view.count = message.m_cbSize;
+
+            if message_view.count == 0 then continue;
+
+            // copy the incoming data into the buffer
+            buffer: ByteBuffer;
+            buffer.allocator = temp;
+            copy_to_buffer(*buffer, message_view);
+
+            buffer.cursor = 0;
+
+            packet_type: PacketType;
+            byte_buffer_read(*buffer, *packet_type);
+
+            client_packet_handler(packet_type, *buffer);
+        }
+    }
+    Sockets.RunCallbacks();
+}
+
+client_shutdown :: (client: *Client) {
+    // enable linger mode to ensure the connection is fully flushed.
+    Sockets.CloseConnection(client.connection, 0, null, /* linger= */ true);
+}
+
+client_net_connection_status_changed_callback :: (info: *ConnectionStatusChanged) -> void #c_call {
+    new_ctx: Context;
+    new_ctx.logger = logger;
+    push_context new_ctx {
+        handle_client_net_connection_status_changed(*g_client, info);
+    }
+}
+
+handle_client_net_connection_status_changed :: (client: *Client, info: *ConnectionStatusChanged) {
+    // #todo: What to do if client.con is invalid?
+    assert(info.m_conn == client.connection || client.connection == .Invalid);
+
+    if info.m_info.m_eState == {
+        case .None;
+        case .ClosedByPeer; #through;
+        case .ProblemDetectedLocally; {
+            
+            end_debug_message_view := view_of_c_string(info.m_info.m_szEndDebug.data);
+
+            if info.m_eOldState == .Connecting {
+                log_error("Unable to connect to server. (%)", end_debug_message_view);
+            } 
+            else if info.m_info.m_eState == .ProblemDetectedLocally {
+                log_error("Lost connection with the host. (%)", end_debug_message_view);
+            } 
+            else {
+                // #todo: check reason for disconnect
+                log("Disconnected from the host. (%)", end_debug_message_view);
+            }
+
+            Sockets.CloseConnection(client.connection, /* reason */ 0, /* debug message */ null, /* linger */ false);
+            client.connection = .Invalid;
+            client.should_disconnect = true;
+            // #todo: handle disconnection properly, for now just exit if we drop connection
+            g_should_exit = true;
+        }
+        case .Connecting;
+        case .Connected;
+            log("Connected to server");
+        case;
     }
 }

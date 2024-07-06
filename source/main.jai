@@ -18,13 +18,9 @@ g_sim_frame_number: u64 = 0;
 
 g_world: World;
 
-main :: () {
+#if CLIENT {
+client_main :: () {
     log_initialize();
-
-    for ALL_COMPONENT_TYPES {
-        ti := cast (*Type_Info_Struct) it;
-        log("% %", it_index, ti.name);
-    }
 
     register_events();
 
@@ -132,32 +128,6 @@ main :: () {
         execute(*g_world, .OnLoad);
         execute(*g_world, .PostLoad);
 
-        // Run simulation on a fixed timestep for determinism 
-        if is_server() {
-            while accumulated_time >= FIXED_TIMESTEP {
-                scoped_smooth_timer(*g_sim_timer, 1. / 16.);
-
-                execute(*g_world, .PreUpdate);
-                execute(*g_world, .OnUpdate);
-                execute(*g_world, .OnValidate);
-                execute(*g_world, .PostUpdate);
-
-                free(*last_snapshot);
-                last_snapshot = current_snapshot;
-                current_snapshot = generate_full_snapshot(*g_world, added_nodes);
-                added_nodes.count = 0;
-                last_snapshot_time = seconds_since_init();
-
-                snapshot_packet := to_packet(current_snapshot);
-                snapshot_packet.sequence_number = g_sim_frame_number;
-        
-                networking_broadcast(*snapshot_packet);
-
-                g_sim_frame_number += 1;
-                accumulated_time -= FIXED_TIMESTEP;
-            }
-        }
-
         g_interp_alpha = clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
         if last_snapshot.state.count > 0 && current_snapshot.state.count > 0 {
             interpolate_states(*g_world, last_snapshot, current_snapshot, g_interp_alpha);
@@ -180,6 +150,94 @@ main :: () {
 
     networking_shutdown();
     rendering_shutdown();
+}
+}
+
+#if SERVER {
+server_main :: () {
+    log_initialize();
+
+    register_events();
+
+    execute_unit_tests();
+
+    // set the working direction to be the root of the project (should always two directories up from the executable)
+    working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
+    set_working_directory(working_dir);
+
+    register_system_functions();
+
+    networking_init();
+
+    load_all_assets();
+    import_ldtk_level(*g_world);
+
+    last_time = seconds_since_init();
+
+    accumulated_time := 0.0;
+
+    while true {
+        FrameMark();
+
+        now := seconds_since_init();
+        g_delta_time = cast(float) (now - last_time);
+        smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
+        g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
+        last_time = now;
+
+        accumulated_time += g_delta_time;
+
+        if g_should_exit {
+            break;
+        }
+
+        networking_update();
+
+        execute(*g_world, .Init);
+
+        execute(*g_world, .OnLoad);
+        execute(*g_world, .PostLoad);
+
+        // Run simulation on a fixed timestep for determinism 
+        while accumulated_time >= FIXED_TIMESTEP {
+            scoped_smooth_timer(*g_sim_timer, 1. / 16.);
+
+            execute(*g_world, .PreUpdate);
+            execute(*g_world, .OnUpdate);
+            execute(*g_world, .OnValidate);
+            execute(*g_world, .PostUpdate);
+
+            free(*last_snapshot);
+            last_snapshot = current_snapshot;
+            current_snapshot = generate_full_snapshot(*g_world, added_nodes);
+            added_nodes.count = 0;
+            last_snapshot_time = seconds_since_init();
+
+            snapshot_packet := to_packet(current_snapshot);
+            snapshot_packet.sequence_number = g_sim_frame_number;
+    
+            networking_broadcast(*snapshot_packet);
+
+            g_sim_frame_number += 1;
+            accumulated_time -= FIXED_TIMESTEP;
+        }
+
+        // Reset temporary storage at the end of each frame
+        reset_temporary_storage();
+
+        g_frame_number += 1;
+    }
+
+    networking_shutdown();
+}
+}
+
+main :: () {
+    #if SERVER {
+        server_main();
+    } else {
+        client_main();
+    }
 }
 
 update_positions :: (q: Query) {

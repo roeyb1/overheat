@@ -60,14 +60,17 @@ get_texture :: (filename: string) -> TextureHandle {
 }
 
 load_texture :: (filename: string) -> TextureHandle {
-    key := copy_string(filename);
-    result := table_add(*textures, key, 0);
-    texture := texture_load(filename);
-    << result = texture;
+    #if CLIENT {
+        key := copy_string(filename);
+        result := table_add(*textures, key, 0);
+        texture := texture_load(filename);
+        << result = texture;
 
-    log("Loaded new texture asset: %", filename);
-
-    return << result;
+        log("Loaded new texture asset: %", filename);
+        return << result;
+    } else {
+        return 0;
+    }
 }
 
 #scope_file

@@ -94,7 +94,6 @@ texture_load :: (filename: string) -> TextureHandle {
 
     
     array_add(*g_texture_loader.upload_queue, upload);
-
     return texture_manager_add(image, image_view);
 }
 

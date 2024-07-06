@@ -99,12 +99,10 @@ import_ldtk_level :: (world: *World) {
                         add_component(world, collider, Shadow_Caster, .{bounds});
                         add_component(world, collider, Collider_AABB, .{bounds, true});
                     } else if ldtk_entity.__identifier == "pack_spawner" {
-                        if is_server() {
-                            x := (cast(float) ldtk_entity.__worldX / cast(float) TILE_PIXEL_SIZE) - ldtk_entity.__pivot[0];
-                            y := cast(float)(layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / cast(float)(TILE_PIXEL_SIZE) + ldtk_entity.__pivot[1];
+                        x := (cast(float) ldtk_entity.__worldX / cast(float) TILE_PIXEL_SIZE) - ldtk_entity.__pivot[0];
+                        y := cast(float)(layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / cast(float)(TILE_PIXEL_SIZE) + ldtk_entity.__pivot[1];
 
-                            spawn_enemy_pack(world, .{x, y}, 2, .BAT);
-                        }
+                        spawn_enemy_pack(world, .{x, y}, 2, .BAT);
                     }
                 }
             }

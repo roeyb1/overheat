@@ -114,6 +114,7 @@ update_player_controllers :: (q: Query) {
     }
 } @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed,Player_Animation)
 
+#if CLIENT {
 broadcast_local_player_commands :: (q: Query) {
     player_commands := query_get(q, Player_Commands);
     networking_ids := query_get(q, Networking_ID);
@@ -139,5 +140,6 @@ on_player_component_added :: (world: *World, entity: Entity) {
         sprite.sheet_path = "assets/players/player_character1.png";
     }
 } @Event(EcsOnAdd,Player)
+}
 
 #import "Math";

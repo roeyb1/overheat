@@ -59,14 +59,15 @@ spawn_enemy :: (world: *World, position: Vector2, node_id: Node_ID, type: Enemy_
 }
 
 spawn_enemy_pack :: (world: *World, center: Vector2, radius: float, type: Enemy_Type) {
-    assert(is_server(), "Spawn enemy pack called from client code! - This should only be called on the server");
-    // for now, always just spawn 4 enemies around the center within radius distance:
-    count :: 4;
-    for 0..count-1 {
-        angle := TAU * random_get_zero_to_one();
-        distance := radius * random_get_zero_to_one();
+    #if SERVER {
+        // for now, always just spawn 4 enemies around the center within radius distance:
+        count :: 4;
+        for 0..count-1 {
+            angle := TAU * random_get_zero_to_one();
+            distance := radius * random_get_zero_to_one();
 
-        position := center + Vector2.{distance * cos(angle), distance * sin(angle)};
-        spawn_enemy(world, position, get_unique_node_id(), .BAT);
+            position := center + Vector2.{distance * cos(angle), distance * sin(angle)};
+            spawn_enemy(world, position, get_unique_node_id(), .BAT);
+        }
     }
 }
