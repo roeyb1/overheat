@@ -56,9 +56,18 @@ on_entity_begin_networking :: (world: *World, entity: Entity) {
     table_add(*entity_node_id_table, networking_id.id, entity);
 
     if is_server() {
-        // @todo: emit a full sync for this node
+        array_add(*added_nodes, networking_id.id);
     }
 } @Event(EcsOnAdd,Networking_ID)
+
+on_entity_end_networking :: (world: *World, entity: Entity) {
+    networking_id := get_component(world, entity, Networking_ID);
+    table_remove(*entity_node_id_table, networking_id.id);
+
+    if is_server() {
+        // @todo: emit a full sync for this node
+    }
+} @Event(EcsOnRemove,Networking_ID)
 
 PacketType :: enum u8 #specified {
     INVALID                 :: 0;
@@ -75,18 +84,6 @@ ConnectionEstablished_Packet :: struct {
     PACKET_TYPE :: PacketType.CONNECTION_ESTABLISHED;
 
     node_id: Node_ID;
-
-    // #hack: using the player joined packet to avoid adding a new struct
-    existing_players: [..] PlayerJoined_Packet;
-    existing_enemies: [..] Enemy_Init_Data_Packet;
-}
-
-/** Packet sent from the server to all clients indicating a new player has joined the game. */
-PlayerJoined_Packet :: struct {
-    PACKET_TYPE :: PacketType.PLAYER_JOINED;
-
-    node_id: Node_ID;
-    position: Vector2;
 }
 
 PlayerLeft_Packet :: struct {
@@ -490,48 +487,13 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
 
-            // Indicate to the newly joined player what it's ID is and who is in the world:
+            // Indicate to the newly joined player what it's ID is
             {
                 conn_established: ConnectionEstablished_Packet;
-                conn_established.existing_players.allocator = temp;
-                conn_established.existing_enemies.allocator = temp;
                 conn_established.node_id = new_networking_id;
-
-                for q : make_iter(*g_world, Player, Networking_ID, Position) {
-                    networking_ids := query_get(q, Networking_ID);
-                    positions := query_get(q, Position);
-
-                    for 0..q.count-1 {
-                        player_data := array_add(*conn_established.existing_players);
-                        player_data.node_id = networking_ids[it].id;
-                        player_data.position = positions[it];
-                    }
-                }
-
-                for q : make_iter(*g_world, Enemy, Networking_ID, Position) {
-                    networking_ids := query_get(q, Networking_ID);
-                    positions := query_get(q, Position);
-                    enemies := query_get(q, Enemy);
-
-                    for 0..q.count-1 {
-                        enemy_data := array_add(*conn_established.existing_enemies);
-                        enemy_data.node_id = networking_ids[it].id;
-                        enemy_data.position = positions[it];
-                        enemy_data.type = enemies[it].type;
-                    }
-                }
 
                 networking_send_packet(*new_client, *conn_established);
             }
-
-            // Notify all clients about the newly joined player:
-            {
-                player_joined: PlayerJoined_Packet = ---;
-                player_joined.node_id = new_networking_id;
-                player_joined.position = g_player_start;
-                networking_broadcast(*player_joined);
-            }
-
         }
         case .Connected;
         case;

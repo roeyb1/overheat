@@ -66,6 +66,18 @@ component_type_id :: inline ($c: Type) -> Component_Type_ID
     };
 }
 
+#insert -> string {
+    sb: String_Builder;
+    sbprint(*sb, "ALL_COMPONENT_TYPE_IDS :: Component_Type_ID.[");
+    for ALL_COMPONENT_TYPES {
+        ti := cast(*Type_Info_Struct)it;
+        sbprint(*sb, "#run component_type_id(%), ", ti.name);
+    }
+    sbprint(*sb, "];");
+
+    return builder_to_string(*sb);
+}
+
 /** Returns a compile-time generated (sorted by id) view of a static array of component type ids */
 component_type_ids :: ($component_types: [] Type) -> [] Component_Type_ID {
     #insert #run () -> string #compile_time {

@@ -12,6 +12,10 @@ Node_State :: struct {
 
 State_Snapshot :: struct {
     state: Table(Node_ID, Node_State, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+
+    // a list of all newly created entities and their component types
+    // any synchronized state for those components is included in the state table
+    new_entities: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 }
 
 State_Snapshot_Packet :: struct {
@@ -23,11 +27,37 @@ State_Snapshot_Packet :: struct {
     }
     pairs: [..] State_Pair;
 
+    New_Pair :: struct {
+        node_id: Node_ID;
+        component_types: [..] u64;
+    }
+
+    newly_added: [..] New_Pair;
+
     sequence_number: u64;
 }
 
+// any nodes that were newly created in the last simulation iter
+added_nodes: [..] Node_ID;
+// any nodes that were destroyed in the last simulation iter
+removed_nodes: [..] Node_ID;
+
 generate_full_snapshot :: (world: *World) -> State_Snapshot {
     result: State_Snapshot;
+
+    for added_nodes {
+        entity, found := table_find(*entity_node_id_table, it);
+        assert(found, "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
+
+        component_types_view := get_component_types(world, entity);
+
+        types: [..] u64;
+        for component_types_view {
+            array_add(*types, it.unique_id);
+        }
+
+        entry := table_add(*result.new_entities, it, types);
+    }
 
     #insert -> string {
         INSERT_STRING :: #string DONE 
@@ -86,6 +116,11 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
         pair.node_id = it_index;
         pair.state = it;
     }
+    for snapshot.new_entities {
+        pair := array_add(*result.newly_added);
+        pair.node_id = it_index;
+        pair.component_types = it;
+    }
     return result;
 }
 
@@ -99,6 +134,9 @@ from_packet :: (packet: State_Snapshot_Packet) -> State_Snapshot {
             new_field.field_id = field.field_id;
             new_field.data = copy(*field.data);
         }
+    }
+    for packet.newly_added {
+        new_entry := table_add(*result.new_entities, it.node_id, it.component_types);
     }
     return result;
 }

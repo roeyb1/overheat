@@ -159,6 +159,16 @@ has_components :: (world: *World, entity: Entity, ctids: [] Component_Type_ID) -
     return has_components(*world.stage, entity, ctids);
 }
 
+/** Returns a view to the archetypes type id array */
+get_component_types :: (world: *World, entity: Entity) -> [] Component_Type_ID {
+    assert(is_valid(world, entity));
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return get_component_types(*world.deferred_stage, deferred);
+    }
+    return get_component_types(*world.stage, entity);
+}
+
 /**
  * Returns a pointer to the component of the given type attached to the given entity.
  */

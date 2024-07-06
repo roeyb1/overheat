@@ -27,7 +27,6 @@ Player_Bundle :: struct @Bundle {
     name: Name;
     player_commands: Player_Commands;
     position: Position;
-    networking_id: Networking_ID;
     move_speed: Move_Speed;
     point_light: Point_Light;
     invoker: Collision_Invoker;
@@ -68,6 +67,10 @@ init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
     } else {
         add_component(*g_world, entity, Remote_Player);
     }
+
+    // @todo: move this back into the bundle, for now we moved it to the end of init player to ensure it's all set up before replicating.
+    // replicating new nodes will be deferred anyways so this shouldn't be necessary when the system is fleshed out.
+    add_component(*g_world, entity, Networking_ID, .{node_id});
 
     return entity;
 }

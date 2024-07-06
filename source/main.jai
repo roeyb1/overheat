@@ -207,7 +207,7 @@ render_scene :: (q: Query) {
 } @System(OnRender) @Write() @Read(Game_Viewport) @OptionalRead(Position,Camera)
 
 on_player_component_added :: (world: *World, entity: Entity) {
-    log("Player added!");
+    log("Player % has joined the game", get_component(world, entity, Name).name);
 } @Event(EcsOnAdd,Player)
 
 

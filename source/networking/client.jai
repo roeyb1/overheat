@@ -7,8 +7,6 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     if packet_type == {
         case .CONNECTION_ESTABLISHED;
             conn_established: ConnectionEstablished_Packet;
-            conn_established.existing_players.allocator = temp;
-            conn_established.existing_enemies.allocator = temp;
 
             byte_buffer_read(buffer, *conn_established);
 
@@ -18,25 +16,6 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             log("Local player was assigned id %", conn_established.node_id);
 
             g_local_player = init_player(conn_established.node_id, g_player_start);
-
-            // we can ignore these if we're on the server
-            if !is_server() {
-                for player_data : conn_established.existing_players {
-                    player := init_player(player_data.node_id, player_data.position);
-                    log("Existing player initialized %", get_component(*g_world, player, Name).name);
-                }
-
-                for enemy_data : conn_established.existing_enemies {
-                    enemy := spawn_enemy(*g_world, enemy_data.position, enemy_data.node_id, enemy_data.type);
-                }
-            }
-        case .PLAYER_JOINED;
-            player_joined: PlayerJoined_Packet;
-            byte_buffer_read(buffer, *player_joined);
-
-            init_player(player_joined.node_id, player_joined.position);
-
-            log("New player has joined the game: %", player_joined.node_id);
 
         case .PLAYER_COMMANDS;
             player_commands_packet: Player_Commands_Packet;
@@ -156,6 +135,23 @@ interpolate_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alph
 }
 
 apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
+    for snapshot.new_entities {
+        ctid_list: [..] Component_Type_ID;
+        ctid_list.allocator = temp;
+        for it {
+            for ctid : ALL_COMPONENT_TYPE_IDS {
+                if ctid.unique_id == it {
+                    array_add(*ctid_list, ctid);
+                }
+            }
+        }
+        entity := spawn_entity(world);
+        add_component(world, entity, Networking_ID, .{it_index});
+        for ctid_list {
+            add_component(world, entity, it);
+        }
+    }
+
     #insert -> string {
         INSERT_STRING :: #string DONE 
             for q : make_iter(world, Networking_ID, %1) {
