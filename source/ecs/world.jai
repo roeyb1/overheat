@@ -117,8 +117,9 @@ destroy_entity :: (world: *World, entity: Entity) {
         deferred, found := table_find(*world.deferred_entities, entity.raw);
         if found {
             remove_entity(*world.deferred_stage, deferred);
+        } else {
+            array_add(*world.deferred_ops, .{type = .DESTROY, entity = entity});
         }
-        array_add(*world.deferred_ops, .{type = .DESTROY, entity = entity});
 
         return;
     }
