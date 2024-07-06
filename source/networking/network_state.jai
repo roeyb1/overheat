@@ -18,13 +18,14 @@ State_Snapshot :: struct {
     new_entities: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 }
 
-State_Snapshot_Packet :: struct {
-    PACKET_TYPE :: PacketType.SNAPSHOT;
-    // we can't serialize tables yet, so we rely on the list of pairs when serializing the state on the network
+State_Snapshot_Packet_Data :: struct {
+    // we can't serialize tables yet, so we just transfer a list of pairs when serializing the state on the network
+
     State_Pair :: struct {
         node_id: Node_ID;
         state: Node_State;
     }
+
     pairs: [..] State_Pair;
 
     New_Pair :: struct {
@@ -37,15 +38,20 @@ State_Snapshot_Packet :: struct {
     sequence_number: u64;
 }
 
+State_Snapshot_Packet :: struct {
+    PACKET_TYPE :: PacketType.SNAPSHOT;
+    using data: State_Snapshot_Packet_Data;
+}
+
 // any nodes that were newly created in the last simulation iter
 added_nodes: [..] Node_ID;
 // any nodes that were destroyed in the last simulation iter
 removed_nodes: [..] Node_ID;
 
-generate_full_snapshot :: (world: *World) -> State_Snapshot {
+generate_full_snapshot :: (world: *World, new_nodes: [..] Node_ID) -> State_Snapshot {
     result: State_Snapshot;
 
-    for added_nodes {
+    for new_nodes {
         entity, found := table_find(*entity_node_id_table, it);
         assert(found, "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
 
@@ -58,7 +64,6 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
 
         entry := table_add(*result.new_entities, it, types);
     }
-    added_nodes.count = 0;
 
     #insert -> string {
         INSERT_STRING :: #string DONE 

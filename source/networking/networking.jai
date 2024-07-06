@@ -84,6 +84,7 @@ ConnectionEstablished_Packet :: struct {
     PACKET_TYPE :: PacketType.CONNECTION_ESTABLISHED;
 
     node_id: Node_ID;
+    initial_snapshot: State_Snapshot_Packet;
 }
 
 PlayerLeft_Packet :: struct {
@@ -494,7 +495,17 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.node_id = new_networking_id;
 
+                nodes_to_treat_as_new: [..] Node_ID;
+                nodes_to_treat_as_new.allocator = temp;
+
+                for entity_node_id_table {
+                    array_add(*nodes_to_treat_as_new, it_index);
+                }
+                snapshot := generate_full_snapshot(*g_world, nodes_to_treat_as_new);
+                conn_established.initial_snapshot = to_packet(snapshot);
+
                 networking_send_packet(*new_client, *conn_established);
+                free(*snapshot);
             }
         }
         case .Connected;
