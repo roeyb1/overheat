@@ -27,7 +27,7 @@ process_deferred_operations :: (world: *World) {
                 }
             case .SPAWN;
                 // It's possible that the entity was destoyed in the staging world before we could copy it to the main world, very unlikely though
-                if ensure(is_valid(world, it.entity), "Spawned entity is not valid anymore") {
+                if is_valid(world, it.entity) {
                     deferred, found := table_find(*world.deferred_entities, it.entity.raw);
                     assert(found);
                     copy_entity_between_deferred(world, it.entity, deferred);

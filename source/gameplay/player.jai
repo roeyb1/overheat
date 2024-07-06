@@ -47,7 +47,9 @@ Player_Bundle :: struct @Bundle {
     sprite: Sprite;
 
     collider: Collider_AABB;
-    health: Health;
+    maximum_health: Maximum_Health;
+    current_health: Current_Health;
+    health_change_queue: Health_Change_Queue;
 }
 
 init_player :: (networking_id: u64, position: Vector2) -> Entity {
@@ -70,7 +72,8 @@ init_player :: (networking_id: u64, position: Vector2) -> Entity {
         point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 20. },
         sprite = .{ sprite, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
-        health = .{90., 100.},
+        maximum_health = .{value = 100.},
+        current_health = .{maximum_value = 100., current_value = 90.}
     });
 
     // if this is a local player:

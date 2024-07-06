@@ -19,7 +19,8 @@ Enemy_Bundle :: struct @Bundle {
     invoker: Collision_Invoker;
     collider: Collider_AABB;
     networking_id: Networking_ID;
-    health: Health;
+    maximum_health: Maximum_Health;
+    current_health: Current_Health;
 }
 
 spawn_enemy :: (world: *World, position: Vector2, networking_id: u64, type: Enemy_Type) {
@@ -28,7 +29,7 @@ spawn_enemy :: (world: *World, position: Vector2, networking_id: u64, type: Enem
         interp_position = .{ position, position },
         enemy.type = type,
         networking_id.id = networking_id,
-        health = .{100., 100.},
+        maximum_health = .{value = 100.},
     });
 
     add_components_from_bundle(world, entity, Follower.{

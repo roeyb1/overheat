@@ -6,6 +6,10 @@ Attribute_Modifier :: struct {
     expires: bool;
 }
 
+Value_Modifier :: struct {
+    value: float;
+}
+
 EffectIdentifier :: enum {
     HASTE;
 }

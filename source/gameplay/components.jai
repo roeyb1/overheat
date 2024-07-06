@@ -10,6 +10,8 @@ Name :: struct @Component {
     name: string;
 }
 
+Dead :: struct @Component {}
+
 /** Entities with the Transient component will be destroyed automatically before the next frame */
 Transient :: struct @Component {}
 

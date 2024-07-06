@@ -108,8 +108,8 @@ add_component_by_fragment :: (world: *World, skill: Entity,  casting_entity: Ent
             add_project(world,skill,3,casting_entity);
 
         case .Ignite;
-
-            add_ignite(world,skill,3);
+            //@TODO make it so u dont have to get component every time
+            add_ignite(world,skill,3,get_component(world, skill, Target_Entity).value);
         case .Haste;
 
             add_haste(world,skill,3, get_component(world, skill, Target_Entity).value );

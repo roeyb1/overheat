@@ -9,7 +9,7 @@ Move_Speed_Modifier :: struct @Component {
 
 remove_move_speed_modifier :: (world: *World, entity: Entity) {
     parent := get_parent(world, entity);
-    move_speed := (get_component(world, parent, Move_Speed));
+    move_speed := get_component(world, parent, Move_Speed);
     
     should_add := false;
     if get_component(world, entity, Adder) {
@@ -31,7 +31,7 @@ remove_move_speed_modifier :: (world: *World, entity: Entity) {
 apply_move_speed_modifier :: (world: *World, entity: Entity) {
     first_instance := false;
     parent := get_parent(world, entity);
-    move_speed := (get_component(world, parent, Move_Speed));
+    move_speed := get_component(world, parent, Move_Speed);
 
     should_add := false;
 

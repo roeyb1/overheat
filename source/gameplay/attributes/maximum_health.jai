@@ -9,7 +9,7 @@ Maximum_Health_Modifier :: struct @Component {
 
 remove_maximum_health_modifier :: (world: *World, entity: Entity) {
     parent := get_parent(world, entity);
-    maximum_health := (get_component(world, parent, Maximum_Health));
+    maximum_health := get_component(world, parent, Maximum_Health);
     
     should_add := false;
     if get_component(world, entity, Adder) {
@@ -31,7 +31,7 @@ remove_maximum_health_modifier :: (world: *World, entity: Entity) {
 apply_maximum_health_modifier :: (world: *World, entity: Entity) {
     first_instance := false;
     parent := get_parent(world, entity);
-    maximum_health := (get_component(world, parent, Maximum_Health));
+    maximum_health := get_component(world, parent, Maximum_Health);
 
     should_add := false;
 

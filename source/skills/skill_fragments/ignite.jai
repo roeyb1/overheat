@@ -1,7 +1,14 @@
 Ignite :: struct @Component {}
 
-add_ignite :: (world: *World, entity: Entity, value: s64) {
+add_ignite :: (world: *World, entity: Entity, value: s64, target_entity: Entity) {
     add_component(world, entity, Ignite);
+
+    //find a better solution, idealy with systems
+    if !get_component(world, entity, Projectile) {
+        modifier := spawn_child_entity(world, target_entity, Ignite, Name);
+        << get_component (world, modifier, Name) = .{"ignite"};
+        add_component(world, modifier, Health_Value_Modifier, .{value = 5.});
+    }
 }
 
 ignite :: (q: Query) {
@@ -16,3 +23,4 @@ ignite :: (q: Query) {
         << get_component(*g_world, entity, Duration) = .{5.0};
     }
 } @System(OnUpdate) @Write() @Read(Ignite,Position)
+

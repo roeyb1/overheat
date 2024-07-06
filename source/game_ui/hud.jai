@@ -23,7 +23,7 @@ draw_player_action_bar :: (q: Query) {
 } @System(PreRender) @Write() @Read()
 
 draw_player_health :: (q: Query) {
-    healths := query_get(q, Health);
+    healths := query_get(q, Current_Health);
 
     window_size := ImGui.ImVec2.{cast(float)g_window_width, cast(float)g_window_height};
 
@@ -35,7 +35,7 @@ draw_player_health :: (q: Query) {
         ImGui.SetNextWindowPos(.{style.FramePadding.x + style.WindowPadding.y, window_size.y - (health_bar_size.y + style.WindowPadding.y + 2 * style.FramePadding.y)});
         if ImGui.Begin("HUDHealthBar", null, .NoTitleBar | .NoScrollbar |.NoCollapse | .NoSavedSettings | .AlwaysAutoResize | .NoResize | .NoMove) {
             ImGui.PushStyleColor(.PlotHistogram, HEALTH_COLOR);
-            ProgressBarV("Health", healths[it].value, health_bar_size, 0., healths[it].max, flags = .DisplayValue);
+            ProgressBarV("Health", healths[it].current_value, health_bar_size, 0., healths[it].maximum_value, flags = .DisplayValue);
             ImGui.PopStyleColor();
         }
         ImGui.End();
@@ -44,10 +44,10 @@ draw_player_health :: (q: Query) {
 
         if ImGui.Begin("HUDResourceBar", null, .NoTitleBar | .NoScrollbar |.NoCollapse | .NoSavedSettings | .AlwaysAutoResize | .NoResize | .NoMove) {
             ImGui.PushStyleColor(.PlotHistogram, RESOURCE_COLOR);
-            ProgressBarV("Mana", healths[it].value, health_bar_size, 0., healths[it].max, flags = .DisplayValue);
+            ProgressBarV("Mana", healths[it].current_value, health_bar_size, 0., healths[it].maximum_value, flags = .DisplayValue);
             ImGui.PopStyleColor();
         }
         ImGui.End();
     }
 
-} @System(PreRender) @Write() @Read(Local_Player,Health)
+} @System(PreRender) @Write() @Read(Local_Player,Current_Health)
