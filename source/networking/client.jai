@@ -19,7 +19,9 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             g_client.local_client_id = conn_established.node_id;
             log("Local player was assigned id %", conn_established.node_id);
+            snapshot := from_packet(conn_established.initial_snapshot);
             apply_snapshot(*g_world, from_packet(conn_established.initial_snapshot));
+            free(*snapshot);
 
         case .PLAYER_COMMANDS;
             player_commands_packet: Player_Commands_Packet;

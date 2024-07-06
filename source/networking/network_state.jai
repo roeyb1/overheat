@@ -123,11 +123,21 @@ free :: (snapshot: *State_Snapshot) {
         for field : it.fields {
             free(*field.data);
         }
+        array_reset(*it.fields);
     }
+    for snapshot.new_nodes {
+        array_reset(*it);
+    }
+    deinit(*snapshot.state);
+    deinit(*snapshot.new_nodes);
+    array_reset(*snapshot.removed_nodes);
 }
 
 to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
     result: State_Snapshot_Packet;
+    result.newly_added.allocator = temp;
+    result.removed.allocator = temp;
+    result.pairs.allocator = temp;
 
     array_append(*result.removed, snapshot.removed_nodes);
 
@@ -161,5 +171,6 @@ from_packet :: (packet: State_Snapshot_Packet) -> State_Snapshot {
     for packet.newly_added {
         new_entry := table_add(*result.new_nodes, it.node_id, it.component_types);
     }
+
     return result;
 }

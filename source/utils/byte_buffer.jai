@@ -141,9 +141,7 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ign
 } @NoProfile
 
 free :: (byte_buff: *ByteBuffer) {
-    free(byte_buff.buff.data);
-    byte_buff.buff.data = null;
-    byte_buff.buff.count = 0;
+    array_reset(*byte_buff.buff);
     byte_buff.cursor = 0;
 }
 

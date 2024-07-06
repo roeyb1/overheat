@@ -210,6 +210,7 @@ server_main :: () {
             free(*last_snapshot);
             last_snapshot = current_snapshot;
             current_snapshot = generate_full_snapshot(*g_world, added_nodes);
+
             added_nodes.count = 0;
             removed_nodes.count = 0;
             last_snapshot_time = seconds_since_init();
