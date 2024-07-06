@@ -1,6 +1,6 @@
 show_system_graph := false;
 show_imgui_demo_window := false;
-show_stats := false;
+show_stats := true;
 show_settings := false;
 
 render_debug_ui :: () {
@@ -50,6 +50,12 @@ show_stats_overlay :: () {
 
     ImGui.SetNextWindowBgAlpha(0.35);
     if ImGui.Begin("Stats", null, .NoMove | .NoDecoration | .AlwaysAutoResize | .NoSavedSettings | .NoFocusOnAppearing | .NoNav) {
+        if is_server() {
+            ImGui.TextUnformatted("Server");
+        } else {
+            ImGui.TextUnformatted("Client");
+        }
+        ImGui.Separator();
         ImGui.TextUnformatted("Stats");
         ImGui.Separator();
         ImGui.Text("Average FPS: % (% ms)",  cast(u32)(1. / g_smooth_delta_time), formatFloat(g_smooth_delta_time * 1000., trailing_width = 2));
