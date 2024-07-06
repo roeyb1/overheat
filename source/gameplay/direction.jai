@@ -6,7 +6,7 @@ Directions :: enum u32 {
 }
 
 Direction :: struct @Component {
-    using #as value: Directions; @Sync
+    using #as value: Directions; @Sync @Predict
 }
 
 update_directions:: (q: Query) {

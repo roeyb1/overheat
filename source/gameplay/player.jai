@@ -15,10 +15,10 @@ Networking_ID :: struct @Component {
 }
 
 Player_Commands :: struct @Component {
-    move_vector: Vector2; @Sync
+    move_vector: Vector2; @Sync @Predict
 
-    main_attack: bool; @Sync
-    secondary_attack: bool; @Sync
+    main_attack: bool; @Sync @Predict
+    secondary_attack: bool; @Sync @Predict
 }
 
 Player_Bundle :: struct @Bundle {
@@ -101,20 +101,14 @@ update_player_controllers :: (q: Query) {
     player_controllers := query_get(q, Player_Controller);
     velocities := query_get(q, Velocity);
     move_speeds := query_get(q, Move_Speed);
-    anim_states := query_get(q, Player_Animation);
 
     for 0..q.count-1 {
-        // @todo: is there a better way to block movement while attacking?
-        current_anim_state := anim_states[it].state;
         velocity_from_input := player_commands[it].move_vector * move_speeds[it].speed;
-        if current_anim_state == .ATTACK || current_anim_state == .ATTACK_WIND_UP {
-            velocity_from_input = .{0, 0};
-        }
         // update only by the delta in the velocity, since we already have change from last frame in the velocity component
         velocities[it].value += (velocity_from_input - player_controllers[it].velocity_from_input);
         player_controllers[it].velocity_from_input = velocity_from_input;
     }
-} @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed,Player_Animation)
+} @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed)
 
 #if CLIENT {
 broadcast_local_player_commands :: (q: Query) {
@@ -125,7 +119,7 @@ broadcast_local_player_commands :: (q: Query) {
         player_command_packet: Player_Commands_Packet;
         player_command_packet.node_id = networking_ids[it].id;
         player_command_packet.commands = player_commands[it];
-        networking_send_packet(*player_command_packet);
+        //networking_send_packet(*player_command_packet);
     }
 } @System(PostLoad) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
 }

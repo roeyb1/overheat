@@ -10,7 +10,10 @@ g_client: Client;
 
 server_snapshots: [..] State_Snapshot;
 
+prediction_states: [..] State_Snapshot;
+
 last_snapshot_time: float64;
+predict_next_frame := false;
 
 previous_snapshot :: () -> *State_Snapshot {
     return *server_snapshots[0];
@@ -18,6 +21,77 @@ previous_snapshot :: () -> *State_Snapshot {
 
 current_snapshot :: () -> *State_Snapshot {
     return *server_snapshots[1];
+}
+
+previous_prediction :: () -> *State_Snapshot {
+    return *prediction_states[0];
+}
+
+current_prediction :: () -> *State_Snapshot {
+    return *prediction_states[1];
+}
+
+generate_predicted_snapshot :: (world: *World, new_nodes: [] Node_ID) -> State_Snapshot {
+    result: State_Snapshot;
+    
+    array_append(*result.removed_nodes, removed_nodes);
+
+    for new_nodes {
+        entity, found := table_find(*entity_node_id_table, it);
+        assert(found, "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
+
+        component_types_view := get_component_types(world, entity);
+
+        types: [..] u64;
+        for component_types_view {
+            array_add(*types, it.unique_id);
+        }
+
+        entry := table_add(*result.new_nodes, it, types);
+    }
+
+    #insert -> string {
+        INSERT_STRING :: #string DONE 
+            for q : make_iter(world, Networking_ID, %1) {
+                datas := query_get(q, %1);
+                networking_ids := query_get(q, Networking_ID);
+
+                for 0..q.count-1 {
+                    if networking_ids[it].id != g_client.local_client_id then continue;
+
+                    state := find_or_add(*result.state, networking_ids[it].id);
+
+                    field := array_add(*state.fields);
+                    field.field_id = #run component_type_id(%1).unique_id;
+                    field.data.only_note = "Predict";
+
+                    byte_buffer_write(*field.data, *datas[it]);
+                    field.data.cursor = 0;
+                }
+            }
+        DONE
+
+        sb: String_Builder;
+
+        for ALL_COMPONENT_TYPES {
+            has_sync_fields := false;
+            ti := cast(*Type_Info_Struct) it;
+            for * member : ti.members {
+                if has_note(member, "Sync") {
+                    has_sync_fields = true;
+                    break;
+                }
+            }
+
+            if !has_sync_fields then continue;
+
+            sbprint(*sb, INSERT_STRING, it);
+        }
+
+        return builder_to_string(*sb);
+    }
+
+    return result;
 }
 
 client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
@@ -33,12 +107,13 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             g_sim_frame_number = conn_established.sequence_number;
             log("Local player was assigned id %", conn_established.node_id);
 
-
             snapshot := from_packet(conn_established.initial_snapshot);
             array_add(*server_snapshots, snapshot);
             last_snapshot_time = seconds_since_init();
 
-            apply_snapshot(*g_world, snapshot);
+            apply_snapshot(*g_world, snapshot, skip_predict = false);
+
+            predict_next_frame = true;
 
         case .PLAYER_COMMANDS;
             player_commands_packet: Player_Commands_Packet;
@@ -62,16 +137,17 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
                 array_ordered_remove_by_index(*server_snapshots, 0);
             }
             array_add(*server_snapshots, from_packet(snapshot_packet));
-
-            apply_snapshot(*g_world, current_snapshot());
             
+            apply_snapshot(*g_world, current_snapshot(), skip_predict = true);
+
             g_sim_frame_number = snapshot_packet.sequence_number;
             last_snapshot_time = seconds_since_init();
+            predict_next_frame = true;
         case;
     }
 }
 
-interpolate_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alpha: float) {
+interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alpha: float) {
     #insert -> string {
         INSERT_STRING :: #string DONE 
             for q : make_iter(world, Networking_ID, %1) {
@@ -108,7 +184,9 @@ interpolate_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alph
                     #insert -> string {
                         sb: String_Builder;
                         for member : type_info(%1).members {
-                            if has_note(*member, "Interp") {
+                            if has_note(*member, "Interp") && has_note(*member, "Predict") {
+                                sbprint(*sb, "if networking_ids[it].id != g_client.local_client_id then datas[it].%%1 = lerp(a_data.%%1, b_data.%%1, alpha);", member.name);
+                            } else if has_note(*member, "Interp") {
                                 sbprint(*sb, "datas[it].%%1 = lerp(a_data.%%1, b_data.%%1, alpha);", member.name);
                             }
                         }
@@ -140,7 +218,78 @@ interpolate_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alph
     }
 }
 
-apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
+interpolate_predicted_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alpha: float) {
+    #insert -> string {
+        INSERT_STRING :: #string DONE 
+            for q : make_iter(world, Networking_ID, %1) {
+                datas := query_get(q, %1);
+                networking_ids := query_get(q, Networking_ID);
+
+                for 0..q.count-1 {
+                    if networking_ids[it].id != g_client.local_client_id then continue;
+
+                    state_a, success_a := table_find(*a.state, networking_ids[it].id);
+                    state_b, success_b := table_find(*b.state, networking_ids[it].id);
+
+                    if !success_a || !success_b then continue;
+
+                    field_a: *Node_Field = null;
+                    for * fields_it : state_a.fields {
+                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_a = fields_it;
+                    }
+
+                    field_b: *Node_Field = null;
+                    for * fields_it : state_b.fields {
+                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_b = fields_it;
+                    }
+                    if field_a == null || field_b == null then continue;
+
+                    field_a.data.only_note = "Predict";
+                    field_b.data.only_note = "Predict";
+
+                    a_data: %1;
+                    b_data: %1;
+                    field_a.data.cursor = 0;
+                    byte_buffer_read(*field_a.data, *a_data);
+                    field_b.data.cursor = 0;
+                    byte_buffer_read(*field_b.data, *b_data);
+
+                    #insert -> string {
+                        sb: String_Builder;
+                        for member : type_info(%1).members {
+                            if has_note(*member, "Interp") && has_note(*member, "Predict") {
+                                sbprint(*sb, "datas[it].%%1 = lerp(a_data.%%1, b_data.%%1, alpha);", member.name);
+                            }
+                        }
+
+                        return builder_to_string(*sb);
+                    }
+                }
+            }
+        DONE
+
+        sb: String_Builder;
+
+        for ALL_COMPONENT_TYPES {
+            has_interp_fields := false;
+            ti := cast(*Type_Info_Struct) it;
+            for * member : ti.members {
+                if has_note(member, "Interp") && has_note(member, "Predict") {
+                    has_interp_fields = true;
+                    break;
+                }
+            }
+
+            if !has_interp_fields then continue;
+
+            sbprint(*sb, INSERT_STRING, it);
+        }
+
+        return builder_to_string(*sb);
+    }
+}
+
+apply_snapshot :: (world: *World, snapshot: State_Snapshot, skip_predict := true) {
     new_entities: [..] Node_ID;
     new_entities.allocator = temp;
 
@@ -186,6 +335,7 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
                     assert(field != null);
 
                     field.data.only_note = "Sync";
+                    if skip_predict && networking_ids[it].id == g_client.local_client_id then field.data.skip_note = "Predict";
                     field.data.cursor = 0;
 
                     byte_buffer_read(*field.data, *datas[it]);

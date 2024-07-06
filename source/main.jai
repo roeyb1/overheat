@@ -8,7 +8,6 @@ PIXELS_PER_METER :: 64;
 g_delta_time: float = 0.016;
 g_smooth_delta_time: float = 0.016;
 last_time: float64;
-g_interp_alpha: float = 0.;
 
 g_sim_timer: float64 = 0.016;
 g_render_timer: float64 = 0.016;
@@ -38,7 +37,7 @@ client_main :: () {
     viewport := get_singleton(*g_world, Game_Viewport);
     viewport.main_camera = spawn_entity(*g_world, Position, Camera);
 
-    accumulated_time := 0.0;
+    last_predicted_time := seconds_since_init();
 
     while true {
         FrameMark();
@@ -48,8 +47,6 @@ client_main :: () {
         smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
         g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
         last_time = now;
-
-        accumulated_time += g_delta_time;
 
         hal_input_update();
         window_system_update();
@@ -79,23 +76,32 @@ client_main :: () {
         execute(*g_world, .OnLoad);
         execute(*g_world, .PostLoad);
 
-        while accumulated_time >= FIXED_TIMESTEP {
+        if predict_next_frame {
             scoped_smooth_timer(*g_sim_timer, 1. / 16.);
 
-            //execute(*g_world, .PreUpdate);
-            //execute(*g_world, .OnUpdate);
-            //execute(*g_world, .OnValidate);
-            //execute(*g_world, .PostUpdate);
+            execute(*g_world, .PreUpdate);
+            execute(*g_world, .OnUpdate);
+            execute(*g_world, .OnValidate);
+            execute(*g_world, .PostUpdate);
 
+            last_predicted_time = seconds_since_init();
 
-            accumulated_time -= FIXED_TIMESTEP;
+            if prediction_states.count > 1 {
+                free(previous_prediction());
+                array_ordered_remove_by_index(*prediction_states, 0);
+            }
+            array_add(*prediction_states, generate_predicted_snapshot(*g_world, .[]));
+            predict_next_frame = false;
         }
 
-        g_interp_alpha = clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
+        server_interp_alpha := clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
         if server_snapshots.count > 1 {
             previous := previous_snapshot();
             current := current_snapshot();
-            interpolate_states(*g_world, previous_snapshot(), current_snapshot(), g_interp_alpha);
+            interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
+            if prediction_states.count > 1 {
+                interpolate_predicted_states(*g_world, previous_prediction(), current_prediction(), cast(float)(seconds_since_init() - last_predicted_time) / FIXED_TIMESTEP);
+            }
         }
 
         {

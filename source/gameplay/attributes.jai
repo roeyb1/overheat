@@ -1,3 +1,3 @@
 Move_Speed :: struct @Component {
-    speed: float;
+    speed: float; @Sync
 }
