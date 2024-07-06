@@ -1,5 +1,5 @@
 Node_Field :: struct {
-    field_id: u64;
+    field_id: u64; // component_type_id.unique_id
 
     // component data stored in a byte buffer. @todo this is pretty innefficient since each node field will have it's own unique storage... good enough for now though I suppose
     data: ByteBuffer;
