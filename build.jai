@@ -588,7 +588,7 @@ INSERT_STRING :: #string DONE
         func = %1,
         debug_name = "%2",
         phase = .%3,
-        component_reads = #run component_type_ids(.[%4]),
+        component_reads = #run,stallable component_type_ids(.[%4]),
         component_writes = #run component_type_ids(.[%5]),
         optional_writes = #run component_type_ids(.[%6]),
     },

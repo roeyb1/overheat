@@ -62,6 +62,7 @@ init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
     return entity;
 }
 
+#if CLIENT {
 update_local_player_commands_from_input :: (q: Query) {
     player_commands := query_get(q, Player_Commands);
     input_states := get_singleton(q.world, Input_States);
@@ -93,6 +94,7 @@ update_local_player_commands_from_input :: (q: Query) {
         }
     }
 } @System(PostLoad) @Write(Player_Commands) @Read(Local_Player,Input_States)
+}
 
 update_player_controllers :: (q: Query) {
     player_commands := query_get(q, Player_Commands);

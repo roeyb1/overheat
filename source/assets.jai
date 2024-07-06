@@ -1,5 +1,7 @@
 #scope_export
 
+TextureHandle :: enum u32 {}
+
 SpriteSheet :: struct {
     texture: TextureHandle;
 
@@ -17,6 +19,7 @@ SpriteSheet :: struct {
 
 // just for now, store some common stuff globally until we have a proper map loading system with asset references
 g_default_grid: TextureHandle;
+g_point_light_texture: TextureHandle;
 
 load_all_assets :: () {
     stbi_set_flip_vertically_on_load(1);

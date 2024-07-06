@@ -1,23 +1,5 @@
 #scope_export
 
-Flip_Flags :: enum_flags u8 {
-    NONE   :: 0;
-    FLIP_X :: 1 << 0;
-    FLIP_Y :: 1 << 1;
-}
-
-Sprite :: struct @Component {
-    sheet_path: string; @Sync
-
-    sheet: *SpriteSheet; @NoSerialize
-
-    scale: Vector2 = .{1, 1}; @Sync;
-    index: u32 = 0;
-    z_order: u16 = 0; @Sync
-
-    flip: Flip_Flags = 0;
-}
-
 // Copy over the sprite data required for rendering so we don't need to directly reference it
 Sprite_Draw_Cmd :: struct {
     sheet: *SpriteSheet;
@@ -656,9 +638,6 @@ destroy_rendering_resources :: () {
 #load "shadowmap_rendering.jai";
 #load "lightmap_rendering.jai";
 #load "render_graph_utils.jai";
-
-#import "Sort";
-#import "File";
 
 #if OS == .WINDOWS {
     #import "Windows";

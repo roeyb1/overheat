@@ -1,5 +1,9 @@
 DEBUG :: true;
 
+// #todo: we probably want this value to vary so that the window size can't just show you more of the world.
+// The number of tiles visible should mostly remain a constant value
+PIXELS_PER_METER :: 64;
+
 // @todo: move this to a singleton component
 g_delta_time: float = 0.016;
 g_smooth_delta_time: float = 0.016;
@@ -251,6 +255,7 @@ update_positions :: (q: Query) {
     }
 } @System(OnUpdate) @Write(Position) @Read(Velocity)
 
+#if CLIENT {
 render_scene :: (q: Query) {
     viewport := get_singleton(q.world, Game_Viewport);
     pos := get_component(q.world, viewport.main_camera, Position);
@@ -258,31 +263,40 @@ render_scene :: (q: Query) {
 
     render_scene(cam.projection, pos);
 } @System(OnRender) @Write() @Read(Game_Viewport) @OptionalRead(Position,Camera)
+}
 
 
 using Basic :: #import "Basic";
 using Random :: #import "Random";
+#import "Sort";
+#import "File";
 
 #import "tracy"(IMPORT_MODE = .CLIENT);
 
 #import "System";
 
+
+#if CLIENT {
+#load "hal/hal_input.jai";
+#load "gameplay/input.jai";
+#load "debug_ui/debug_ui.jai";
+#load "game_ui/game_ui.jai";
+
+#load "rendering/camera.jai";
+#load "hal/hal_window.jai";
+#load "debug_ui/imgui.jai";
+#load "rendering/rendering.jai";
+}
+
 #load "utils/utils.jai";
 #load "math/math.jai";
 #load "logging.jai";
 #load "networking/networking.jai";
-#load "hal/hal_window.jai";
-#load "hal/hal_input.jai";
-#load "debug_ui/imgui.jai";
-#load "debug_ui/debug_ui.jai";
-#load "rendering/rendering.jai";
-#load "rendering/camera.jai";
 #load "unit_test.jai";
 #load "assets.jai";
 #load "ecs/ecs.jai";
 #load "gameplay/components.jai";
 #load "gameplay/direction.jai";
-#load "gameplay/input.jai";
 #load "gameplay/player.jai";
 #load "gameplay/attributes.jai";
 #load "gameplay/damage.jai";
@@ -295,4 +309,3 @@ using Random :: #import "Random";
 #load "animation/skeleton_anim_sm.jai";
 #load "animation/bat_anim_sm.jai";
 #load "animation/animation_definitions.jai";
-#load "game_ui/game_ui.jai";

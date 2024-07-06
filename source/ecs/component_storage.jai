@@ -88,7 +88,7 @@ component_type_ids :: ($component_types: [] Type) -> [] Component_Type_ID {
             if (cast(*Type_Info) component_types[it]).type == .POINTER {
                 print_to_builder(*builder, "#run component_type_id(#run get_type((cast(*Type_Info_Pointer)type_info(component_types[%])).pointer_to)), ", it);
             } else {
-                print_to_builder(*builder, "#run component_type_id(component_types[%]), ", it);
+                print_to_builder(*builder, "#run component_type_id(component_types[%]) /* % */, ", it, (cast(*Type_Info_Struct)component_types[it]).name);
             }
         }
         print_to_builder(*builder, "];\n");
