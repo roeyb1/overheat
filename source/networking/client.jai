@@ -14,6 +14,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             g_client.local_client_id = conn_established.node_id;
             log("Local player was assigned id %", conn_established.node_id);
+            apply_snapshot(*g_world, from_packet(conn_established.initial_snapshot));
 
         case .PLAYER_COMMANDS;
             player_commands_packet: Player_Commands_Packet;
@@ -133,7 +134,13 @@ interpolate_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alph
 }
 
 apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
+    new_entities: [..] Node_ID;
+    new_entities.allocator = temp;
+
     for snapshot.new_entities {
+        _, found := table_find(*entity_node_id_table, it_index);
+        if found then continue;
+
         ctid_list: [..] Component_Type_ID;
         ctid_list.allocator = temp;
         for it {
@@ -144,6 +151,9 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
             }
         }
         entity := spawn_entity(world);
+
+        array_add(*new_entities, it_index);
+
         add_component(world, entity, Networking_ID, .{it_index});
         for ctid_list {
             add_component(world, entity, it, broadcast=false);
@@ -196,18 +206,20 @@ apply_snapshot :: (world: *World, snapshot: State_Snapshot) {
         return builder_to_string(*sb);
     }
 
-    for snapshot.new_entities {
+    for new_entities {
+        ids, success := table_find(*snapshot.new_entities, it);
+        assert(success);
+
         ctid_list: [..] Component_Type_ID;
         ctid_list.allocator = temp;
-        for it {
+        for ids {
             for ctid : ALL_COMPONENT_TYPE_IDS {
                 if ctid.unique_id == it {
                     array_add(*ctid_list, ctid);
                 }
             }
         }
-        node_id := it_index;
-        entity, found := table_find(*entity_node_id_table, node_id);
+        entity, found := table_find(*entity_node_id_table, it);
         assert(found);
 
         for ctid_list {
