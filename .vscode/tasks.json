@@ -141,9 +141,14 @@
             "command": "jai ${workspaceFolder}/build.jai - -profile"
         },
         {
-            "label": "build (Release)",
+            "label": "build client (Release)",
             "type": "shell",
-            "command": "jai ${workspaceFolder}/build.jai - -release"
+            "command": "jai ${workspaceFolder}/build.jai - -release -client"
+        },
+        {
+            "label": "build server (Release)",
+            "type": "shell",
+            "command": "jai ${workspaceFolder}/build.jai - -release -server"
         }
     ]
 }
