@@ -271,10 +271,15 @@ client_init :: (client: *Client) -> bool {
         return false;
     }
 
+    array_resize(*networking_bytes_received_stats, NETWORKING_DATA_STATS_WINDOW);
     return true;
 }
 
+NETWORKING_DATA_STATS_WINDOW :: 128;
+networking_bytes_received_stats: [..] float;
+
 client_update :: (client: *Client) {
+    bytes_recv_this_frame : *float = null;
     while !client.should_disconnect {
         incoming_msgs: [8] *NetworkingMessage;
         num_msgs := Sockets.ReceiveMessagesOnConnection(client.connection, incoming_msgs.data, incoming_msgs.count);
@@ -295,6 +300,12 @@ client_update :: (client: *Client) {
             message_view.count = message.m_cbSize;
 
             if message_view.count == 0 then continue;
+
+            if bytes_recv_this_frame == null {
+                array_ordered_remove_by_index(*networking_bytes_received_stats, 0);
+                bytes_recv_this_frame = array_add(*networking_bytes_received_stats);
+            }
+            bytes_recv_this_frame.* += cast(float) message.m_cbSize;
 
             // copy the incoming data into the buffer
             buffer: ByteBuffer;
