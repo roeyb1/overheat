@@ -2,8 +2,9 @@ SNAPSHOT_RING_SIZE :: 16;
 snapshot_ring: [SNAPSHOT_RING_SIZE] State_Snapshot;
 
 push_new_snapshot :: (snapshot: State_Snapshot) {
-    free(previous_snapshot());
+    g_sim_frame_number += 1;
 
+    free(current_snapshot());
     << current_snapshot() = snapshot;
 }
 
@@ -20,7 +21,7 @@ current_snapshot :: () -> *State_Snapshot {
     return *snapshot_ring[g_sim_frame_number % SNAPSHOT_RING_SIZE];
 }
 
-generate_full_snapshot :: (world: *World, new_nodes: [] Node_ID, capture_note := "Sync") -> State_Snapshot {
+generate_full_snapshot :: (world: *World, new_nodes: [] Node_ID) -> State_Snapshot {
     result: State_Snapshot;
     
     array_append(*result.removed_nodes, removed_nodes);

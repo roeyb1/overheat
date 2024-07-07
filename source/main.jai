@@ -103,7 +103,6 @@ client_main :: () {
 
 #if SERVER {
 server_main :: () {
-    load_all_assets();
     import_ldtk_level(*g_world);
 
     last_time = seconds_since_init();
@@ -136,7 +135,6 @@ server_main :: () {
             execute(*g_world, .PostUpdate);
 
             push_new_snapshot(generate_full_snapshot(*g_world, added_nodes));
-
             added_nodes.count = 0;
             removed_nodes.count = 0;
 
@@ -145,14 +143,13 @@ server_main :: () {
     
             networking_broadcast(*snapshot_packet);
 
-            g_sim_frame_number += 1;
             accumulated_time -= FIXED_TIMESTEP;
+
+            g_frame_number += 1;
         }
 
         // Reset temporary storage at the end of each frame
         reset_temporary_storage();
-
-        g_frame_number += 1;
     }
 
     networking_shutdown();
@@ -171,7 +168,7 @@ main :: () {
     register_system_functions();
 
     for ALL_COMPONENT_TYPES {
-        log("% %", it_index + 1, (cast(*Type_Info_Struct)it).name);
+        log("Registered component type % with unique ID %", it_index + 1, (cast(*Type_Info_Struct)it).name);
     }
 
     networking_init();

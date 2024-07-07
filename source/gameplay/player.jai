@@ -14,11 +14,12 @@ Networking_ID :: struct @Component {
     id: Node_ID;
 }
 
+/** Player commands are not directly synced through the replication framwork, they are instead manually sent to the server. */
 Player_Commands :: struct @Component {
-    move_vector: Vector2; @Sync
+    move_vector: Vector2;
 
-    main_attack: bool; @Sync
-    secondary_attack: bool; @Sync
+    main_attack: bool;
+    secondary_attack: bool;
 }
 
 Player_Bundle :: struct @Bundle {
