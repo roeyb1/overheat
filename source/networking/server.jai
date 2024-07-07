@@ -4,40 +4,39 @@ snapshot_ring: [SNAPSHOT_RING_SIZE] State_Snapshot;
 push_new_snapshot :: (snapshot: State_Snapshot) {
     g_sim_frame_number += 1;
 
-    free(current_snapshot());
-    << current_snapshot() = snapshot;
+    free(get_snapshot(0));
+    get_snapshot(0).* = snapshot;
 }
 
-previous_snapshot :: () -> *State_Snapshot {
-    index := (g_sim_frame_number - 1) % SNAPSHOT_RING_SIZE;
+get_snapshot :: (offset_from_current: s32) -> *State_Snapshot {
+    index := (g_sim_frame_number - offset_from_current) % SNAPSHOT_RING_SIZE;
     if index < 0 {
         index += (SNAPSHOT_RING_SIZE - 1);
     }
     return *snapshot_ring[index];
 }
 
-current_snapshot :: () -> *State_Snapshot {
-    index := g_sim_frame_number % SNAPSHOT_RING_SIZE;
-    return *snapshot_ring[g_sim_frame_number % SNAPSHOT_RING_SIZE];
+previous_snapshot :: () -> *State_Snapshot {
+    return get_snapshot(-1);
 }
 
-generate_full_snapshot :: (world: *World, new_nodes: [] Node_ID) -> State_Snapshot {
+current_snapshot :: () -> *State_Snapshot {
+    return get_snapshot(0);
+}
+
+generate_full_snapshot :: (world: *World) -> State_Snapshot {
     result: State_Snapshot;
-    
-    array_append(*result.removed_nodes, removed_nodes);
 
-    for new_nodes {
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found, "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
-
-        component_types_view := get_component_types(world, entity);
+    // always send over component id list for every entity in the world if it's a full snapshot
+    for entity_node_id_table {
+        component_types_view := get_component_types(world, it);
 
         types: [..] u64;
         for component_types_view {
             array_add(*types, it.unique_id);
         }
 
-        entry := table_add(*result.new_nodes, it, types);
+        entry := table_add(*result.new_nodes, it_index, types);
     }
 
     #insert -> string {
@@ -55,6 +54,127 @@ generate_full_snapshot :: (world: *World, new_nodes: [] Node_ID) -> State_Snapsh
 
                     byte_buffer_write(*field.data, *datas[it]);
                     field.data.cursor = 0;
+                }
+            }
+        DONE
+
+        sb: String_Builder;
+
+        for ALL_COMPONENT_TYPES {
+            has_sync_fields := false;
+            ti := cast(*Type_Info_Struct) it;
+            for * member : ti.members {
+                if has_note(member, "Sync") {
+                    has_sync_fields = true;
+                    break;
+                }
+            }
+
+            if !has_sync_fields then continue;
+
+            sbprint(*sb, INSERT_STRING, it);
+        }
+
+        return builder_to_string(*sb);
+    }
+
+    return result;
+}
+
+generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot) -> State_Snapshot {
+    result: State_Snapshot;
+    
+    array_append(*result.removed_nodes, removed_nodes);
+
+    for added_nodes {
+        entity, found := table_find(*entity_node_id_table, it);
+        assert(found, "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
+
+        component_types_view := get_component_types(world, entity);
+
+        types: [..] u64;
+        for component_types_view {
+            array_add(*types, it.unique_id);
+        }
+
+        entry := table_add(*result.new_nodes, it, types);
+    }
+    
+    // reset the list of nodes that were added/removed during this delta
+    added_nodes.count = 0;
+    removed_nodes.count = 0;
+
+    #insert -> string {
+        INSERT_STRING :: #string DONE 
+            for q : make_iter(world, Networking_ID, %1) {
+                datas := query_get(q, %1);
+                networking_ids := query_get(q, Networking_ID);
+
+                for 0..q.count-1 {
+                    // if the node is new, it must be sent
+                    changed := array_find(added_nodes, networking_ids[it].id, compare_node_id);
+
+                    if !changed {
+                        state_a := table_find_pointer(*a.state, networking_ids[it].id);
+                        state_b := table_find_pointer(*b.state, networking_ids[it].id);
+
+                        // node must be in state b, otherwise how is it appearing in the query
+                        assert(state_b != null);
+
+                        // if the node has no data in state a, we can't delta compress so we must send everything
+                        if state_a == null {
+                            changed = true;
+                        }
+
+                        if !changed {
+                            assert(state_a != null && state_b != null);
+
+                            field_a: *Node_Field = null;
+                            for * fields_it : state_a.fields {
+                                if fields_it.field_id == #run component_type_id(%1).unique_id then field_a = fields_it;
+                            }
+
+                            field_b: *Node_Field = null;
+                            for * fields_it : state_b.fields {
+                                if fields_it.field_id == #run component_type_id(%1).unique_id then field_b = fields_it;
+                            }
+                            if field_a == null || field_b == null then continue;
+
+                            field_a.data.only_note = "Sync";
+                            field_b.data.only_note = "Sync";
+
+                            a_data: %1;
+                            b_data: %1;
+                            field_a.data.cursor = 0;
+                            byte_buffer_read(*field_a.data, *a_data);
+                            field_b.data.cursor = 0;
+                            byte_buffer_read(*field_b.data, *b_data);
+
+                            // always sync properties for newly added entities
+                            #insert -> string {
+                                sb: String_Builder;
+                                for member : type_info(%1).members {
+                                    if has_note(*member, "Sync") {
+                                        sbprint(*sb, "changed |= a_data.%%1 != b_data.%%1;\n", member.name);
+                                    }
+                                }
+
+                                return builder_to_string(*sb);
+                            }
+
+                        }
+                    }
+
+                    if changed {
+                        state := find_or_add(*result.state, networking_ids[it].id);
+
+                        field := array_add(*state.fields);
+                        field.field_id = #run component_type_id(%1).unique_id;
+                        field.data.only_note = "Sync";
+
+                        byte_buffer_write(*field.data, *datas[it]);
+                        field.data.cursor = 0;
+                    }
                 }
             }
         DONE
@@ -330,13 +450,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 conn_established.node_id = new_networking_id;
                 conn_established.sequence_number = g_sim_frame_number;
 
-                nodes_to_treat_as_new: [..] Node_ID;
-                nodes_to_treat_as_new.allocator = temp;
-
-                for entity_node_id_table {
-                    array_add(*nodes_to_treat_as_new, it_index);
-                }
-                snapshot := generate_full_snapshot(*g_world, nodes_to_treat_as_new);
+                snapshot := generate_full_snapshot(*g_world);
                 conn_established.initial_snapshot = to_packet(snapshot);
 
                 networking_send_packet(*new_client, *conn_established);

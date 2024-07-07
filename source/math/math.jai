@@ -4,6 +4,10 @@ AABB :: struct  {
     max: Vector2;
 }
 
+operator== :: (a: AABB, b: AABB) -> bool {
+    return a.min == b.min && a.max == b.max;
+}
+
 Line_Segment :: struct {
     start: Vector2;
     end: Vector2;
