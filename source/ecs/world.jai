@@ -159,6 +159,16 @@ has_components :: (world: *World, entity: Entity, ctids: [] Component_Type_ID) -
     return has_components(*world.stage, entity, ctids);
 }
 
+/** Returns a view to the archetypes type id array */
+get_component_types :: (world: *World, entity: Entity) -> [] Component_Type_ID {
+    assert(is_valid(world, entity));
+    deferred, found := table_find(*world.deferred_entities, entity.raw);
+    if found {
+        return get_component_types(*world.deferred_stage, deferred);
+    }
+    return get_component_types(*world.stage, entity);
+}
+
 /**
  * Returns a pointer to the component of the given type attached to the given entity.
  */
@@ -310,6 +320,23 @@ spawn_entity_from_bundle :: (world: *World, bundle: $T) -> Entity {
                 member_type_info := cast(*Type_Info_Struct) it.type;
                 if has_note(member_type_info, "Component") {
                     sbprint(*sb, "<< get_component(world, entity, %) = bundle.%;\n", member_type_info.name, it.name);
+                }
+            }
+        }
+
+        return builder_to_string(*sb);
+    }
+
+    #insert -> string {
+        sb: String_Builder;
+
+        ti :: cast(*Type_Info_Struct) type_info(T);
+
+        for ti.members {
+            // components can only be structs
+            if it.type.type == .STRUCT {
+                member_type_info := cast(*Type_Info_Struct) it.type;
+                if has_note(member_type_info, "Component") {
                     sbprint(*sb, "broadcast_on_component_add(world, entity, #run component_type_id(%));\n", member_type_info.name);
                 }
             }
@@ -358,13 +385,13 @@ remove_component :: (world: *World, entity: Entity, ctid: Component_Type_ID) -> 
 
 //------------------------- TESTING -------------------------   
 
+Test :: struct @Component {
+    x: u32 = 10;
+}
+Test2 :: struct @Component {
+    x: u32;
+}
 test_entity_components :: (ctx: *TestContext) {
-    Test :: struct {
-        x: u32 = 10;
-    }
-    Test2 :: struct {
-        x: u32;
-    }
     world: World;
 
     e1 := spawn_entity(*world);
@@ -414,14 +441,6 @@ test_entity_components :: (ctx: *TestContext) {
     test_expect_equals(e4.index, e5.index);
     test_expect_not_equals(e4.generation, e5.generation);
 } @UnitTest
-
-#load "component_storage.jai";
-#load "entity.jai";
-#load "query.jai";
-#load "archetype.jai";
-#load "event.jai";
-#load "defer.jai";
-#load "stage.jai";
 
 #scope_file
 

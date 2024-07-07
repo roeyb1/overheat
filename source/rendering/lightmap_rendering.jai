@@ -1,13 +1,4 @@
 
-/** Point light is a component that can be added to an entity to make it render a as a radial, point source light light */
-Point_Light :: struct @Component {
-    color: Vector3;
-    radius: float;
-    intensity: float;
-}
-
-g_point_light_texture: TextureHandle;
-
 init_lightmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
     {
         // Store lightmap data in a higher precision, non-linear format for higher dynamic range

@@ -1,19 +1,3 @@
-Camera :: struct @Component {
-    // This should probably be handled with a more general projection matrix, but with a simple top down 2d camera
-    // these are the only values we need to map from world -> view
-    projection: Matrix4;
-
-    // (Usually the player)
-    entity_to_track: Entity;
-}
-
-Game_Viewport :: struct @SingletonComponent {
-    main_camera: Entity;
-}
-
-// #todo: we probably want this value to vary so that the window size can't just show you more of the world.
-// The number of tiles visible should mostly remain a constant value
-PIXELS_PER_METER :: 64;
 
 compute_screen_projection :: () -> Matrix4 {
     scaled_window_half_width := (cast(float) g_window_width / 2.) / (PIXELS_PER_METER);
@@ -30,6 +14,17 @@ update_camera_projections :: (q: Query) {
         }
     }
 } @System(PreRender) @Write(Camera) @Read()
+
+set_camera_follow_target :: (world: *World, entity: Entity) {
+    viewport := get_singleton(*g_world, Game_Viewport);
+
+    camera := get_component(*g_world, viewport.main_camera, Camera);
+    cam_pos := get_component(*g_world, viewport.main_camera, Position);
+
+    << cam_pos = .{ g_player_start };
+    camera.entity_to_track = entity;
+
+} @Event(EcsOnAdd,Local_Player)
 
 update_camera_positions :: (q: Query) {
     SMOOTH_SPEED :: 15.;
@@ -50,7 +45,7 @@ update_camera_positions :: (q: Query) {
         // cubic easing function based on distance. further camera -> accelerate faster
         speed_factor := 1. - pow(1 - alpha, 3.);
 
-        camera_positions[it].value = lerp(camera_positions[it], target_location, speed_factor * SMOOTH_SPEED * cast(float) FIXED_TIMESTEP);
+        camera_positions[it].value = lerp(camera_positions[it], target_location, speed_factor * SMOOTH_SPEED * cast(float) g_delta_time);
     }
 } @System(PreRender) @Write(Position) @Read(Camera)
 

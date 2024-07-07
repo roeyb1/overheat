@@ -1,6 +1,6 @@
 show_system_graph := false;
 show_imgui_demo_window := false;
-show_stats := false;
+show_stats := true;
 show_settings := false;
 
 render_debug_ui :: () {

@@ -1,7 +1,5 @@
 #scope_export
 
-TextureHandle :: enum u32 {}
-
 Texture :: struct {
     image: *RHIImage = null;
     view: *RHIImageView = null;

@@ -82,7 +82,7 @@ update_player_anim_state :: (q: Query) {
                 }
         }
     }
-} @System(OnUpdate) @Write(Player_Animation,Sprite_Animator) @Read(Player,Player_Commands,Velocity)
+} @System(PreRender) @Write(Player_Animation,Sprite_Animator) @Read(Player,Player_Commands,Velocity)
 
 #scope_file
 

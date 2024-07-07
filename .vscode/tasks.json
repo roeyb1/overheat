@@ -4,9 +4,9 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "build server",
             "type": "shell",
-            "command": "jai ${workspaceFolder}/build.jai - -natvis",
+            "command": "jai ${workspaceFolder}/build.jai - -natvis -server",
             "problemMatcher": [
                 {
                     "severity": "error",
@@ -58,22 +58,102 @@
                             "regexp": "^(.*)\\((.*):(\\d+)\\)$",
                             "file": 2,
                             "line": 3,
-                            "message": 1,
+                            "message": 1
+                        }
+                    ],
+                    "owner": "jai"
+                }
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build client",
+            "type": "shell",
+            "command": "jai ${workspaceFolder}/build.jai - -natvis -client",
+            "problemMatcher": [
+                {
+                    "severity": "error",
+                    "fileLocation": "absolute",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*):(\\d+),(\\d+).*Error: (.*)$",
+                            "file": 1,
+                            "line": 2,
+                            "column": 3,
+                            "message": 4
                         }
                     ],
                     "owner": "jai"
                 },
-            ]
+                {
+                    "severity": "warning",
+                    "fileLocation": "absolute",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*):(\\d+),(\\d+).*Warning: (.*)$",
+                            "file": 1,
+                            "line": 2,
+                            "column": 3,
+                            "message": 4
+                        }
+                    ],
+                    "owner": "jai"
+                },
+                {
+                    "severity": "info",
+                    "fileLocation": "absolute",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*):(\\d+),(\\d+).*Info: (.*)$",
+                            "file": 1,
+                            "line": 2,
+                            "column": 3,
+                            "message": 4
+                        }
+                    ],
+                    "owner": "jai"
+                },
+                {
+                    "severity": "info",
+                    "fileLocation": "absolute",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*)\\((.*):(\\d+)\\)$",
+                            "file": 2,
+                            "line": 3,
+                            "message": 1
+                        }
+                    ],
+                    "owner": "jai"
+                }
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
-            "label": "build (Profiling)",
+            "label": "build client (Release)",
             "type": "shell",
-            "command": "jai ${workspaceFolder}/build.jai - -profile"
+            "command": "jai ${workspaceFolder}/build.jai - -release -client"
         },
         {
-            "label": "build (Release)",
+            "label": "build server (Release)",
             "type": "shell",
-            "command": "jai ${workspaceFolder}/build.jai - -release"
+            "command": "jai ${workspaceFolder}/build.jai - -release -server"
+        },
+        {
+            "label": "build client (Profile)",
+            "type": "shell",
+            "command": "jai ${workspaceFolder}/build.jai - -profile -client"
+        },
+        {
+            "label": "build server (Profile)",
+            "type": "shell",
+            "command": "jai ${workspaceFolder}/build.jai - -profile -server"
         }
     ]
 }
