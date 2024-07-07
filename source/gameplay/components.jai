@@ -7,7 +7,7 @@ Velocity :: struct @Component {
 }
 
 Name :: struct @Component {
-    name: string;
+    name: string; @Sync
 }
 
 Camera :: struct @Component {
