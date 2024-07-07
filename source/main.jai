@@ -12,7 +12,7 @@ last_time: float64;
 g_sim_timer: float64 = 0.016;
 g_render_timer: float64 = 0.016;
 
-FIXED_TIMESTEP :: 0.100;
+FIXED_TIMESTEP :: 0.016;
 
 g_should_exit: bool = false;
 
