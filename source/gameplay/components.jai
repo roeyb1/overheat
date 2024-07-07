@@ -1,9 +1,9 @@
 Position :: struct @Component {
-    using #as value: Vector2; @Sync @Interp @Predict
+    using #as value: Vector2; @Sync @Interp
 }
 
 Velocity :: struct @Component {
-    using #as value: Vector2; @Sync @Predict
+    using #as value: Vector2; @Sync
 }
 
 Name :: struct @Component {

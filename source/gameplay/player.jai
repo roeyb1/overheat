@@ -15,10 +15,10 @@ Networking_ID :: struct @Component {
 }
 
 Player_Commands :: struct @Component {
-    move_vector: Vector2; @Sync @Predict
+    move_vector: Vector2; @Sync
 
-    main_attack: bool; @Sync @Predict
-    secondary_attack: bool; @Sync @Predict
+    main_attack: bool; @Sync
+    secondary_attack: bool; @Sync
 }
 
 Player_Bundle :: struct @Bundle {
@@ -119,7 +119,7 @@ broadcast_local_player_commands :: (q: Query) {
         player_command_packet: Player_Commands_Packet;
         player_command_packet.node_id = networking_ids[it].id;
         player_command_packet.commands = player_commands[it];
-        //networking_send_packet(*player_command_packet);
+        networking_send_packet(*player_command_packet);
     }
 } @System(PostLoad) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
 }

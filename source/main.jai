@@ -37,8 +37,6 @@ client_main :: () {
     viewport := get_singleton(*g_world, Game_Viewport);
     viewport.main_camera = spawn_entity(*g_world, Position, Camera);
 
-    last_predicted_time := seconds_since_init();
-
     while true {
         FrameMark();
 
@@ -76,32 +74,11 @@ client_main :: () {
         execute(*g_world, .OnLoad);
         execute(*g_world, .PostLoad);
 
-        if predict_next_frame {
-            scoped_smooth_timer(*g_sim_timer, 1. / 16.);
-
-            execute(*g_world, .PreUpdate);
-            execute(*g_world, .OnUpdate);
-            execute(*g_world, .OnValidate);
-            execute(*g_world, .PostUpdate);
-
-            last_predicted_time = seconds_since_init();
-
-            if prediction_states.count > 1 {
-                free(previous_prediction());
-                array_ordered_remove_by_index(*prediction_states, 0);
-            }
-            array_add(*prediction_states, generate_predicted_snapshot(*g_world, .[]));
-            predict_next_frame = false;
-        }
-
         server_interp_alpha := clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
         if server_snapshots.count > 1 {
             previous := previous_snapshot();
             current := current_snapshot();
             interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
-            if prediction_states.count > 1 {
-                interpolate_predicted_states(*g_world, previous_prediction(), current_prediction(), cast(float)(seconds_since_init() - last_predicted_time) / FIXED_TIMESTEP);
-            }
         }
 
         {
