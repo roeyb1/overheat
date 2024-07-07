@@ -121,4 +121,5 @@ broadcast_skill_targeting :: (networking_id: Networking_ID, position: Vector2) {
 #load "skill_fragments/projectile.jai";
 #load "skill_fragments/self.jai";
 #load "skill_definition.jai";
+#load "channeling.jai";
 
