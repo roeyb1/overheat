@@ -1,140 +1,89 @@
 Skill :: struct @Component {}
 
-Skill_Definition :: struct @Component {}
-
-Skill_Inventory :: struct @Component {
-    skills : [..] Entity; 
-}
-
 Target_Entity :: struct @Component {
     value: Entity;
-}
-
-To_Cast :: struct @Component {
-    value: bool;
 }
 
 Current_Target :: struct @Component {
     value: Vector2;
 }
 
-Fragments :: struct @Component {
-    value: [..] Skill_Fragment;
+Charged_Spell :: struct @Component {}
+
+Powering_Up :: struct @Component {}
+
+Power :: struct @Component {
+    incoming: float;
+    total: float;
 }
 
-Skill_Fragment :: struct {
-    type: Skill_Fragment_Types;
-    value: u64;
+Dividends :: struct @Component {
+    value: [..] Skill_Fragment_Types;
 }
 
-Skill_Fragment_Types :: enum u8 {
-    None;
-    Projectile;
-    Ignite;
-    Haste;
-}
-
-SKILL_FRAGMENT_NAMES :: #run enum_names(Skill_Fragment_Types);
-NUM_SKILL_FRAGMENTS :: #run enum_highest_value(Skill_Fragment_Types);
-
-
-Skill_Definition_Bundle :: struct @Bundle {
-    skill_definition: Skill_Definition;
-    networking_id: Networking_ID;
-    name: Name;
-    fragments: Fragments;
-    to_cast: To_Cast;
-    cooldown: Cooldown;
-}
-
+//TODO add some targetting or smt such
 Skill_Instance_Bundle :: struct @Bundle {
-    target_entity: Target_Entity;
+    power: Power;
+    dividends: Dividends;
+    powering_up: Powering_Up;
 }
-
-//take a skill component directly
-initialize_skills :: (world: *World, entity: Entity, number_of_skills: s64, networking_id: u64) {
-    inventory := get_component(world, entity, Skill_Inventory);
-    for 0 .. number_of_skills-1 {
-
-        new_skill_definition := spawn_entity_from_bundle(*g_world, Skill_Definition_Bundle.{
-            name = .{sprint("skill no.%", it)},
-            networking_id = .{networking_id},
-            cooldown = .{0.5,0},
-        });
-
-        array_add(*inventory.skills, new_skill_definition);
-    }
-}
-
-skills_to_fire :: (q: Query) {
-    casted_skills := query_get(q, To_Cast);
-    names := query_get(q, Name);
-    networking_ids := query_get(q, Networking_ID);
-
-    for 0..q.count-1 {
-        if casted_skills[it].value {
-            fire_skill(q.world, q.entities[it],networking_ids[it]);
-
-            casted_skills[it].value = false;
-        }
-    }
-} @System(PostUpdate) @Write() @Read(Skill_Definition,To_Cast,Name,Networking_ID)
-
 
 fire_skill :: (world: *World, skill: Entity, casting_entity: Networking_ID) {
     cooldown := get_component(world, skill, Cooldown);
     if cooldown.current_value <= 0 {
-
         cooldown.current_value = cooldown.base_value;  
+
 
         valid,player := get_player_by_networking_id(world,casting_entity);
 
         if valid {
-            skill_instance := spawn_entity_from_bundle(*g_world, Skill_Instance_Bundle.{
-            target_entity = .{player},
-            });
+
+            skill_instance := spawn_child_entity(world, player);
+            add_components_from_bundle(world, skill_instance, Skill_Instance_Bundle.{});
 
             for get_component(world, skill, Fragments).value {
                 add_component_by_fragment(world ,skill_instance, player, it);
             } 
+            get_component(world, skill_instance, Power).incoming = get_component(world, skill, Test).value; 
         }
     }
 }
+
+test :: (q: Query) {
+
+    for 0..q.count-1 {
+        remove_component(q.world,q.entities[it],Powering_Up);
+        add_component(q.world,q.entities[it],Charged_Spell);
+    }
+} @System(PostUpdate) @Write(Powering_Up) @Read()
+
+testing :: (q: Query) {
+
+    for 0..q.count-1 {
+        destroy_entity(q.world, q.entities[it]);
+    }
+} @System(PostUpdate) @Write(Charged_Spell) @Read()
+
 
 add_component_by_fragment :: (world: *World, skill: Entity,  casting_entity: Entity, fragment: Skill_Fragment) {
     if fragment.type == {
         case .Projectile;
      
-            add_project(world,skill,3,casting_entity);
+            //add_project(world,skill,3,casting_entity);
 
         case .Ignite;
             //@TODO make it so u dont have to get component every time
-            add_ignite(world,skill,3,get_component(world, skill, Target_Entity).value);
+            //add_ignite(world,skill,3,get_component(world, skill, Target_Entity).value);
         case .Haste;
 
-            add_haste(world,skill,3, get_component(world, skill, Target_Entity).value );
+            add_haste(world,skill);
+        
+        case .Self;
+
+            add_self(world,skill,casting_entity);
 
     }
 }
-
-use_skill0 :: (q: Query) {
-    player_commands := query_get(q, Player_Commands);
-    skill_inventories := query_get(q, Skill_Inventory);
-    networking_ids := query_get(q, Networking_ID);
-
-    
-    for 0..q.count-1 {
-        skill := skill_inventories[it].skills[0]; //@Todo shit
-
-
-        if get_component(q.world, q.entities[it],Local_Player){
-            << get_component(q.world, q.entities[it],Current_Target) = .{get_mouse_worldspace()};
-            broadcast_skill_targeting(networking_ids[it], get_mouse_worldspace());
-        }
-
-        << get_component(*g_world, skill, To_Cast) = .{player_commands[it].attack1};
-    }
-} @System(PreUpdate) @Write() @Read(Player_Commands,Skill_Inventory)
 
 get_mouse_worldspace :: () -> Vector2 {
     viewport := get_singleton(*g_world, Game_Viewport);
@@ -170,4 +119,6 @@ broadcast_skill_targeting :: (networking_id: Networking_ID, position: Vector2) {
 #load "skill_fragments/ignite.jai";
 #load "skill_fragments/haste.jai";
 #load "skill_fragments/projectile.jai";
+#load "skill_fragments/self.jai";
+#load "skill_definition.jai";
 

@@ -13,3 +13,10 @@ update_cooldown :: (q: Query) {
 
     }
 } @System(OnUpdate) @Write(Cooldown) @Read() 
+
+//@TODO fix this, currently used for ignite to not blow up everything
+update_cooldown_manually :: (cooldown: *Cooldown) {
+        if cooldown.current_value > 0 {
+            cooldown.current_value -= FIXED_TIMESTEP;
+        }
+} 
