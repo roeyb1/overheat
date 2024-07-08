@@ -128,6 +128,7 @@ broadcast_local_player_commands :: (q: Query) {
         networking_send_packet(*player_command_packet);
         // we should only have one local player, so this should only happen once
         input_ring[g_current_tick % input_ring.count] = player_commands[it];
+        log("frame: % sent server input %", g_current_tick, player_commands);
     }
 } @System(PreUpdate) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
 }

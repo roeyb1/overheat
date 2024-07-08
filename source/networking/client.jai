@@ -92,7 +92,8 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             snapshot_packet: Player_State_Snapshot_Packet;
             byte_buffer_read(buffer, *snapshot_packet);
 
-            assert(snapshot_packet.input == input_ring[snapshot_packet.tick % input_ring.count]);
+            assert(snapshot_packet.input == input_ring[snapshot_packet.tick % input_ring.count], "server/client input history do not match for tick %! S: % C: %", snapshot_packet.tick, snapshot_packet.input, input_ring[snapshot_packet.tick % input_ring.count]);
+            log("frame %: server confirmed input %", snapshot_packet.tick, snapshot_packet.input);
 
             last_known_server_time = snapshot_packet.time;
             last_received_server_time = xx seconds_since_init();

@@ -86,6 +86,7 @@ client_main :: () {
                 apply_prediction_state(*g_world, current_prediction());
             }
             g_current_tick += 1;
+            log("Frame %", g_current_tick);
 
             execute(*g_world, .PreUpdate);
             execute(*g_world, .OnUpdate);
@@ -93,14 +94,6 @@ client_main :: () {
             execute(*g_world, .PostUpdate);
 
             push_new_prediction(generate_prediction_snapshot(*g_world));
-
-            log("Frame %", g_current_tick);
-            for q : make_iter(*g_world, Position, Player) {
-                for 0..q.count-1 {
-                    pos := get_component(q.world, q.entities[it], Position);
-                    log("%, %", get_component(q.world, q.entities[it], Networking_ID).id, pos.value);
-                }
-            }
         }
 
         if server_snapshots.count > 1 {
@@ -178,6 +171,7 @@ server_main :: () {
                 player_state_update.data = snapshot_packet;
                 player_state_update.input = input_ring[g_current_tick % input_ring.count];
                 networking_send_packet(it, *player_state_update);
+                input_ring[player_commands_packet.tick % input_ring.count].set = false;
             }
 
             free(*delta);
