@@ -75,6 +75,8 @@ client_main :: () {
         execute(*g_world, .PostLoad);
 
         if predict_next_frame {
+            scoped_guard(*g_only_simulate_local_player, true);
+
             execute(*g_world, .PreUpdate);
             execute(*g_world, .OnUpdate);
             execute(*g_world, .OnValidate);

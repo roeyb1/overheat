@@ -52,6 +52,12 @@ array_find :: (arr: [] $T, val: T, pred: (a: T, b: T) -> bool) -> bool, s64 {
     return false, -1;
 }
 
+scoped_guard :: (flag: *bool, value: bool) #expand {
+    old := << flag;
+    flag.* = value;
+    `defer flag.* = old;
+}
+
 TempNew :: ($T: Type, $initialized := true) -> *T {
     memory := talloc(size_of(T));
 

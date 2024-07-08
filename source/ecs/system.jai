@@ -264,6 +264,12 @@ execute_system :: (sys: System, world: *World) {
 
         for archtype_ids {
             archetype := *world.stage.archetypes[it];
+            #if CLIENT {
+                if g_only_simulate_local_player && archetype_contains_types(archetype, .[#run component_type_id(Networking_ID)]) && !archetype_contains_types(archetype, .[#run component_type_id(Local_Player)]) {
+                    continue;
+                }
+            }
+
             query.current_archetype = archetype;
             query.entities = archetype.entities;
             query.count = archetype.entities.count;
@@ -275,6 +281,8 @@ execute_system :: (sys: System, world: *World) {
 }
 
 #scope_export
+
+g_only_simulate_local_player := false;
 
 ECS_Iter :: struct {
     world: *World;
