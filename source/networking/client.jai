@@ -109,12 +109,11 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
                 for 0..q.count-1 {
                     state := find_or_add(*result.state, networking_ids[it].id);
 
-                    field := array_add(*state.fields);
-                    field.field_id = #run component_type_id(%1).unique_id;
-                    field.data.only_note = "Sync";
+                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                    field.only_note = "Sync";
 
-                    byte_buffer_write(*field.data, *datas[it]);
-                    field.data.cursor = 0;
+                    byte_buffer_write(field, *datas[it]);
+                    field.cursor = 0;
                 }
             }
         DONE
@@ -168,12 +167,11 @@ generate_prediction_snapshot :: (world: *World) -> State_Snapshot {
 
                     state := find_or_add(*result.state, networking_ids[it].id);
 
-                    field := array_add(*state.fields);
-                    field.field_id = #run component_type_id(%1).unique_id;
-                    field.data.only_note = "Predict";
+                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                    field.only_note = "Predict";
 
-                    byte_buffer_write(*field.data, *datas[it]);
-                    field.data.cursor = 0;
+                    byte_buffer_write(field, *datas[it]);
+                    field.cursor = 0;
                 }
             }
         DONE
@@ -214,25 +212,19 @@ interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapsho
 
                     if !success_a || !success_b then continue;
 
-                    field_a: *Node_Field = null;
-                    for * fields_it : state_a.fields {
-                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_a = fields_it;
-                    }
+                    field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
+                    field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
 
-                    field_b: *Node_Field = null;
-                    for * fields_it : state_b.fields {
-                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_b = fields_it;
-                    }
                     if field_a == null || field_b == null then continue;
 
-                    field_a.data.only_note = "Interp";
+                    field_a.only_note = "Interp";
 
                     a_data: %1;
                     b_data: %1;
-                    field_a.data.cursor = 0;
-                    byte_buffer_read(*field_a.data, *a_data);
-                    field_b.data.cursor = 0;
-                    byte_buffer_read(*field_b.data, *b_data);
+                    field_a.cursor = 0;
+                    byte_buffer_read(field_a, *a_data);
+                    field_b.cursor = 0;
+                    byte_buffer_read(field_b, *b_data);
 
                     #insert -> string {
                         sb: String_Builder;
@@ -288,25 +280,21 @@ interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snap
 
                     if !success_a || !success_b then continue;
 
-                    field_a: *Node_Field = null;
-                    for * fields_it : state_a.fields {
-                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_a = fields_it;
-                    }
+                    field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
 
-                    field_b: *Node_Field = null;
-                    for * fields_it : state_b.fields {
-                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_b = fields_it;
-                    }
+                    field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
+
                     if field_a == null || field_b == null then continue;
 
-                    field_a.data.only_note = "Predict";
+                    field_a.only_note = "Predict";
+                    field_b.only_note = "Predict";
 
                     a_data: %1;
                     b_data: %1;
-                    field_a.data.cursor = 0;
-                    byte_buffer_read(*field_a.data, *a_data);
-                    field_b.data.cursor = 0;
-                    byte_buffer_read(*field_b.data, *b_data);
+                    field_a.cursor = 0;
+                    byte_buffer_read(field_a, *a_data);
+                    field_b.cursor = 0;
+                    byte_buffer_read(field_b, *b_data);
 
                     #insert -> string {
                         sb: String_Builder;
@@ -382,16 +370,13 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
                     // @todo: this should really be an assert tho
                     if !success then continue;
 
-                    field: *Node_Field = null;
-                    for * fields_it : state.fields {
-                        if fields_it.field_id == #run component_type_id(%1).unique_id then field = fields_it;
-                    }
+                    field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
                     assert(field != null);
 
-                    field.data.only_note = "Sync";
-                    field.data.cursor = 0;
+                    field.only_note = "Sync";
+                    field.cursor = 0;
 
-                    byte_buffer_read(*field.data, *datas[it]);
+                    byte_buffer_read(field, *datas[it]);
                 }
             }
         DONE
@@ -486,21 +471,19 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
                     // @todo: this should really be an assert tho
                     if !success then continue;
 
-                    field: *Node_Field = null;
-                    for * fields_it : state.fields {
-                        if fields_it.field_id == #run component_type_id(%1).unique_id then field = fields_it;
-                    }
+                    field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
+
                     // field can be null in delta snapshots, it just didn't change
                     if field == null then continue;
 
-                    field.data.only_note = "Sync";
+                    field.only_note = "Sync";
 
                     // skip applying delta snapshots for data which is locally predicted
-                    if networking_ids[it].id == g_client.local_client_id then field.data.skip_note = "Predict";
+                    if networking_ids[it].id == g_client.local_client_id then field.skip_note = "Predict";
 
-                    field.data.cursor = 0;
+                    field.cursor = 0;
 
-                    byte_buffer_read(*field.data, *datas[it]);
+                    byte_buffer_read(field, *datas[it]);
                 }
             }
         DONE

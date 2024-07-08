@@ -48,12 +48,11 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
                 for 0..q.count-1 {
                     state := find_or_add(*result.state, networking_ids[it].id);
 
-                    field := array_add(*state.fields);
-                    field.field_id = #run component_type_id(%1).unique_id;
-                    field.data.only_note = "Sync";
+                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                    field.only_note = "Sync";
 
-                    byte_buffer_write(*field.data, *datas[it]);
-                    field.data.cursor = 0;
+                    byte_buffer_write(field, *datas[it]);
+                    field.cursor = 0;
                 }
             }
         DONE
@@ -129,26 +128,20 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
                         if !changed {
                             assert(state_a != null && state_b != null);
 
-                            field_a: *Node_Field = null;
-                            for * fields_it : state_a.fields {
-                                if fields_it.field_id == #run component_type_id(%1).unique_id then field_a = fields_it;
-                            }
+                            field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
+                            field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
 
-                            field_b: *Node_Field = null;
-                            for * fields_it : state_b.fields {
-                                if fields_it.field_id == #run component_type_id(%1).unique_id then field_b = fields_it;
-                            }
                             if field_a == null || field_b == null then continue;
 
-                            field_a.data.only_note = "Sync";
-                            field_b.data.only_note = "Sync";
+                            field_a.only_note = "Sync";
+                            field_b.only_note = "Sync";
 
                             a_data: %1;
                             b_data: %1;
-                            field_a.data.cursor = 0;
-                            byte_buffer_read(*field_a.data, *a_data);
-                            field_b.data.cursor = 0;
-                            byte_buffer_read(*field_b.data, *b_data);
+                            field_a.cursor = 0;
+                            byte_buffer_read(field_a, *a_data);
+                            field_b.cursor = 0;
+                            byte_buffer_read(field_b, *b_data);
 
                             // always sync properties for newly added entities
                             #insert -> string {
@@ -168,12 +161,11 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
                     if changed {
                         state := find_or_add(*result.state, networking_ids[it].id);
 
-                        field := array_add(*state.fields);
-                        field.field_id = #run component_type_id(%1).unique_id;
-                        field.data.only_note = "Sync";
+                        field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                        field.only_note = "Sync";
 
-                        byte_buffer_write(*field.data, *datas[it]);
-                        field.data.cursor = 0;
+                        byte_buffer_write(field, *datas[it]);
+                        field.cursor = 0;
                     }
                 }
             }

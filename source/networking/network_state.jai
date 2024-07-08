@@ -1,13 +1,6 @@
-Node_Field :: struct {
-    field_id: u64; // component_type_id.unique_id
-
-    // component data stored in a byte buffer. @todo this is pretty innefficient since each node field will have it's own unique storage... good enough for now though I suppose
-    data: ByteBuffer;
-}
-
-
 Node_State :: struct {
-    fields: [..] Node_Field;
+    // maps component type id to a byte buffer containing the serialized component data
+    fields: Table(u64, ByteBuffer);
 }
 
 State_Snapshot :: struct {
@@ -25,10 +18,17 @@ State_Snapshot_Packet_Data :: struct {
 
     State_Pair :: struct {
         node_id: Node_ID;
-        state: Node_State;
+
+        Node_Field :: struct {
+            field_id: u64; // component_type_id.unique_id
+
+            data: ByteBuffer;
+        }
+
+        fields: [..] Node_Field;
     }
 
-    pairs: [..] State_Pair;
+    state_pairs: [..] State_Pair;
 
     New_Pair :: struct {
         node_id: Node_ID;
@@ -55,10 +55,10 @@ removed_nodes: [..] Node_ID;
 
 free :: (snapshot: *State_Snapshot) {
     for snapshot.state {
-        for field : it.fields {
-            free(*field.data);
+        for * it.fields {
+            free(it);
         }
-        array_reset(*it.fields);
+        deinit(*it.fields);
     }
     for snapshot.new_nodes {
         array_reset(*it);
@@ -72,14 +72,19 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
     result: State_Snapshot_Packet;
     result.newly_added.allocator = temp;
     result.removed.allocator = temp;
-    result.pairs.allocator = temp;
+    result.state_pairs.allocator = temp;
 
     array_append(*result.removed, snapshot.removed_nodes);
 
     for snapshot.state {
-        pair := array_add(*result.pairs);
+        pair := array_add(*result.state_pairs);
         pair.node_id = it_index;
-        pair.state = it;
+
+        for * it.fields {
+            field := array_add(*pair.fields);
+            field.field_id = it_index;
+            field.data = copy(it);
+        }
     }
     for snapshot.new_nodes {
         pair := array_add(*result.newly_added);
@@ -94,13 +99,12 @@ from_packet :: (packet: State_Snapshot_Packet) -> State_Snapshot {
 
     array_append(*result.removed_nodes, packet.removed);
 
-    for packet.pairs {
+    for packet.state_pairs {
         new_state := table_add(*result.state, it.node_id, .{});
         // deep copy the state and all the fields, they were allocated from temp buffers
-        for field : it.state.fields {
-            new_field := array_add(*new_state.fields);
-            new_field.field_id = field.field_id;
-            new_field.data = copy(*field.data);
+        for it.fields {
+            new_data := copy(*it.data);
+            new_field_data := table_add(*new_state.fields, it.field_id, new_data);
         }
     }
     for packet.newly_added {
