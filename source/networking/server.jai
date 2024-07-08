@@ -1,4 +1,5 @@
 snapshot_ring: [TICK_RATE * 2] State_Snapshot;
+per_player_input_rings: Table(Node_ID, [..] Player_Commands, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
 push_new_snapshot :: (snapshot: State_Snapshot) {
     free(get_snapshot(0));
@@ -206,6 +207,10 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_commands := get_component(*g_world, entity, Player_Commands);
             assert(player_commands != null);
             << player_commands = player_commands_packet.commands;
+
+            input_ring, success := table_find(*per_player_input_rings, player_commands_packet.node_id);
+            assert(success);
+            input_ring[player_commands_packet.tick % input_ring.count] = <<player_commands;
         case;
     }
 }
@@ -432,6 +437,10 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
 
+            player_input_ring: [..] Player_Commands;
+            array_resize(*player_input_ring, TICK_RATE * 2);
+            table_add(*per_player_input_rings, new_networking_id, player_input_ring);
+
             init_player(new_networking_id, g_player_start);
 
             // Indicate to the newly joined player what it's ID is
@@ -440,7 +449,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 conn_established.node_id = new_networking_id;
 
                 snapshot := generate_full_snapshot(*g_world);
-                conn_established.initial_snapshot = to_packet(snapshot);
+                conn_established.initial_snapshot.data = to_packet(snapshot);
 
                 networking_send_packet(*new_client, *conn_established);
                 free(*snapshot);

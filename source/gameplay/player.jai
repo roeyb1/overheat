@@ -22,6 +22,10 @@ Player_Commands :: struct @Component {
     secondary_attack: bool;
 }
 
+operator== :: (a: Player_Commands, b: Player_Commands) -> bool {
+    return a.move_vector == b.move_vector && a.main_attack == b.main_attack && a.secondary_attack == b.secondary_attack;
+}
+
 Player_Bundle :: struct @Bundle {
     player: Player;
     velocity: Velocity;
@@ -120,7 +124,10 @@ broadcast_local_player_commands :: (q: Query) {
         player_command_packet: Player_Commands_Packet;
         player_command_packet.node_id = networking_ids[it].id;
         player_command_packet.commands = player_commands[it];
+        player_command_packet.tick = g_current_tick;
         networking_send_packet(*player_command_packet);
+        // we should only have one local player, so this should only happen once
+        input_ring[g_current_tick % input_ring.count] = player_commands[it];
     }
 } @System(PreUpdate) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
 }

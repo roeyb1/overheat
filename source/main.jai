@@ -171,7 +171,14 @@ server_main :: () {
 
             snapshot_packet := to_packet(*delta);
     
-            networking_broadcast(*snapshot_packet);
+            for * g_server.clients {
+                input_ring, found := table_find(*per_player_input_rings, it.node_id);
+                assert(found);
+                player_state_update: Player_State_Snapshot_Packet;
+                player_state_update.data = snapshot_packet;
+                player_state_update.input = input_ring[g_current_tick % input_ring.count];
+                networking_send_packet(it, *player_state_update);
+            }
 
             free(*delta);
         }

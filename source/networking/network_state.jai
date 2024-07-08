@@ -50,6 +50,14 @@ State_Snapshot_Packet :: struct {
     using data: State_Snapshot_Packet_Data;
 }
 
+Player_State_Snapshot_Packet :: struct {
+    PACKET_TYPE :: PacketType.PLAYER_DELTA;
+
+    using data: State_Snapshot_Packet_Data;
+
+    input: Player_Commands;
+}
+
 
 // any nodes that were newly created in the last simulation iter
 added_nodes: [..] Node_ID;
@@ -72,8 +80,8 @@ free :: (snapshot: *State_Snapshot) {
     array_reset(*snapshot.removed_nodes);
 }
 
-to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
-    result: State_Snapshot_Packet;
+to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet_Data {
+    result: State_Snapshot_Packet_Data;
     result.newly_added.allocator = temp;
     result.removed.allocator = temp;
     result.state_pairs.allocator = temp;
@@ -101,7 +109,7 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
     return result;
 }
 
-from_packet :: (packet: State_Snapshot_Packet) -> State_Snapshot {
+from_packet :: (packet: State_Snapshot_Packet_Data) -> State_Snapshot {
     result: State_Snapshot;
     result.time = packet.time;
     result.tick = packet.tick;

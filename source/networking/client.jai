@@ -10,6 +10,7 @@ g_client: Client;
 
 server_snapshots: [..] State_Snapshot; // currently only stores the last 2 server snapshots for interp
 prediction_ring: [TICK_RATE * 2] State_Snapshot;
+input_ring: [TICK_RATE * 2] Player_Commands;
 
 last_snapshot_time: float64;
 last_prediction_time: float64;
@@ -67,9 +68,9 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             log("Local player was assigned id %", conn_established.node_id);
 
-            snapshot := from_packet(conn_established.initial_snapshot);
+            snapshot := from_packet(conn_established.initial_snapshot.data);
             array_add(*server_snapshots, snapshot);
-            array_add(*server_snapshots, from_packet(conn_established.initial_snapshot));
+            array_add(*server_snapshots, from_packet(conn_established.initial_snapshot.data));
             last_snapshot_time = seconds_since_init();
 
             apply_full_snapshot(*g_world, snapshot);
@@ -87,9 +88,11 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_commands := get_component(*g_world, entity, Player_Commands);
             assert(player_commands != null);
             << player_commands = player_commands_packet.commands;
-        case .SNAPSHOT;
-            snapshot_packet: State_Snapshot_Packet;
+        case .PLAYER_DELTA;
+            snapshot_packet: Player_State_Snapshot_Packet;
             byte_buffer_read(buffer, *snapshot_packet);
+
+            assert(snapshot_packet.input == input_ring[snapshot_packet.tick % input_ring.count]);
 
             last_known_server_time = snapshot_packet.time;
             last_received_server_time = xx seconds_since_init();
@@ -104,7 +107,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             // - build a new full snapshot  <--- @todo: this part is really slow and stupid, we should be able to apply the delta on top of the state
             // - store that snapshot for interpolation purposes
 
-            delta := from_packet(snapshot_packet);
+            delta := from_packet(snapshot_packet.data);
             apply_delta_snapshot(*g_world, delta);
             free(*delta);
             new_snapshot := generate_full_snapshot(*g_world);
