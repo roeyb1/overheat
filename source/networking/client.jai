@@ -8,17 +8,16 @@ Client :: struct {
 }
 g_client: Client;
 
-server_snapshots: [..] State_Snapshot;
-prediction_snapshot: State_Snapshot;
+server_snapshots: [..] State_Snapshot; // currently only stores the last 2 server snapshots for interp
+prediction_ring: [TICK_RATE * 2] State_Snapshot;
 
 last_snapshot_time: float64;
+last_prediction_time: float64;
 
 last_known_server_time: float;
 last_received_server_time: float;
 
 smooth_server_time: float;
-
-predict_next_frame := false;
 
 previous_snapshot :: () -> *State_Snapshot {
     return *server_snapshots[0];
@@ -26,6 +25,29 @@ previous_snapshot :: () -> *State_Snapshot {
 
 current_snapshot :: () -> *State_Snapshot {
     return *server_snapshots[1];
+}
+
+push_new_prediction :: (snapshot: State_Snapshot) {
+    free(get_prediction(0));
+    get_prediction(0).* = snapshot;
+}
+
+get_prediction :: (offset_from_current: s32) -> *State_Snapshot {
+    previous_tick := cast(s64) g_current_tick + offset_from_current;
+    index := (previous_tick) % prediction_ring.count;
+    return *prediction_ring[index];
+}
+
+previous_prediction :: () -> *State_Snapshot {
+    result := get_prediction(-1);
+    assert(result.tick == 0 || cast(s32) result.tick == cast(s32) g_current_tick - 1);
+    return result;
+}
+
+current_prediction :: () -> *State_Snapshot {
+    result := get_prediction(0);
+    assert(result.tick == 0 || result.tick == g_current_tick);
+    return result;
 }
 
 client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
@@ -94,6 +116,8 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
 generate_full_snapshot :: (world: *World) -> State_Snapshot {
     result: State_Snapshot;
+    result.tick = g_current_tick;
+    result.time = xx seconds_since_init();
 
     // always send over component id list for every entity in the world if it's a full snapshot
     for entity_node_id_table {
@@ -150,6 +174,8 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
 
 generate_prediction_snapshot :: (world: *World) -> State_Snapshot {
     result: State_Snapshot;
+    result.tick = g_current_tick;
+    result.time = xx seconds_since_init();
 
     // always send over component id list for every entity in the world if it's a full snapshot
     for entity_node_id_table {
@@ -207,6 +233,7 @@ generate_prediction_snapshot :: (world: *World) -> State_Snapshot {
 }
 
 interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alpha: float) {
+    assert(a.tick != 0 && b.tick != 0);
     #insert -> string {
         INSERT_STRING :: #string DONE 
             for q : make_iter(world, Networking_ID, %1) {
@@ -273,6 +300,7 @@ interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapsho
 }
 
 interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snapshot, alpha: float) {
+    assert(a.tick != 0 && b.tick != 0);
     #insert -> string {
         INSERT_STRING :: #string DONE 
             for q : make_iter(world, Networking_ID, %1) {
@@ -543,6 +571,54 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         entity, found := table_find(*entity_node_id_table, it);
         assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
         destroy_entity(world, entity);
+    }
+}
+
+apply_prediction_state :: (world: *World, snapshot: State_Snapshot) {
+    assert(snapshot.tick != 0);
+    #insert -> string {
+        INSERT_STRING :: #string DONE 
+            for q : make_iter(world, Networking_ID, %1) {
+                datas := query_get(q, %1);
+                networking_ids := query_get(q, Networking_ID);
+
+                for 0..q.count-1 {
+                    if networking_ids[it].id != g_client.local_client_id then continue;
+
+                    state, success := table_find(*snapshot.state, networking_ids[it].id);
+                    assert(success);
+
+                    field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
+
+                    assert(field != null);
+
+                    field.only_note = "Predict";
+
+                    field.cursor = 0;
+
+                    byte_buffer_read(field, *datas[it]);
+                }
+            }
+        DONE
+
+        sb: String_Builder;
+
+        for ALL_COMPONENT_TYPES {
+            has_interp_fields := false;
+            ti := cast(*Type_Info_Struct) it;
+            for * member : ti.members {
+                if has_note(member, "Sync") && has_note(member, "Interp") && has_note(member, "Predict") {
+                    has_interp_fields = true;
+                    break;
+                }
+            }
+
+            if !has_interp_fields then continue;
+
+            sbprint(*sb, INSERT_STRING, it);
+        }
+
+        return builder_to_string(*sb);
     }
 }
 

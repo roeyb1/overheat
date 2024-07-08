@@ -127,7 +127,7 @@ networking_init :: () -> bool {
     }
 
 
-    log("Networking systems initialized successfully");
+    log("Initialized networking system with a TPS of % and fixed timestep of % s", TICK_RATE, FIXED_TIMESTEP);
     return true;
 }
 

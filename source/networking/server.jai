@@ -1,5 +1,4 @@
-SNAPSHOT_RING_SIZE :: 16;
-snapshot_ring: [SNAPSHOT_RING_SIZE] State_Snapshot;
+snapshot_ring: [TICK_RATE * 2] State_Snapshot;
 
 push_new_snapshot :: (snapshot: State_Snapshot) {
     free(get_snapshot(0));
@@ -7,10 +6,7 @@ push_new_snapshot :: (snapshot: State_Snapshot) {
 }
 
 get_snapshot :: (offset_from_current: s32) -> *State_Snapshot {
-    index := ((cast(s32)g_current_tick) - offset_from_current) % SNAPSHOT_RING_SIZE;
-    if index < 0 {
-        index += (SNAPSHOT_RING_SIZE - 1);
-    }
+    index := ((cast(s64)g_current_tick) + offset_from_current) % snapshot_ring.count;
     return *snapshot_ring[index];
 }
 

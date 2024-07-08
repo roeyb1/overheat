@@ -12,8 +12,8 @@ last_time: float64;
 g_sim_timer: float64 = 0.016;
 g_render_timer: float64 = 0.016;
 
-FIXED_TIMESTEP :: 0.016;
-TICK_RATE :: 1. / FIXED_TIMESTEP;
+TICK_RATE :: 10;
+FIXED_TIMESTEP :: 1. / TICK_RATE;
 
 g_should_exit: bool = false;
 
@@ -77,31 +77,40 @@ client_main :: () {
 
         expected_tick := get_ticks_from_time(smooth_server_time);
         while g_current_tick < expected_tick {
-            g_current_tick += 1;
+            last_prediction_time = seconds_since_init();
+
             scoped_smooth_timer(*g_sim_timer, 1. / 16.);
             scoped_guard(*g_only_simulate_local_player, true);
 
-            // we may receive the signal to predict the next frame before we fully interpolated to the next frame,
-            // in this case, force the next simulation to occur on top of the full prediction
-            interpolate_prediction_state(*g_world, current_snapshot(), prediction_snapshot, 1);
+            if current_prediction().tick != 0 {
+                apply_prediction_state(*g_world, current_prediction());
+            }
+            g_current_tick += 1;
 
             execute(*g_world, .PreUpdate);
             execute(*g_world, .OnUpdate);
             execute(*g_world, .OnValidate);
             execute(*g_world, .PostUpdate);
 
-            free(*prediction_snapshot);
-            prediction_snapshot = generate_prediction_snapshot(*g_world);
-            predict_next_frame = false;
+            push_new_prediction(generate_prediction_snapshot(*g_world));
+
+            log("Frame %", g_current_tick);
+            for q : make_iter(*g_world, Position, Player) {
+                for 0..q.count-1 {
+                    pos := get_component(q.world, q.entities[it], Position);
+                    log("%, %", get_component(q.world, q.entities[it], Networking_ID).id, pos.value);
+                }
+            }
         }
 
-        server_interp_alpha := clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
         if server_snapshots.count > 1 {
-            previous := previous_snapshot();
-            current := current_snapshot();
+            server_interp_alpha := clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
             interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
+        }
 
-            interpolate_prediction_state(*g_world, current_snapshot(), prediction_snapshot, server_interp_alpha);
+        prediction_alpha := clamp(cast(float)(seconds_since_init() - last_prediction_time) / FIXED_TIMESTEP, 0, 1);
+        if previous_prediction().tick != 0 && current_prediction().tick != 0 {
+            interpolate_prediction_state(*g_world, previous_prediction(), current_prediction(), prediction_alpha);
         }
 
         {
