@@ -13,6 +13,11 @@ prediction_snapshot: State_Snapshot;
 
 last_snapshot_time: float64;
 
+last_known_server_time: float;
+last_received_server_time: float;
+
+smooth_server_time: float;
+
 predict_next_frame := false;
 
 previous_snapshot :: () -> *State_Snapshot {
@@ -33,7 +38,11 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             assert(conn_established.node_id != INVALID_NODE_ID);
 
             g_client.local_client_id = conn_established.node_id;
-            g_sim_frame_number = conn_established.sequence_number;
+
+            last_known_server_time = conn_established.initial_snapshot.time;
+            last_received_server_time = xx seconds_since_init();
+            g_current_tick = get_ticks_from_time(last_known_server_time);
+
             log("Local player was assigned id %", conn_established.node_id);
 
             snapshot := from_packet(conn_established.initial_snapshot);
@@ -60,6 +69,9 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             snapshot_packet: State_Snapshot_Packet;
             byte_buffer_read(buffer, *snapshot_packet);
 
+            last_known_server_time = snapshot_packet.time;
+            last_received_server_time = xx seconds_since_init();
+
             if server_snapshots.count > 1 then {
                 free(previous_snapshot());
                 array_ordered_remove_by_index(*server_snapshots, 0);
@@ -76,11 +88,6 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             new_snapshot := generate_full_snapshot(*g_world);
 
             array_add(*server_snapshots, new_snapshot);
-
-            g_sim_frame_number = snapshot_packet.sequence_number;
-            last_snapshot_time = seconds_since_init();
-
-            predict_next_frame = true;
         case;
     }
 }
@@ -579,6 +586,18 @@ networking_bytes_received_stats: [..] float;
 
 client_update :: (client: *Client) {
     bytes_recv_this_frame : *float = null;
+
+    estimated_server_time := last_known_server_time + (xx seconds_since_init() - last_received_server_time) + (get_connection_stats().m_nPing / 2000.);
+
+    if estimated_server_time - smooth_server_time > 0.1 {
+        smooth_server_time = estimated_server_time;
+        log("Estimated server time fell too far behind, snapping forward.");
+    } else if estimated_server_time > smooth_server_time {
+        smooth_server_time += g_delta_time * 1.03;
+    } else if estimated_server_time < smooth_server_time {
+        smooth_server_time += g_delta_time * 0.97;
+    }
+
     while !client.should_disconnect {
         incoming_msgs: [8] *NetworkingMessage;
         num_msgs := Sockets.ReceiveMessagesOnConnection(client.connection, incoming_msgs.data, incoming_msgs.count);

@@ -13,11 +13,12 @@ g_sim_timer: float64 = 0.016;
 g_render_timer: float64 = 0.016;
 
 FIXED_TIMESTEP :: 0.016;
+TICK_RATE :: 1. / FIXED_TIMESTEP;
 
 g_should_exit: bool = false;
 
 g_frame_number: u64 = 0;
-g_sim_frame_number: s64 = 0;
+g_current_tick: u32 = 0;
 
 g_world: World;
 
@@ -74,7 +75,9 @@ client_main :: () {
         execute(*g_world, .OnLoad);
         execute(*g_world, .PostLoad);
 
-        if predict_next_frame {
+        expected_tick := get_ticks_from_time(smooth_server_time);
+        while g_current_tick < expected_tick {
+            g_current_tick += 1;
             scoped_smooth_timer(*g_sim_timer, 1. / 16.);
             scoped_guard(*g_only_simulate_local_player, true);
 
@@ -127,16 +130,12 @@ server_main :: () {
 
     last_time = seconds_since_init();
 
-    accumulated_time := 0.0;
-
     while true {
         now := seconds_since_init();
         g_delta_time = cast(float) (now - last_time);
         smooth_delta_time_weight := ifx g_frame_number < 16 then 1. else 1. / 16.;
         g_smooth_delta_time = smooth_delta_time_weight * g_delta_time + (1. - smooth_delta_time_weight) * g_smooth_delta_time;
         last_time = now;
-
-        accumulated_time += g_delta_time;
 
         if g_should_exit {
             break;
@@ -145,7 +144,10 @@ server_main :: () {
         networking_update();
 
         // Run simulation on a fixed timestep for determinism 
-        while accumulated_time >= FIXED_TIMESTEP {
+        expected_tick := get_ticks_from_time(xx seconds_since_init());
+        while g_current_tick < expected_tick {
+            g_current_tick += 1;
+
             FrameMark();
             scoped_smooth_timer(*g_sim_timer, 1. / 16.);
 
@@ -159,15 +161,10 @@ server_main :: () {
             delta := generate_delta_snapshot(*g_world, get_snapshot(-1), get_snapshot(0));
 
             snapshot_packet := to_packet(*delta);
-            snapshot_packet.sequence_number = g_sim_frame_number;
     
             networking_broadcast(*snapshot_packet);
 
             free(*delta);
-
-            accumulated_time -= FIXED_TIMESTEP;
-
-            g_frame_number += 1;
         }
 
         // Reset temporary storage at the end of each frame

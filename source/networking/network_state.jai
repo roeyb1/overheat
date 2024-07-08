@@ -11,6 +11,9 @@ State_Snapshot :: struct {
     new_nodes: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
     removed_nodes: [..] Node_ID;
+
+    time: float;
+    tick: u32;
 }
 
 State_Snapshot_Packet_Data :: struct {
@@ -38,7 +41,8 @@ State_Snapshot_Packet_Data :: struct {
     newly_added: [..] New_Pair;
     removed: [..] Node_ID;
 
-    sequence_number: s64;
+    time: float;
+    tick: u32;
 }
 
 State_Snapshot_Packet :: struct {
@@ -73,6 +77,8 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
     result.newly_added.allocator = temp;
     result.removed.allocator = temp;
     result.state_pairs.allocator = temp;
+    result.time = snapshot.time;
+    result.tick = snapshot.tick;
 
     array_append(*result.removed, snapshot.removed_nodes);
 
@@ -91,11 +97,14 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet {
         pair.node_id = it_index;
         pair.component_types = it;
     }
+    result.time = xx seconds_since_init();
     return result;
 }
 
 from_packet :: (packet: State_Snapshot_Packet) -> State_Snapshot {
     result: State_Snapshot;
+    result.time = packet.time;
+    result.tick = packet.tick;
 
     array_append(*result.removed_nodes, packet.removed);
 

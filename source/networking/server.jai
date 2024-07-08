@@ -2,14 +2,12 @@ SNAPSHOT_RING_SIZE :: 16;
 snapshot_ring: [SNAPSHOT_RING_SIZE] State_Snapshot;
 
 push_new_snapshot :: (snapshot: State_Snapshot) {
-    g_sim_frame_number += 1;
-
     free(get_snapshot(0));
     get_snapshot(0).* = snapshot;
 }
 
 get_snapshot :: (offset_from_current: s32) -> *State_Snapshot {
-    index := (g_sim_frame_number - offset_from_current) % SNAPSHOT_RING_SIZE;
+    index := ((cast(s32)g_current_tick) - offset_from_current) % SNAPSHOT_RING_SIZE;
     if index < 0 {
         index += (SNAPSHOT_RING_SIZE - 1);
     }
@@ -26,6 +24,8 @@ current_snapshot :: () -> *State_Snapshot {
 
 generate_full_snapshot :: (world: *World) -> State_Snapshot {
     result: State_Snapshot;
+    result.time = xx seconds_since_init();
+    result.tick = g_current_tick;
 
     // always send over component id list for every entity in the world if it's a full snapshot
     for entity_node_id_table {
@@ -82,6 +82,8 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
 
 generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot) -> State_Snapshot {
     result: State_Snapshot;
+    result.time = xx seconds_since_init();
+    result.tick = g_current_tick;
     
     array_append(*result.removed_nodes, removed_nodes);
 
@@ -440,7 +442,6 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             {
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.node_id = new_networking_id;
-                conn_established.sequence_number = g_sim_frame_number;
 
                 snapshot := generate_full_snapshot(*g_world);
                 conn_established.initial_snapshot = to_packet(snapshot);

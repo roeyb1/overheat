@@ -83,6 +83,11 @@ Player_Commands_Packet :: struct {
     commands: Player_Commands;
 }
 
+get_ticks_from_time :: (time: float) -> u32 {
+    return xx ceil(time * TICK_RATE);
+}
+
+
 networking_init :: () -> bool {
     log("Initializing networking systems...");
 
