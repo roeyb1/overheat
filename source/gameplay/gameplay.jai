@@ -6,6 +6,8 @@
 #load "enemy.jai";
 #load "follower.jai";
 #load "singletons.jai";
+#load "charging/charge.jai";
+#load "duration.jai";
 #load "systems.jai";
 
 #if CLIENT {
