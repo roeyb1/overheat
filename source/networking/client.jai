@@ -298,6 +298,9 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
         assert(found);
 
         for ctid_list {
+            // we already broadcasted networking id before, don't do it again
+            if it == #run component_type_id(Networking_ID) then continue;
+
             broadcast_on_component_add(world, entity, it);
         }
     }
@@ -404,6 +407,9 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         assert(found);
 
         for ctid_list {
+            // we already broadcasted networking id before, don't do it again
+            if it == #run component_type_id(Networking_ID) then continue;
+
             broadcast_on_component_add(world, entity, it);
         }
     }
