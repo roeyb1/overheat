@@ -60,6 +60,7 @@ show_stats_overlay :: () {
         ImGui.NewLine();
         ImGui.Text("Networking Stats");
         networking_stats := get_connection_stats();
+        ImGui.Text("Server tick rate: % tps",  1. / FIXED_TIMESTEP);
         ImGui.Text("Ping: % ms", networking_stats.m_nPing);
         ImGui.PlotLines("Bytes Recv", networking_bytes_received_stats.data, cast(s32) networking_bytes_received_stats.count, graph_size = .{150, 0});
     }
