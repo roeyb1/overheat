@@ -359,7 +359,6 @@ test_binary_serialization :: (ctx: *TestContext) {
         y: u16; @Only
         z: u64;
     }
-    // Test simple struct serialization with only members
     {
         test_data := OnlyStruct.{.Bar, 10, 20, 30};
         assert(size_of(OnlyStruct) == 24);
@@ -385,6 +384,38 @@ test_binary_serialization :: (ctx: *TestContext) {
         test_expect_equals(test_data.y, read_actual.y);
         test_expect_equals(0, read_actual.z);
         test_expect_equals(test_data.type, read_actual.type);
+    }
+
+    OnlySkipStruct :: struct {
+        type: BasicEnum; @Only
+        x: u32;
+        y: u16; @Only @Skip
+        z: u64;
+    }
+    {
+        test_data := OnlySkipStruct.{.Bar, 10, 20, 30};
+
+        buffer: ByteBuffer;
+        buffer.only_note = "Only";
+        buffer.skip_note = "Skip";
+        defer free(*buffer);
+
+        byte_buffer_write(*buffer, *test_data);
+
+        expected_data := u8.[1];
+
+        for 0..buffer.buff.count-1 {
+            assert(buffer.buff[it] == expected_data[it]);
+        }
+
+        buffer.cursor = 0;
+        read_actual := OnlySkipStruct.{.Foo, 1, 2, 3};
+        byte_buffer_read(*buffer, *read_actual);
+
+        test_expect_equals(BasicEnum.Bar, read_actual.type);
+        test_expect_equals(1, read_actual.x);
+        test_expect_equals(2, read_actual.y); // normally serialized, be we are skipping it
+        test_expect_equals(3, read_actual.z);
     }
 
     StructWithBool :: struct {

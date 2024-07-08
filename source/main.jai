@@ -12,7 +12,7 @@ last_time: float64;
 g_sim_timer: float64 = 0.016;
 g_render_timer: float64 = 0.016;
 
-FIXED_TIMESTEP :: 0.016;
+FIXED_TIMESTEP :: 0.100;
 
 g_should_exit: bool = false;
 
@@ -74,11 +74,19 @@ client_main :: () {
         execute(*g_world, .OnLoad);
         execute(*g_world, .PostLoad);
 
+        if predict_next_frame {
+            execute(*g_world, .PreUpdate);
+            execute(*g_world, .OnUpdate);
+            execute(*g_world, .OnValidate);
+            execute(*g_world, .PostUpdate);
+            predict_next_frame = false;
+        }
+
         server_interp_alpha := clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
         if server_snapshots.count > 1 {
             previous := previous_snapshot();
             current := current_snapshot();
-            interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
+            //interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
         }
 
         {

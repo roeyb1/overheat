@@ -12,6 +12,8 @@ server_snapshots: [..] State_Snapshot;
 
 last_snapshot_time: float64;
 
+predict_next_frame := false;
+
 previous_snapshot :: () -> *State_Snapshot {
     return *server_snapshots[0];
 }
@@ -74,6 +76,8 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             g_sim_frame_number = snapshot_packet.sequence_number;
             last_snapshot_time = seconds_since_init();
+
+            predict_next_frame = true;
         case;
     }
 }
@@ -352,6 +356,10 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
                     if field == null then continue;
 
                     field.data.only_note = "Sync";
+
+                    // skip applying delta snapshots for data which is locally predicted
+                    if networking_ids[it].id == g_client.local_client_id then field.data.skip_note = "Predict";
+
                     field.data.cursor = 0;
 
                     byte_buffer_read(*field.data, *datas[it]);
