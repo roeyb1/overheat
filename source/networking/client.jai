@@ -495,6 +495,12 @@ client_shutdown :: (client: *Client) {
     Sockets.CloseConnection(client.connection, 0, null, /* linger= */ true);
 }
 
+get_connection_stats :: () -> QuickConnectionStatus {
+    stats: QuickConnectionStatus;
+    Sockets.GetQuickConnectionStatus(g_client.connection, *stats);
+    return stats;
+}
+
 client_net_connection_status_changed_callback :: (info: *ConnectionStatusChanged) -> void #c_call {
     new_ctx: Context;
     new_ctx.logger = logger;
