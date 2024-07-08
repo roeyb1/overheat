@@ -75,12 +75,20 @@ client_main :: () {
         execute(*g_world, .PostLoad);
 
         if predict_next_frame {
+            scoped_smooth_timer(*g_sim_timer, 1. / 16.);
             scoped_guard(*g_only_simulate_local_player, true);
+
+            // we may receive the signal to predict the next frame before we fully interpolated to the next frame,
+            // in this case, force the next simulation to occur on top of the full prediction
+            interpolate_prediction_state(*g_world, current_snapshot(), prediction_snapshot, 1);
 
             execute(*g_world, .PreUpdate);
             execute(*g_world, .OnUpdate);
             execute(*g_world, .OnValidate);
             execute(*g_world, .PostUpdate);
+
+            free(*prediction_snapshot);
+            prediction_snapshot = generate_prediction_snapshot(*g_world);
             predict_next_frame = false;
         }
 
@@ -88,7 +96,9 @@ client_main :: () {
         if server_snapshots.count > 1 {
             previous := previous_snapshot();
             current := current_snapshot();
-            //interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
+            interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
+
+            interpolate_prediction_state(*g_world, current_snapshot(), prediction_snapshot, server_interp_alpha);
         }
 
         {
