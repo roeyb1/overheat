@@ -9,8 +9,11 @@ Client :: struct {
 g_client: Client;
 
 server_snapshots: [..] State_Snapshot;
+prediction_snapshot: State_Snapshot;
 
 last_snapshot_time: float64;
+
+predict_next_frame := false;
 
 previous_snapshot :: () -> *State_Snapshot {
     return *server_snapshots[0];
@@ -35,6 +38,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             snapshot := from_packet(conn_established.initial_snapshot);
             array_add(*server_snapshots, snapshot);
+            array_add(*server_snapshots, from_packet(conn_established.initial_snapshot));
             last_snapshot_time = seconds_since_init();
 
             apply_full_snapshot(*g_world, snapshot);
@@ -65,6 +69,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             // - apply the delta to the world state
             // - build a new full snapshot  <--- @todo: this part is really slow and stupid, we should be able to apply the delta on top of the state
             // - store that snapshot for interpolation purposes
+
             delta := from_packet(snapshot_packet);
             apply_delta_snapshot(*g_world, delta);
             free(*delta);
@@ -74,6 +79,8 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             g_sim_frame_number = snapshot_packet.sequence_number;
             last_snapshot_time = seconds_since_init();
+
+            predict_next_frame = true;
         case;
     }
 }
@@ -135,6 +142,65 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
     return result;
 }
 
+generate_prediction_snapshot :: (world: *World) -> State_Snapshot {
+    result: State_Snapshot;
+
+    // always send over component id list for every entity in the world if it's a full snapshot
+    for entity_node_id_table {
+        component_types_view := get_component_types(world, it);
+
+        types: [..] u64;
+        for component_types_view {
+            array_add(*types, it.unique_id);
+        }
+
+        entry := table_add(*result.new_nodes, it_index, types);
+    }
+
+    #insert -> string {
+        INSERT_STRING :: #string DONE 
+            for q : make_iter(world, Networking_ID, %1) {
+                datas := query_get(q, %1);
+                networking_ids := query_get(q, Networking_ID);
+
+                for 0..q.count-1 {
+                    if networking_ids[it].id != g_client.local_client_id then continue;
+
+                    state := find_or_add(*result.state, networking_ids[it].id);
+
+                    field := array_add(*state.fields);
+                    field.field_id = #run component_type_id(%1).unique_id;
+                    field.data.only_note = "Predict";
+
+                    byte_buffer_write(*field.data, *datas[it]);
+                    field.data.cursor = 0;
+                }
+            }
+        DONE
+
+        sb: String_Builder;
+
+        for ALL_COMPONENT_TYPES {
+            has_sync_fields := false;
+            ti := cast(*Type_Info_Struct) it;
+            for * member : ti.members {
+                if has_note(member, "Sync") && has_note(member, "Predict") {
+                    has_sync_fields = true;
+                    break;
+                }
+            }
+
+            if !has_sync_fields then continue;
+
+            sbprint(*sb, INSERT_STRING, it);
+        }
+
+        return builder_to_string(*sb);
+    }
+
+    return result;
+}
+
 interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapshot, alpha: float) {
     #insert -> string {
         INSERT_STRING :: #string DONE 
@@ -160,7 +226,80 @@ interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapsho
                     if field_a == null || field_b == null then continue;
 
                     field_a.data.only_note = "Interp";
-                    field_b.data.only_note = "Interp";
+
+                    a_data: %1;
+                    b_data: %1;
+                    field_a.data.cursor = 0;
+                    byte_buffer_read(*field_a.data, *a_data);
+                    field_b.data.cursor = 0;
+                    byte_buffer_read(*field_b.data, *b_data);
+
+                    #insert -> string {
+                        sb: String_Builder;
+                        for member : type_info(%1).members {
+                            if has_note(*member, "Interp") {
+                                if has_note(*member, "Predict") {
+                                    sbprint(*sb, "if networking_ids[it].id != g_client.local_client_id then datas[it].%%1 = lerp(a_data.%%1, b_data.%%1, alpha);", member.name);
+                                } else {
+                                    sbprint(*sb, "datas[it].%%1 = lerp(a_data.%%1, b_data.%%1, alpha);", member.name);
+                                }
+                            }
+                        }
+
+                        return builder_to_string(*sb);
+                    }
+                }
+            }
+        DONE
+
+        sb: String_Builder;
+
+        for ALL_COMPONENT_TYPES {
+            has_interp_fields := false;
+            ti := cast(*Type_Info_Struct) it;
+            for * member : ti.members {
+                if has_note(member, "Sync") && has_note(member, "Interp") {
+                    has_interp_fields = true;
+                    break;
+                }
+            }
+
+            if !has_interp_fields then continue;
+
+            sbprint(*sb, INSERT_STRING, it);
+        }
+
+        return builder_to_string(*sb);
+    }
+}
+
+interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snapshot, alpha: float) {
+    #insert -> string {
+        INSERT_STRING :: #string DONE 
+            for q : make_iter(world, Networking_ID, %1) {
+                datas := query_get(q, %1);
+                networking_ids := query_get(q, Networking_ID);
+
+                for 0..q.count-1 {
+                    if networking_ids[it].id != g_client.local_client_id then continue;
+
+                    state_a, success_a := table_find(*a.state, networking_ids[it].id);
+                    state_b, success_b := table_find(*b.state, networking_ids[it].id);
+
+                    if !success_a || !success_b then continue;
+
+                    field_a: *Node_Field = null;
+                    for * fields_it : state_a.fields {
+                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_a = fields_it;
+                    }
+
+                    field_b: *Node_Field = null;
+                    for * fields_it : state_b.fields {
+                        if fields_it.field_id == #run component_type_id(%1).unique_id then field_b = fields_it;
+                    }
+                    if field_a == null || field_b == null then continue;
+
+                    field_a.data.only_note = "Predict";
 
                     a_data: %1;
                     b_data: %1;
@@ -189,7 +328,7 @@ interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapsho
             has_interp_fields := false;
             ti := cast(*Type_Info_Struct) it;
             for * member : ti.members {
-                if has_note(member, "Sync") && has_note(member, "Interp") {
+                if has_note(member, "Sync") && has_note(member, "Interp") && has_note(member, "Predict") {
                     has_interp_fields = true;
                     break;
                 }
@@ -294,6 +433,9 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
         assert(found);
 
         for ctid_list {
+            // we already broadcasted networking id before, don't do it again
+            if it == #run component_type_id(Networking_ID) then continue;
+
             broadcast_on_component_add(world, entity, it);
         }
     }
@@ -352,6 +494,10 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
                     if field == null then continue;
 
                     field.data.only_note = "Sync";
+
+                    // skip applying delta snapshots for data which is locally predicted
+                    if networking_ids[it].id == g_client.local_client_id then field.data.skip_note = "Predict";
+
                     field.data.cursor = 0;
 
                     byte_buffer_read(*field.data, *datas[it]);
@@ -396,6 +542,9 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         assert(found);
 
         for ctid_list {
+            // we already broadcasted networking id before, don't do it again
+            if it == #run component_type_id(Networking_ID) then continue;
+
             broadcast_on_component_add(world, entity, it);
         }
     }

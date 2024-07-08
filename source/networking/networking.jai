@@ -43,6 +43,7 @@ operator== :: inline (a: Node_ID, b: Node_ID) -> bool {
 
 on_entity_begin_networking :: (world: *World, entity: Entity) {
     networking_id := get_component(world, entity, Networking_ID);
+    assert(!table_contains(*entity_node_id_table, networking_id.id), "Entity already exists in the networking lookup table, this should not happen");
     table_add(*entity_node_id_table, networking_id.id, entity);
 
     #if SERVER {
@@ -91,8 +92,8 @@ networking_init :: () -> bool {
     }
 
     // Simulate lag
-    //Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Send, 15);
-    //Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Recv, 15);
+    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Send, 15);
+    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Recv, 15);
 
     Utils.SetDebugOutputFunction(.Msg, gns_debug_callback);
 

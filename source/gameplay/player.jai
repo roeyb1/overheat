@@ -122,7 +122,7 @@ broadcast_local_player_commands :: (q: Query) {
         player_command_packet.commands = player_commands[it];
         networking_send_packet(*player_command_packet);
     }
-} @System(PostLoad) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
+} @System(PreUpdate) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
 }
 
 on_player_component_added :: (world: *World, entity: Entity) {
