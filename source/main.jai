@@ -12,7 +12,7 @@ last_time: float64;
 g_sim_timer: float64 = 0.016;
 g_render_timer: float64 = 0.016;
 
-FIXED_TIMESTEP :: 0.100;
+FIXED_TIMESTEP :: 0.016;
 
 g_should_exit: bool = false;
 
@@ -134,14 +134,16 @@ server_main :: () {
             execute(*g_world, .OnValidate);
             execute(*g_world, .PostUpdate);
 
-            push_new_snapshot(generate_full_snapshot(*g_world, added_nodes));
-            added_nodes.count = 0;
-            removed_nodes.count = 0;
+            push_new_snapshot(generate_full_snapshot(*g_world));
 
-            snapshot_packet := to_packet(current_snapshot());
+            delta := generate_delta_snapshot(*g_world, get_snapshot(-1), get_snapshot(0));
+
+            snapshot_packet := to_packet(*delta);
             snapshot_packet.sequence_number = g_sim_frame_number;
     
             networking_broadcast(*snapshot_packet);
+
+            free(*delta);
 
             accumulated_time -= FIXED_TIMESTEP;
 
