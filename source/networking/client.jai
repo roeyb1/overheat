@@ -476,6 +476,12 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
     new_entities: [..] Node_ID;
     new_entities.allocator = temp;
 
+    for snapshot.removed_nodes {
+        entity, found := table_find(*entity_node_id_table, it);
+        assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
+        destroy_entity(world, entity);
+    }
+
     for snapshot.new_nodes {
         _, found := table_find(*entity_node_id_table, it_index);
         if found then continue;
@@ -496,6 +502,38 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         add_component(world, entity, Networking_ID, .{it_index});
         for ctid_list {
             add_component(world, entity, it, broadcast=false);
+        }
+    }
+
+    for snapshot.added_fields {
+        entity, found := table_find(*entity_node_id_table, it_index);
+        assert(found);
+
+        ctid_list: [..] Component_Type_ID;
+        ctid_list.allocator = temp;
+        for field_id : it {
+            for ctid : ALL_COMPONENT_TYPE_IDS {
+                if ctid.unique_id == field_id {
+                    array_add(*ctid_list, ctid);
+                }
+            }
+        }
+
+        for ctid_list {
+            add_component(world, entity, it, broadcast=false);
+        }
+    }
+
+    for snapshot.removed_fields {
+        entity, found := table_find(*entity_node_id_table, it_index);
+        assert(found);
+
+        for field_id : it {
+            for ctid : ALL_COMPONENT_TYPE_IDS {
+                if ctid.unique_id == field_id {
+                    remove_component(world, entity, ctid);
+                }
+            }
         }
     }
 
@@ -572,10 +610,23 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         }
     }
 
-    for snapshot.removed_nodes {
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
-        destroy_entity(world, entity);
+    for snapshot.added_fields {
+        entity, found := table_find(*entity_node_id_table, it_index);
+        assert(found);
+
+        ctid_list: [..] Component_Type_ID;
+        ctid_list.allocator = temp;
+        for field_id : it {
+            for ctid : ALL_COMPONENT_TYPE_IDS {
+                if ctid.unique_id == field_id {
+                    array_add(*ctid_list, ctid);
+                }
+            }
+        }
+
+        for ctid_list {
+            broadcast_on_component_add(world, entity, it);
+        }
     }
 }
 

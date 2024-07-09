@@ -10,6 +10,10 @@ State_Snapshot :: struct {
     // any synchronized state for those components is included in the state table
     new_nodes: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
+    // for any nodes that
+    removed_fields: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    added_fields: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+
     removed_nodes: [..] Node_ID;
 
     time: float;

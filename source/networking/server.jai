@@ -97,6 +97,46 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
 
         entry := table_add(*result.new_nodes, it, types);
     }
+
+    // find any newly added components in this delta
+    for a.state {
+        node_id := it_index;
+        state_a := it;
+
+        state_b := table_find_pointer(*b.state, node_id);
+        if state_b == null {
+            assert(array_find(removed_nodes, node_id, compare_node_id));
+            continue;
+        }
+
+        for state_a.fields {
+            field_id := it_index;
+            if !table_contains(*state_b.fields, field_id) {
+                removed_fields := find_or_add(*result.removed_fields, node_id);
+                array_add(removed_fields, field_id);
+            }
+        }
+    }
+
+    // find any removed components in this delta
+    for b.state {
+        node_id := it_index;
+        state_b := it;
+
+        state_a := table_find_pointer(*a.state, node_id);
+        if state_a == null {
+            assert(array_find(added_nodes, node_id, compare_node_id));
+            continue;
+        }
+
+        for state_b.fields {
+            field_id := it_index;
+            if !table_contains(*state_a.fields, field_id) {
+                added_fields := find_or_add(*result.added_fields, node_id);
+                array_add(added_fields, field_id);
+            }
+        }
+    }
     
     // reset the list of nodes that were added/removed during this delta
     added_nodes.count = 0;
