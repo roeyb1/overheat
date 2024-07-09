@@ -667,7 +667,7 @@ networking_bytes_received_stats: [..] float;
 client_update :: (client: *Client) {
     bytes_recv_this_frame : *float = null;
 
-    estimated_server_time := last_known_server_time + (xx seconds_since_init() - last_received_server_time) + (get_connection_stats().m_nPing / 2000.);
+    estimated_server_time := last_known_server_time + (xx seconds_since_init() - last_received_server_time) + 2 * (get_connection_stats().m_nPing / 1000.);
 
     if estimated_server_time - smooth_server_time > 0.1 {
         smooth_server_time = estimated_server_time;
