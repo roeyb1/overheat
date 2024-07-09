@@ -218,6 +218,7 @@ add_component :: (world: *World, entity: Entity, ctid: Component_Type_ID, broadc
     if world.should_defer {
         ptr := talloc(ctid.runtime_size);
         array_add(*world.deferred_ops, .{type = .ADD_COMPONENT, entity = entity, type_id = ctid, component_data = ptr});
+        if broadcast broadcast_on_component_add(world, entity, ctid);
         return ptr;
     }
     
