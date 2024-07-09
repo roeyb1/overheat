@@ -35,7 +35,15 @@ State_Snapshot_Packet_Data :: struct {
         fields: [..] Node_Field;
     }
 
+    Field_Pair :: struct {
+        node_id: Node_ID;
+
+        field_ids: [..] u64;
+    }
+
     state_pairs: [..] State_Pair;
+    added_field_pairs: [..] Field_Pair;
+    removed_field_pairs: [..] Field_Pair;
 
     New_Pair :: struct {
         node_id: Node_ID;
@@ -109,6 +117,19 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet_Data {
         pair.node_id = it_index;
         pair.component_types = it;
     }
+
+    for snapshot.added_fields {
+        pair := array_add(*result.added_field_pairs);
+        pair.node_id = it_index;
+
+        array_copy(*pair.field_ids, it);
+    }
+    for snapshot.removed_fields {
+        pair := array_add(*result.removed_field_pairs);
+        pair.node_id = it_index;
+
+        array_copy(*pair.field_ids, it);
+    }
     result.time = xx seconds_since_init();
     return result;
 }
@@ -130,6 +151,17 @@ from_packet :: (packet: State_Snapshot_Packet_Data) -> State_Snapshot {
     }
     for packet.newly_added {
         new_entry := table_add(*result.new_nodes, it.node_id, it.component_types);
+    }
+
+    for packet.added_field_pairs {
+        fields: [..] u64;
+        array_copy(*fields, it.field_ids);
+        new_entry := table_add(*result.added_fields, it.node_id, fields);
+    }
+    for packet.removed_field_pairs {
+        fields: [..] u64;
+        array_copy(*fields, it.field_ids);
+        new_entry := table_add(*result.removed_fields, it.node_id, fields);
     }
 
     return result;

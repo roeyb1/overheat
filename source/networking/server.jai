@@ -98,7 +98,7 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
         entry := table_add(*result.new_nodes, it, types);
     }
 
-    // find any newly added components in this delta
+    // find any removed components in this delta
     for a.state {
         node_id := it_index;
         state_a := it;
@@ -118,7 +118,7 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
         }
     }
 
-    // find any removed components in this delta
+    // find any newly added components in this delta
     for b.state {
         node_id := it_index;
         state_b := it;
