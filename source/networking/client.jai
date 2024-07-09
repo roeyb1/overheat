@@ -407,8 +407,7 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
                 for 0..q.count-1 {
                     state, success := table_find(*snapshot.state, networking_ids[it].id);
                     // it's fine if we don't have an entry for the entity, since it may not exist on the client yet
-                    // @todo: this should really be an assert tho
-                    if !success then continue;
+                    assert(success);
 
                     field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
                     assert(field != null);

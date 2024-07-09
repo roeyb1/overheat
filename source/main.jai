@@ -75,34 +75,36 @@ client_main :: () {
         execute(*g_world, .OnLoad);
         execute(*g_world, .PostLoad);
 
-        expected_tick := get_ticks_from_time(smooth_server_time);
-        while g_current_tick < expected_tick {
-            last_prediction_time = seconds_since_init();
+        if g_client.local_client_id != INVALID_NODE_ID {
+            expected_tick := get_ticks_from_time(smooth_server_time);
+            while g_current_tick < expected_tick {
+                last_prediction_time = seconds_since_init();
 
-            scoped_smooth_timer(*g_sim_timer, 1. / 16.);
-            scoped_guard(*g_only_simulate_local_player, true);
+                scoped_smooth_timer(*g_sim_timer, 1. / 16.);
+                scoped_guard(*g_only_simulate_local_player, true);
 
-            if current_prediction().tick != 0 {
-                apply_prediction_state(*g_world, current_prediction());
+                if current_prediction().tick != 0 {
+                    apply_prediction_state(*g_world, current_prediction());
+                }
+                g_current_tick += 1;
+
+                execute(*g_world, .PreUpdate);
+                execute(*g_world, .OnUpdate);
+                execute(*g_world, .OnValidate);
+                execute(*g_world, .PostUpdate);
+
+                push_new_prediction(generate_prediction_snapshot(*g_world));
             }
-            g_current_tick += 1;
 
-            execute(*g_world, .PreUpdate);
-            execute(*g_world, .OnUpdate);
-            execute(*g_world, .OnValidate);
-            execute(*g_world, .PostUpdate);
+            if server_snapshots.count >= 2 && previous_snapshot().tick != 0 && current_snapshot().tick != 0 {
+                server_interp_alpha := clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
+                interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
+            }
 
-            push_new_prediction(generate_prediction_snapshot(*g_world));
-        }
-
-        if previous_snapshot().tick != 0 && current_snapshot().tick != 0 {
-            server_interp_alpha := clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
-            interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
-        }
-
-        prediction_alpha := clamp(cast(float)(seconds_since_init() - last_prediction_time) / FIXED_TIMESTEP, 0, 1);
-        if previous_prediction().tick != 0 && current_prediction().tick != 0 {
-            interpolate_prediction_state(*g_world, previous_prediction(), current_prediction(), prediction_alpha);
+            prediction_alpha := clamp(cast(float)(seconds_since_init() - last_prediction_time) / FIXED_TIMESTEP, 0, 1);
+            if previous_prediction().tick != 0 && current_prediction().tick != 0 {
+                interpolate_prediction_state(*g_world, previous_prediction(), current_prediction(), prediction_alpha);
+            }
         }
 
         {
