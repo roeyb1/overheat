@@ -59,6 +59,7 @@ show_stats_overlay :: () {
 
         ImGui.NewLine();
         ImGui.Text("Networking Stats");
+        ImGui.Checkbox("Client-Side Prediction", *g_enable_prediction);
         networking_stats := get_connection_stats();
         ImGui.Text("Server tick rate: % tps",  1. / FIXED_TIMESTEP);
         ImGui.Text("Ping: % ms", networking_stats.m_nPing);

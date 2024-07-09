@@ -72,37 +72,40 @@ client_main :: () {
         }
 
         execute(*g_world, .Init);
-        execute(*g_world, .OnLoad);
-        execute(*g_world, .PostLoad);
 
         if g_client.local_client_id != INVALID_NODE_ID {
             expected_tick := get_ticks_from_time(smooth_server_time);
             while g_current_tick < expected_tick {
-                last_prediction_time = seconds_since_init();
+                last_prediction_time = smooth_server_time;
 
                 scoped_smooth_timer(*g_sim_timer, 1. / 16.);
                 scoped_guard(*g_only_simulate_local_player, true);
 
-                if current_prediction().tick != 0 {
+                if g_enable_prediction && is_prediction_valid(0) {
                     apply_prediction_state(*g_world, current_prediction());
                 }
                 g_current_tick += 1;
 
-                execute(*g_world, .PreUpdate);
-                execute(*g_world, .OnUpdate);
-                execute(*g_world, .OnValidate);
-                execute(*g_world, .PostUpdate);
+                execute(*g_world, .OnLoad);
+                execute(*g_world, .PostLoad);
 
-                push_new_prediction(generate_prediction_snapshot(*g_world));
+                if g_enable_prediction {
+                    execute(*g_world, .PreUpdate);
+                    execute(*g_world, .OnUpdate);
+                    execute(*g_world, .OnValidate);
+                    execute(*g_world, .PostUpdate);
+
+                    push_new_prediction(generate_prediction_snapshot(*g_world));
+                }
             }
 
             if server_snapshots.count >= 2 && previous_snapshot().tick != 0 && current_snapshot().tick != 0 {
-                server_interp_alpha := clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
+                server_interp_alpha := clamp(cast(float)(server_interp_time - last_known_server_time) / FIXED_TIMESTEP, 0, 1);
                 interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
             }
 
-            prediction_alpha := clamp(cast(float)(seconds_since_init() - last_prediction_time) / FIXED_TIMESTEP, 0, 1);
-            if previous_prediction().tick != 0 && current_prediction().tick != 0 {
+            if g_enable_prediction && is_prediction_valid(-1) && is_prediction_valid(0) {
+                prediction_alpha := clamp(cast(float)(smooth_server_time - last_prediction_time) / FIXED_TIMESTEP, 0, 1);
                 interpolate_prediction_state(*g_world, previous_prediction(), current_prediction(), prediction_alpha);
             }
         }
