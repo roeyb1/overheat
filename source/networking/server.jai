@@ -1,18 +1,13 @@
-SNAPSHOT_RING_SIZE :: 16;
-snapshot_ring: [SNAPSHOT_RING_SIZE] State_Snapshot;
+snapshot_ring: [TICK_RATE * 2] State_Snapshot;
+per_player_input_rings: Table(Node_ID, [..] Player_Commands, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
 push_new_snapshot :: (snapshot: State_Snapshot) {
-    g_sim_frame_number += 1;
-
     free(get_snapshot(0));
     get_snapshot(0).* = snapshot;
 }
 
 get_snapshot :: (offset_from_current: s32) -> *State_Snapshot {
-    index := (g_sim_frame_number - offset_from_current) % SNAPSHOT_RING_SIZE;
-    if index < 0 {
-        index += (SNAPSHOT_RING_SIZE - 1);
-    }
+    index := ((cast(s64)g_current_tick) + offset_from_current) % snapshot_ring.count;
     return *snapshot_ring[index];
 }
 
@@ -26,6 +21,8 @@ current_snapshot :: () -> *State_Snapshot {
 
 generate_full_snapshot :: (world: *World) -> State_Snapshot {
     result: State_Snapshot;
+    result.time = xx seconds_since_init();
+    result.tick = g_current_tick;
 
     // always send over component id list for every entity in the world if it's a full snapshot
     for entity_node_id_table {
@@ -82,6 +79,8 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
 
 generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot) -> State_Snapshot {
     result: State_Snapshot;
+    result.time = xx seconds_since_init();
+    result.tick = g_current_tick;
     
     array_append(*result.removed_nodes, removed_nodes);
 
@@ -208,6 +207,10 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_commands := get_component(*g_world, entity, Player_Commands);
             assert(player_commands != null);
             << player_commands = player_commands_packet.commands;
+
+            input_ring, success := table_find(*per_player_input_rings, player_commands_packet.node_id);
+            assert(success);
+            input_ring[player_commands_packet.tick % input_ring.count] = <<player_commands;
         case;
     }
 }
@@ -434,16 +437,19 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
 
+            player_input_ring: [..] Player_Commands;
+            array_resize(*player_input_ring, TICK_RATE * 2);
+            table_add(*per_player_input_rings, new_networking_id, player_input_ring);
+
             init_player(new_networking_id, g_player_start);
 
             // Indicate to the newly joined player what it's ID is
             {
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.node_id = new_networking_id;
-                conn_established.sequence_number = g_sim_frame_number;
 
                 snapshot := generate_full_snapshot(*g_world);
-                conn_established.initial_snapshot = to_packet(snapshot);
+                conn_established.initial_snapshot.data = to_packet(snapshot);
 
                 networking_send_packet(*new_client, *conn_established);
                 free(*snapshot);

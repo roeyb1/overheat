@@ -63,8 +63,9 @@ on_entity_end_networking :: (world: *World, entity: Entity) {
 PacketType :: enum u8 #specified {
     INVALID                 :: 0;
     CONNECTION_ESTABLISHED  :: 1;
-    PLAYER_COMMANDS         :: 4;
-    SNAPSHOT                :: 6;
+    PLAYER_COMMANDS         :: 2;
+    SNAPSHOT                :: 3;
+    PLAYER_DELTA            :: 4;
 }
 
 /** Packet sent from the server to the client assigning it a player id. */
@@ -80,8 +81,14 @@ Player_Commands_Packet :: struct {
     PACKET_TYPE :: PacketType.PLAYER_COMMANDS;
 
     node_id: Node_ID;
+    tick: u32;
     commands: Player_Commands;
 }
+
+get_ticks_from_time :: (time: float) -> u32 {
+    return xx ceil(time * TICK_RATE);
+}
+
 
 networking_init :: () -> bool {
     log("Initializing networking systems...");
@@ -122,7 +129,7 @@ networking_init :: () -> bool {
     }
 
 
-    log("Networking systems initialized successfully");
+    log("Initialized networking system with a TPS of % and fixed timestep of % s", TICK_RATE, FIXED_TIMESTEP);
     return true;
 }
 
