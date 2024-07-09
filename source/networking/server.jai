@@ -211,7 +211,6 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             input_ring, success := table_find(*per_player_input_rings, player_commands_packet.node_id);
             assert(success);
             input_ring[player_commands_packet.tick % input_ring.count] = <<player_commands;
-            log("frame: %  recv player input %", player_commands_packet.tick, <<player_commands);
         case;
     }
 }

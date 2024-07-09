@@ -12,7 +12,7 @@ last_time: float64;
 g_sim_timer: float64 = 0.016;
 g_render_timer: float64 = 0.016;
 
-TICK_RATE :: 10;
+TICK_RATE :: 64;
 FIXED_TIMESTEP :: 1. / TICK_RATE;
 
 g_should_exit: bool = false;
@@ -86,7 +86,6 @@ client_main :: () {
                 apply_prediction_state(*g_world, current_prediction());
             }
             g_current_tick += 1;
-            log("Frame %", g_current_tick);
 
             execute(*g_world, .PreUpdate);
             execute(*g_world, .OnUpdate);
@@ -96,7 +95,7 @@ client_main :: () {
             push_new_prediction(generate_prediction_snapshot(*g_world));
         }
 
-        if server_snapshots.count > 1 {
+        if previous_snapshot().tick != 0 && current_snapshot().tick != 0 {
             server_interp_alpha := clamp(cast(float)(seconds_since_init() - last_snapshot_time) / FIXED_TIMESTEP, 0, 1);
             interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
         }
@@ -171,7 +170,6 @@ server_main :: () {
                 player_state_update.data = snapshot_packet;
                 player_state_update.input = input_ring[g_current_tick % input_ring.count];
                 networking_send_packet(it, *player_state_update);
-                input_ring[player_commands_packet.tick % input_ring.count].set = false;
             }
 
             free(*delta);
