@@ -98,45 +98,35 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
         entry := table_add(*result.new_nodes, it, types);
     }
 
-    // find any removed components in this delta
-    for a.state {
-        node_id := it_index;
-        state_a := it;
+    /** Find fields that are in snapshot a but not in b. Any nodes in the expected_missing list will not assert if they are missing from the second state */
+    find_missing_fields :: (a: State_Snapshot, b: State_Snapshot, expected_missing: [] Node_ID) -> Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id) {
+        result: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
-        state_b := table_find_pointer(*b.state, node_id);
-        if state_b == null {
-            assert(array_find(removed_nodes, node_id, compare_node_id));
-            continue;
-        }
+        // find any removed components in this delta
+        for a.state {
+            node_id := it_index;
+            state_a := it;
 
-        for state_a.fields {
-            field_id := it_index;
-            if !table_contains(*state_b.fields, field_id) {
-                removed_fields := find_or_add(*result.removed_fields, node_id);
-                array_add(removed_fields, field_id);
+            state_b := table_find_pointer(*b.state, node_id);
+            if state_b == null {
+                assert(array_find(expected_missing, node_id, compare_node_id));
+                continue;
+            }
+
+            for state_a.fields {
+                field_id := it_index;
+                if !table_contains(*state_b.fields, field_id) {
+                    diff_fields := find_or_add(*result, node_id);
+                    array_add(diff_fields, field_id);
+                }
             }
         }
+
+        return result;
     }
 
-    // find any newly added components in this delta
-    for b.state {
-        node_id := it_index;
-        state_b := it;
-
-        state_a := table_find_pointer(*a.state, node_id);
-        if state_a == null {
-            assert(array_find(added_nodes, node_id, compare_node_id));
-            continue;
-        }
-
-        for state_b.fields {
-            field_id := it_index;
-            if !table_contains(*state_a.fields, field_id) {
-                added_fields := find_or_add(*result.added_fields, node_id);
-                array_add(added_fields, field_id);
-            }
-        }
-    }
+    result.removed_fields = find_missing_fields(a, b, expected_missing = removed_nodes);
+    result.added_fields = find_missing_fields(b, a, expected_missing = added_nodes);
     
     // reset the list of nodes that were added/removed during this delta
     added_nodes.count = 0;

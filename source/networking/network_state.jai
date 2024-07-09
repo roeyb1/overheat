@@ -84,6 +84,20 @@ free :: (snapshot: *State_Snapshot) {
         }
         deinit(*it.fields);
     }
+    for snapshot.added_fields {
+        fields := it;
+        for it {
+            array_free(fields);
+        }
+    }
+    deinit(*snapshot.added_fields);
+    for snapshot.removed_fields {
+        fields := it;
+        for it {
+            array_free(fields);
+        }
+    }
+    deinit(*snapshot.removed_fields);
     for snapshot.new_nodes {
         array_reset(*it);
     }
@@ -97,6 +111,8 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet_Data {
     result.newly_added.allocator = temp;
     result.removed.allocator = temp;
     result.state_pairs.allocator = temp;
+    result.added_field_pairs.allocator = temp;
+    result.removed_field_pairs.allocator = temp;
     result.time = snapshot.time;
     result.tick = snapshot.tick;
 

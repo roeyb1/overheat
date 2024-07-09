@@ -719,8 +719,11 @@ networking_bytes_received_stats: [..] float;
 client_update :: (client: *Client) {
     bytes_recv_this_frame : *float = null;
 
+    // estimate what the server time _will be_ when it processes a packet if we send it now:
     estimated_server_time := last_known_server_time + (xx seconds_since_init() - last_received_server_time) + 2 * (get_connection_stats().m_nPing / 1000.);
 
+    // smoothly maintain the server time between +- 0.1s of the actual server time
+    #assert(FIXED_TIMESTEP < 0.1);
     if estimated_server_time - smooth_server_time > 0.1 {
         smooth_server_time = estimated_server_time;
         log("Estimated server time fell too far behind, snapping forward.");
