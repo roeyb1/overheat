@@ -20,6 +20,8 @@ last_received_server_time: float;
 
 smooth_server_time: float;
 
+g_enable_prediction: bool = true;
+
 previous_snapshot :: () -> *State_Snapshot {
     return *server_snapshots[0];
 }
@@ -34,18 +36,21 @@ push_new_prediction :: (snapshot: State_Snapshot) {
 }
 
 get_prediction :: (offset_from_current: s32) -> *State_Snapshot {
+    assert(g_enable_prediction);
     previous_tick := cast(s64) g_current_tick + offset_from_current;
     index := (previous_tick) % prediction_ring.count;
     return *prediction_ring[index];
 }
 
 previous_prediction :: () -> *State_Snapshot {
+    assert(g_enable_prediction);
     result := get_prediction(-1);
     assert(result.tick == 0 || cast(s32) result.tick == cast(s32) g_current_tick - 1);
     return result;
 }
 
 current_prediction :: () -> *State_Snapshot {
+    assert(g_enable_prediction);
     result := get_prediction(0);
     assert(result.tick == 0 || result.tick == g_current_tick);
     return result;
@@ -178,6 +183,8 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
 }
 
 generate_prediction_snapshot :: (world: *World) -> State_Snapshot {
+    assert(g_enable_prediction, "We're trying to apply prediction when prediction is disabled");
+
     result: State_Snapshot;
     result.tick = g_current_tick;
     result.time = xx seconds_since_init();
@@ -270,7 +277,7 @@ interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapsho
                         for member : type_info(%1).members {
                             if has_note(*member, "Interp") {
                                 if has_note(*member, "Predict") {
-                                    sbprint(*sb, "if networking_ids[it].id != g_client.local_client_id then datas[it].%%1 = lerp(a_data.%%1, b_data.%%1, alpha);", member.name);
+                                    sbprint(*sb, "if (!g_enable_prediction || networking_ids[it].id != g_client.local_client_id) then datas[it].%%1 = lerp(a_data.%%1, b_data.%%1, alpha);", member.name);
                                 } else {
                                     sbprint(*sb, "datas[it].%%1 = lerp(a_data.%%1, b_data.%%1, alpha);", member.name);
                                 }
@@ -305,6 +312,7 @@ interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapsho
 }
 
 interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snapshot, alpha: float) {
+    assert(g_enable_prediction);
     assert(a.tick != 0 && b.tick != 0);
     #insert -> string {
         INSERT_STRING :: #string DONE 
@@ -556,7 +564,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
                     field.only_note = "Sync";
 
                     // skip applying delta snapshots for data which is locally predicted
-                    if networking_ids[it].id == g_client.local_client_id then field.skip_note = "Predict";
+                    if g_enable_prediction && networking_ids[it].id == g_client.local_client_id then field.skip_note = "Predict";
 
                     field.cursor = 0;
 
@@ -630,7 +638,9 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
 }
 
 apply_prediction_state :: (world: *World, snapshot: State_Snapshot) {
+    assert(g_enable_prediction);
     assert(snapshot.tick != 0);
+
     #insert -> string {
         INSERT_STRING :: #string DONE 
             for q : make_iter(world, Networking_ID, %1) {
