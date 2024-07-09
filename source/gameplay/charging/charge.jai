@@ -1,9 +1,14 @@
 
 Test_Timebased_State :: struct @Component {}
 
-Wind_Up :: struct @Component {}
+Wind_Up :: struct @Component {
+    // this member + tag is unfortunately needed or the component won't be tracked by the snapshot system and addition of the component will not be replicated
+    placeholder: bool; @Sync 
+}
 
-Slam :: struct @Component {}
+Slam :: struct @Component {
+    placeholder: bool; @Sync
+}
 
 
 
@@ -34,6 +39,7 @@ test_timebased_state :: (world: *World, entity: Entity) {
         slam := #run component_type_id(Slam);
 
         if is_valid(world,parent){
+            assert(get_component(world, parent, Player) != null);
             if has_component(world,parent,slam) {
                 remove_component(world,parent,Slam);
             }
