@@ -47,15 +47,23 @@ get_prediction :: (offset_from_current: s32) -> *State_Snapshot {
 previous_prediction :: () -> *State_Snapshot {
     assert(g_enable_prediction);
     result := get_prediction(-1);
-    assert(result.tick == 0 || cast(s32) result.tick == cast(s32) g_current_tick - 1);
     return result;
 }
 
 current_prediction :: () -> *State_Snapshot {
     assert(g_enable_prediction);
     result := get_prediction(0);
-    assert(result.tick == 0 || result.tick == g_current_tick);
     return result;
+}
+
+is_prediction_valid :: (offset_from_current: s32) -> bool {
+    if !g_enable_prediction return false;
+
+    pred := get_prediction(offset_from_current);
+
+    if pred.tick == 0 || (cast(s64) pred.tick) != (cast(s64)g_current_tick + offset_from_current) then return false;
+
+    return true;
 }
 
 client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
