@@ -19,6 +19,8 @@ last_known_server_time: float;
 last_received_server_time: float;
 
 smooth_server_time: float;
+ping: float;
+server_interp_time: float;
 
 g_enable_prediction: bool = true;
 
@@ -729,7 +731,8 @@ client_update :: (client: *Client) {
     bytes_recv_this_frame : *float = null;
 
     // estimate what the server time _will be_ when it processes a packet if we send it now:
-    estimated_server_time := last_known_server_time + (xx seconds_since_init() - last_received_server_time) + 2 * (get_connection_stats().m_nPing / 1000.);
+    ping = get_connection_stats().m_nPing / 1000.;
+    estimated_server_time := last_known_server_time + (xx seconds_since_init() - last_received_server_time) + 2 * ping;
 
     // smoothly maintain the server time between +- 0.1s of the actual server time
     #assert(FIXED_TIMESTEP < 0.1);
@@ -741,6 +744,9 @@ client_update :: (client: *Client) {
     } else if estimated_server_time < smooth_server_time {
         smooth_server_time += g_delta_time * 0.97;
     }
+
+    //server_interp_time = last_known_server_time + (xx seconds_since_init() - last_received_server_time);
+    server_interp_time = smooth_server_time - 2 * ping;
 
     while !client.should_disconnect {
         incoming_msgs: [8] *NetworkingMessage;
