@@ -8,6 +8,7 @@
 #load "singletons.jai";
 #load "charging/charge.jai";
 #load "duration.jai";
+#load "cooldown.jai";
 #load "systems.jai";
 
 #if CLIENT {

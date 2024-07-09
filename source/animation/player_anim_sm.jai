@@ -50,8 +50,14 @@ update_player_anim_state :: (q: Query) {
     for 0..q.count-1 {
         current_state := anim_states[it].state;
 
-        if player_commands[it].main_attack && current_state != .ATTACK {
+        //@TODO be mindfull of this
+        if get_component(q.world, q.entities[it], Wind_Up) {
+            log("hihi haha");
             anim_states[it].state = .ATTACK_WIND_UP;
+            transition_to_state(q.world, *anims[it], anim_states[it]);
+        }
+         if get_component(q.world, q.entities[it], Slam) {
+            anim_states[it].state = .ATTACK;
             transition_to_state(q.world, *anims[it], anim_states[it]);
         }
         if current_state == {
@@ -65,22 +71,8 @@ update_player_anim_state :: (q: Query) {
                     anim_states[it].state = .IDLE;
                     transition_to_state(q.world, *anims[it], anim_states[it]);
                 }
-            case .ATTACK_WIND_UP;
-                if anims[it].finished then {
-                    anim_states[it].state = .ATTACK;
-                    transition_to_state(q.world, *anims[it], anim_states[it]);
-                }
-            case .ATTACK;
-                if anims[it].finished then {
-                    if equals(length_squared(velocities[it]), 0) {
-                        anim_states[it].state = .IDLE;
-                        transition_to_state(q.world, *anims[it], anim_states[it]);
-                    } else {
-                        anim_states[it].state = .WALK;
-                        transition_to_state(q.world, *anims[it], anim_states[it]);
-                    }
-                }
         }
+        
     }
 } @System(PreRender) @Write(Player_Animation,Sprite_Animator) @Read(Player,Player_Commands,Velocity)
 

@@ -44,6 +44,7 @@ Player_Bundle :: struct @Bundle {
     health: Health;
     networking_id: Networking_ID;
     remote: Remote_Player;
+    cooldown: Cooldown;
 }
 
 init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
@@ -62,6 +63,7 @@ init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
         health = .{90., 100.},
         networking_id = .{node_id},
+        cooldown = .{base_value=1.},
     });
 
     return entity;
