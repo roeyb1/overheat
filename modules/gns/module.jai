@@ -2129,4 +2129,4 @@ GlobalInterfaceWrapper :: inline ($pp : **$T) -> *T
 
 #if      OS == .WINDOWS lib ::  #library,no_dll "win/GameNetworkingSockets";
 else #if OS == .LINUX   lib ::  #library        "linux/libGameNetworkingSockets"; // UNTESTED
-else #if OS == .MACOS   lib ::  #library        "mac/GameNetworkingSockets";      // UNTESTED
+else #if OS == .MACOS   lib ::  #library        "mac/libGameNetworkingSockets";      // UNTESTED
