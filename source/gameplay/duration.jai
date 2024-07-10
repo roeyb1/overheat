@@ -1,5 +1,5 @@
 Duration :: struct @Component {
-    value: float = 1.;
+    value: float = 0.5;
 }
 
 update_duration :: (q: Query) {

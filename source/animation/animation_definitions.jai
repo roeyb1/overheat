@@ -23,3 +23,11 @@ Animation_Definition :: struct {
 
     directional_mode: Anim_Direction_Mode;
 }
+
+Interuptor_Anim_Slot :: struct @Component {
+    anim_list_index: Anim_List_Index; @Sync
+    active: bool; @Sync
+}
+
+
+#load "player_animation_list.jai";

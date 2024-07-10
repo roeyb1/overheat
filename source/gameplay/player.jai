@@ -45,6 +45,7 @@ Player_Bundle :: struct @Bundle {
     networking_id: Networking_ID;
     remote: Remote_Player;
     cooldown: Cooldown;
+    anim_info: Interuptor_Anim_Slot;
 }
 
 init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
@@ -98,6 +99,10 @@ update_local_player_commands_from_input :: (q: Query) {
 
         if is_button_down(input_states, .MAIN_ATTACK) {
             player_commands[it].main_attack = true;
+        }
+
+        if is_button_down(input_states, .SECONDARY_ATTACK) {
+            player_commands[it].secondary_attack = true;
         }
     }
 } @System(PostLoad) @Write(Player_Commands) @Read(Local_Player,Input_States)
