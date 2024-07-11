@@ -3,6 +3,7 @@ Charging :: struct @Component {}
 Charging_Bundle :: struct @Bundle {
     anim_list_index: Anim_List_Index; //animation that will run during the charge 
     duration: Duration; //duration component, will make the charge kill itself after a duration
+    energy_cost: Energy_Cost; // needs to be put after the duration componenent @TODO we need a way of executing events in a specific order other then in the bundle this is error prone and cringe to debug
     charging: Charging; //tag must be put at end so the event fires when there is data
 }
 
@@ -10,7 +11,8 @@ new_charge :: (world: *World, entity: Entity, charge_info: Charge) {
     child := spawn_child_entity(world, entity);
     add_components_from_bundle(world, child, Charging_Bundle.{
         anim_list_index.value = charge_info.anim_list_index,
-        duration.value = charge_info.duration
+        duration.value = charge_info.duration,
+        energy_cost.total = charge_info.energy_cost
     });   
 }
 
@@ -23,9 +25,19 @@ start_charging :: (world: *World, entity: Entity) {
     }
 } @Event(EcsOnAdd,Charging)
 
+update_charging :: (q: Query) {
+    energy_costs := query_get(q, Energy_Cost);
 
-
-
+    for 0..q.count-1 {
+        parent := get_parent(q.world, q.entities[it]);
+        if is_valid(q.world,parent){
+            health_queue := get_component(q.world, parent, Health_Change_Queue);
+            if health_queue {
+                drain_energy_per_tick(health_queue,energy_costs[it]);
+            }
+        }
+    }
+} @System(OnUpdate) @Write() @Read(Energy_Cost) 
 
 //tmp
 test_attack :: (q: Query) {
@@ -68,7 +80,7 @@ test_attack2 :: (q: Query) {
 } @System(OnUpdate) @Write() @Read(Player,Player_Commands,Position,Cooldown) 
 
 #load "charges.jai";
-
+#load "energy_cost.jai";
 
 
 

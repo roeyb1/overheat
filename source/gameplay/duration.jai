@@ -1,5 +1,6 @@
 Duration :: struct @Component {
     value: float = 0.5;
+    base_value: float;
 }
 
 update_duration :: (q: Query) {
@@ -13,3 +14,8 @@ update_duration :: (q: Query) {
         }
     }
 } @System(OnValidate) @Write(Duration) @Read() 
+
+set_base_duration :: (world: *World, entity: Entity) {
+    duration := get_component(world, entity, Duration);
+    duration.base_value = duration.value;
+} @Event(EcsOnAdd,Duration)

@@ -42,6 +42,7 @@ Player_Bundle :: struct @Bundle {
     sprite: Sprite;
     collider: Collider_AABB;
     health: Health;
+    health_change_queue: Health_Change_Queue;
     networking_id: Networking_ID;
     remote: Remote_Player;
     cooldown: Cooldown;
