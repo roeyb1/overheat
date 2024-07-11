@@ -38,6 +38,7 @@ update_player_anim_state :: (q: Query) {
         anim_info := get_component(q.world, q.entities[it], Interuptor_Anim_Slot);
         if anim_info.active {
             anim_info.active = false;
+            log("%",anim_info.runtime);
 
             anim_states[it].state = .INTERUPTOR;
             play_animation(q.world, *anims[it], ANIMATION_LIST[anim_info.anim_list_index]);
@@ -55,7 +56,7 @@ update_player_anim_state :: (q: Query) {
                     transition_to_state(q.world, *anims[it], anim_states[it]);
                 }
             case .INTERUPTOR;
-                if anims[it].finished then {
+                if anim_info.runtime <= 0 then {
                     if equals(length_squared(velocities[it]), 0) {
                         anim_states[it].state = .IDLE;
                         transition_to_state(q.world, *anims[it], anim_states[it]);

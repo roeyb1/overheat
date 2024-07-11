@@ -1,35 +1,33 @@
+Charging :: struct @Component {}
 
-Test_Timebased_State :: struct @Component {}
-
-Interuptor_Anim_Slot_Bundle :: struct @Bundle {
-    anim_info: Interuptor_Anim_Slot;
-    test_timebased_state: Test_Timebased_State;
-    duration: Duration;
+Charging_Bundle :: struct @Bundle {
+    anim_list_index: Anim_List_Index; //animation that will run during the charge 
+    duration: Duration; //duration component, will make the charge kill itself after a duration
+    charging: Charging; //tag must be put at end so the event fires when there is data
 }
 
-//this should be generic ^^^, used because there is no delivery method atm
-Interuptor_Anim_Slot_Bundle_sword :: struct @Bundle {
-    sword: Sword;
-    anim_info: Interuptor_Anim_Slot;
-    test_timebased_state: Test_Timebased_State;
-    duration: Duration;
+new_charge :: (world: *World, entity: Entity, charge_info: Charge) {
+    child := spawn_child_entity(world, entity);
+    add_components_from_bundle(world, child, Charging_Bundle.{
+        anim_list_index.value = charge_info.anim_list_index,
+        duration.value = charge_info.duration
+    });   
 }
+
+start_charging :: (world: *World, entity: Entity) {
+    #if SERVER {
+        parent := get_parent(world, entity);
+        if is_valid(world,parent){
+            modify_interuptor_anim_slot(world, parent, entity);
+        }
+    }
+} @Event(EcsOnAdd,Charging)
+
+
+
+
+
 //tmp
-Interuptor_Anim_Slot_Bundle_bow :: struct @Bundle {
-    bow: Bow;
-    anim_info: Interuptor_Anim_Slot;
-    test_timebased_state: Test_Timebased_State;
-    duration: Duration;
-}
-//tmp
-Sword :: struct @Component {
-    placeholder: bool; @Sync
-}
-//tmp
-Bow :: struct @Component {
-    placeholder: bool; @Sync
-}
-
 test_attack :: (q: Query) {
     #if SERVER {
         player_commands := query_get(q, Player_Commands);
@@ -41,18 +39,15 @@ test_attack :: (q: Query) {
             if attacking {
                 if cooldowns[it].current_value <= 0 {
                     cooldowns[it].current_value = cooldowns[it].base_value;
-                    log("yummy lemonade");
-                    child := spawn_child_entity(q.world, q.entities[it]);
-                    add_components_from_bundle(q.world, child, Interuptor_Anim_Slot_Bundle_sword.{
-                        anim_info.anim_list_index = .WIND_UP,
-                    });
-
+                    
+                    new_charge(q.world,q.entities[it],sword);
                 }
             }
         }
     }
-} @System(PreUpdate) @Write() @Read(Player,Player_Commands,Position,Cooldown) 
+} @System(OnUpdate) @Write() @Read(Player,Player_Commands,Position,Cooldown) 
 
+//tmp
 test_attack2 :: (q: Query) {
     #if SERVER {
         player_commands := query_get(q, Player_Commands);
@@ -64,59 +59,15 @@ test_attack2 :: (q: Query) {
             if attacking {
                 if cooldowns[it].current_value <= 0 {
                     cooldowns[it].current_value = cooldowns[it].base_value;
-                    log("yummy pee");
-                    child := spawn_child_entity(q.world, q.entities[it]);
-                    add_components_from_bundle(q.world, child, Interuptor_Anim_Slot_Bundle_bow.{
-                        anim_info.anim_list_index = .BOW_WIND_UP,
-                    });
-
+                    
+                    new_charge(q.world,q.entities[it],bow);
                 }
             }
         }
     }
-} @System(PreUpdate) @Write() @Read(Player,Player_Commands,Position,Cooldown) 
+} @System(OnUpdate) @Write() @Read(Player,Player_Commands,Position,Cooldown) 
 
-test_timebased_state :: (world: *World, entity: Entity) {
-    #if SERVER {
-        parent := get_parent(world, entity);
-        if is_valid(world,parent){
-            assert(get_component(world, parent, Player) != null);
-            anim_info := get_component(world, entity, Interuptor_Anim_Slot);
-            info := get_component(world,parent,Interuptor_Anim_Slot);
-            info.anim_list_index = anim_info.anim_list_index;
-            info.active = true;
-        }
-    }
-} @Event(EcsOnAdd,Test_Timebased_State)
-
-//tmp
-sword_swing :: (world: *World, entity: Entity) {
-    #if SERVER {
-        parent := get_parent(world, entity);
-        if (get_component(world,parent,Interuptor_Anim_Slot)){
-            child := spawn_child_entity(world, parent);
-            add_components_from_bundle(world, child, Interuptor_Anim_Slot_Bundle.{
-                anim_info.anim_list_index = .ATTACK,
-            });
-        }
-    }
-} @Event(EcsOnRemove,Sword)
-
-//tmp
-bow_swing :: (world: *World, entity: Entity) {
-    #if SERVER {
-        parent := get_parent(world, entity);
-        if (get_component(world,parent,Interuptor_Anim_Slot)){
-            child := spawn_child_entity(world, parent);
-            add_components_from_bundle(world, child, Interuptor_Anim_Slot_Bundle.{
-                anim_info.anim_list_index = .BOW_ATTACK,
-            });
-        }
-    }
-} @Event(EcsOnRemove,Bow)
-
-
-
+#load "charges.jai";
 
 
 

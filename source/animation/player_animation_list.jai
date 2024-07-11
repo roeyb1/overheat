@@ -1,9 +1,13 @@
 //we should have a better way of accessing this info
-Anim_List_Index :: enum {
+Anim_List_Indecies :: enum {
     WIND_UP;
     ATTACK;
     BOW_WIND_UP;
     BOW_ATTACK;
+}
+
+Anim_List_Index :: struct @Component { 
+    value : Anim_List_Indecies; @Sync
 }
 
 ANIMATION_LIST :: Animation_Definition.[Windup,Attack,Bow_Windup,Bow_Attack];
@@ -12,7 +16,7 @@ Windup :: Animation_Definition .{
     frames = .[10],
     frame_duration = 0.09,
     name = "attack_wind_up",
-    flags = .LOOP,
+    flags = .NONE,
     directional_mode = .UNIQUE_SPRITES,
 };
 
