@@ -22,8 +22,29 @@ g_current_tick: u32 = 0;
 
 g_world: World;
 
+Program_Args :: struct {
+    ip: string = "127.0.0.1";
+    port: u16 = 27015;
+    host := false;
+}
+g_args: Program_Args;
+
+
 #if CLIENT {
+local_server_started := false;
+server_process: Process;
+
+start_local_server :: () {
+    assert(!local_server_started);
+    local_server_started = create_process(*server_process, "overheat-server", "-port", tprint("%", g_args.port));
+    assert(local_server_started);
+}
+
 client_main :: () {
+    if g_args.host {
+        start_local_server();
+    }
+
     window_system_init();
     imgui_init();
 
@@ -67,6 +88,9 @@ client_main :: () {
             }
             if ImGui.BeginPopupModal("Connecting...", null, .AlwaysAutoResize | .NoMove) {
                 ImGui.Text("Connecting to server...");
+                if !local_server_started && ImGui.Button("Host") {
+                    start_local_server();
+                }
                 ImGui.EndPopup();
             }
         }
@@ -189,6 +213,12 @@ server_main :: () {
 }
 
 main :: () {
+    {
+        success, args := parse_arguments(Program_Args);
+        assert(success, "failed to parse program arguments!");
+        g_args = args;
+    }
+
     log_initialize();
     register_events();
     execute_unit_tests();
@@ -236,6 +266,7 @@ using Basic :: #import "Basic";
 using Random :: #import "Random";
 #import "Sort";
 #import "File";
+#import "Process";
 
 #import "tracy"(IMPORT_MODE = .CLIENT);
 

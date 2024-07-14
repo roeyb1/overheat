@@ -104,19 +104,17 @@ networking_init :: () -> bool {
 
     Utils.SetDebugOutputFunction(.Msg, gns_debug_callback);
 
-    _, args, is_set_args := parse_arguments(NetworkingArgs);
-
     #if SERVER {
-        g_server.listen_port = args.port;
+        g_server.listen_port = g_args.port;
         if !server_init(*g_server) {
             log_error("Failed to initialize the server!");
             return false;
         }
         // If we're the server, ensure the local client always has the loopback endpoint - if there is one
-        args.ip = "127.0.0.1";
+        g_args.ip = "127.0.0.1"; 
     }
     #if CLIENT {
-        addr_str := tprint("%:%\0", args.ip, args.port);
+        addr_str := tprint("%:%\0", g_args.ip, g_args.port);
         if !IPAddr.ParseString(*g_client.endpoint, xx addr_str.data) {
             log_error("Invalid local ip address %", addr_str);
             return false;
@@ -127,7 +125,6 @@ networking_init :: () -> bool {
             return false;
         }
     }
-
 
     log("Initialized networking system with a TPS of % and fixed timestep of % s", TICK_RATE, FIXED_TIMESTEP);
     return true;
@@ -146,12 +143,6 @@ networking_update :: () {
 }
 
 #scope_file
-
-NetworkingArgs :: struct {
-    server := false;
-    ip := "127.0.0.1";
-    port: u16 = 27015;
-}
 
 gns_debug_callback :: (level: DebugOutputLevel, msg: *s8) -> void #c_call {
     new_ctx: Context;
