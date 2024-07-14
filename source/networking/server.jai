@@ -1,14 +1,26 @@
 snapshot_ring: [TICK_RATE * 2] State_Snapshot;
+snapshot_allocators: [TICK_RATE * 2] Pool;
+
 per_player_input_rings: Table(Node_ID, [..] Player_Commands, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
-push_new_snapshot :: (snapshot: State_Snapshot) {
-    free(get_snapshot(0));
-    get_snapshot(0).* = snapshot;
+push_new_snapshot :: () {
+    pool := *snapshot_allocators[snapshot_index(0)];
+
+    if !pool.block_allocator.proc {
+        set_allocators(pool);
+    } else {
+        reset(pool);
+    }
+
+    get_snapshot(0).* = generate_full_snapshot(*g_world, .{pool_allocator_proc, pool});
+}
+snapshot_index :: inline (offset_from_current: s32) -> s64 {
+    index := ((cast(s64)g_current_tick) + offset_from_current) % snapshot_ring.count;
+    return index;
 }
 
 get_snapshot :: (offset_from_current: s32) -> *State_Snapshot {
-    index := ((cast(s64)g_current_tick) + offset_from_current) % snapshot_ring.count;
-    return *snapshot_ring[index];
+    return *snapshot_ring[snapshot_index(offset_from_current)];
 }
 
 previous_snapshot :: () -> *State_Snapshot {
@@ -19,68 +31,16 @@ current_snapshot :: () -> *State_Snapshot {
     return get_snapshot(0);
 }
 
-generate_full_snapshot :: (world: *World) -> State_Snapshot {
+generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot, allocator: Allocator) -> State_Snapshot {
     result: State_Snapshot;
     result.time = xx seconds_since_init();
     result.tick = g_current_tick;
 
-    // always send over component id list for every entity in the world if it's a full snapshot
-    for entity_node_id_table {
-        component_types_view := get_component_types(world, it);
-
-        types: [..] u64;
-        for component_types_view {
-            array_add(*types, it.unique_id);
-        }
-
-        entry := table_add(*result.new_nodes, it_index, types);
-    }
-
-    #insert -> string {
-        INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
-                datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
-
-                for 0..q.count-1 {
-                    state := find_or_add(*result.state, networking_ids[it].id);
-
-                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
-                    field.only_note = "Sync";
-
-                    byte_buffer_write(field, *datas[it]);
-                    field.cursor = 0;
-                }
-            }
-        DONE
-
-        sb: String_Builder;
-
-        for ALL_COMPONENT_TYPES {
-            has_sync_fields := false;
-            ti := cast(*Type_Info_Struct) it;
-            for * member : ti.members {
-                if has_note(member, "Sync") {
-                    has_sync_fields = true;
-                    break;
-                }
-            }
-
-            if !has_sync_fields then continue;
-
-            sbprint(*sb, INSERT_STRING, it);
-        }
-
-        return builder_to_string(*sb);
-    }
-
-    return result;
-}
-
-generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot) -> State_Snapshot {
-    result: State_Snapshot;
-    result.time = xx seconds_since_init();
-    result.tick = g_current_tick;
+    result.state.allocator = allocator;
+    result.new_nodes.allocator = allocator;
+    result.added_fields.allocator = allocator;
+    result.removed_fields.allocator = allocator;
+    result.removed_nodes.allocator = allocator;
     
     array_append(*result.removed_nodes, removed_nodes);
 
@@ -91,6 +51,7 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
         component_types_view := get_component_types(world, entity);
 
         types: [..] u64;
+        types.allocator = allocator;
         for component_types_view {
             array_add(*types, it.unique_id);
         }
@@ -99,8 +60,9 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
     }
 
     /** Find fields that are in snapshot a but not in b. Any nodes in the expected_missing list will not assert if they are missing from the second state */
-    find_missing_fields :: (a: State_Snapshot, b: State_Snapshot, expected_missing: [] Node_ID) -> Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id) {
+    find_missing_fields :: (a: State_Snapshot, b: State_Snapshot, expected_missing: [] Node_ID, allocator: Allocator) -> Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id) {
         result: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+        result.allocator = allocator;
 
         // find any removed components in this delta
         for a.state {
@@ -116,7 +78,9 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
             for state_a.fields {
                 field_id := it_index;
                 if !table_contains(*state_b.fields, field_id) {
-                    diff_fields := find_or_add(*result, node_id);
+                    diff_fields, newly_added := find_or_add(*result, node_id);
+                    if newly_added then diff_fields.allocator = allocator;
+                    
                     array_add(diff_fields, field_id);
                 }
             }
@@ -125,100 +89,84 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
         return result;
     }
 
-    result.removed_fields = find_missing_fields(a, b, expected_missing = removed_nodes);
-    result.added_fields = find_missing_fields(b, a, expected_missing = added_nodes);
+    result.removed_fields = find_missing_fields(a, b, expected_missing = removed_nodes, allocator);
+    result.added_fields = find_missing_fields(b, a, expected_missing = added_nodes, allocator);
     
     // reset the list of nodes that were added/removed during this delta
     added_nodes.count = 0;
     removed_nodes.count = 0;
 
-    #insert -> string {
-        INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
-                datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
+    INSERT_STRING :: #string DONE 
+        for q : make_iter(world, Networking_ID, %1) {
+            datas := query_get(q, %1);
+            networking_ids := query_get(q, Networking_ID);
 
-                for 0..q.count-1 {
-                    // if the node is new, it must be sent
-                    changed := array_find(added_nodes, networking_ids[it].id, compare_node_id);
+            for 0..q.count-1 {
+                // if the node is new, it must be sent
+                changed := array_find(added_nodes, networking_ids[it].id, compare_node_id);
+
+                if !changed {
+                    state_a := table_find_pointer(*a.state, networking_ids[it].id);
+                    state_b := table_find_pointer(*b.state, networking_ids[it].id);
+
+                    // node must be in state b, otherwise how is it appearing in the query
+                    assert(state_b != null);
+
+                    // if the node has no data in state a, we can't delta compress so we must send everything
+                    if state_a == null {
+                        changed = true;
+                    }
 
                     if !changed {
-                        state_a := table_find_pointer(*a.state, networking_ids[it].id);
-                        state_b := table_find_pointer(*b.state, networking_ids[it].id);
+                        assert(state_a != null && state_b != null);
 
-                        // node must be in state b, otherwise how is it appearing in the query
-                        assert(state_b != null);
+                        field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
+                        field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
 
-                        // if the node has no data in state a, we can't delta compress so we must send everything
-                        if state_a == null {
-                            changed = true;
-                        }
+                        if field_a == null || field_b == null then continue;
 
-                        if !changed {
-                            assert(state_a != null && state_b != null);
+                        field_a.only_note = "Sync";
+                        field_b.only_note = "Sync";
 
-                            field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
-                            field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
+                        a_data: %1;
+                        b_data: %1;
+                        field_a.cursor = 0;
+                        byte_buffer_read(field_a, *a_data);
+                        field_b.cursor = 0;
+                        byte_buffer_read(field_b, *b_data);
 
-                            if field_a == null || field_b == null then continue;
-
-                            field_a.only_note = "Sync";
-                            field_b.only_note = "Sync";
-
-                            a_data: %1;
-                            b_data: %1;
-                            field_a.cursor = 0;
-                            byte_buffer_read(field_a, *a_data);
-                            field_b.cursor = 0;
-                            byte_buffer_read(field_b, *b_data);
-
-                            // always sync properties for newly added entities
-                            #insert -> string {
-                                sb: String_Builder;
-                                for member : type_info(%1).members {
-                                    if has_note(*member, "Sync") {
-                                        sbprint(*sb, "changed |= a_data.%%1 != b_data.%%1;\n", member.name);
-                                    }
+                        // always sync properties for newly added entities
+                        #insert -> string {
+                            sb: String_Builder;
+                            for member : type_info(%1).members {
+                                if has_note(*member, "Sync") {
+                                    sbprint(*sb, "changed |= a_data.%%1 != b_data.%%1;\n", member.name);
                                 }
-
-                                return builder_to_string(*sb);
                             }
 
+                            return builder_to_string(*sb);
                         }
-                    }
 
-                    if changed {
-                        state := find_or_add(*result.state, networking_ids[it].id);
-
-                        field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
-                        field.only_note = "Sync";
-
-                        byte_buffer_write(field, *datas[it]);
-                        field.cursor = 0;
                     }
                 }
-            }
-        DONE
 
-        sb: String_Builder;
+                if changed {
+                    state, newly_added := find_or_add(*result.state, networking_ids[it].id);
+                    if newly_added then state.fields.allocator = allocator;
 
-        for ALL_COMPONENT_TYPES {
-            has_sync_fields := false;
-            ti := cast(*Type_Info_Struct) it;
-            for * member : ti.members {
-                if has_note(member, "Sync") {
-                    has_sync_fields = true;
-                    break;
+                    assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
+                    field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});
+                    field.only_note = "Sync";
+                    set_allocator(field, allocator);
+
+                    byte_buffer_write(field, *datas[it]);
+                    field.cursor = 0;
                 }
             }
-
-            if !has_sync_fields then continue;
-
-            sbprint(*sb, INSERT_STRING, it);
         }
+    DONE
 
-        return builder_to_string(*sb);
-    }
+    #insert #run for_each_component_type_with_notes(.["Sync"], INSERT_STRING);
 
     return result;
 }
@@ -256,9 +204,9 @@ get_unique_node_id :: () -> Node_ID {
  */
 networking_broadcast :: (packet_data: *$Type) {
     buffer: ByteBuffer;
-    buffer.buff.allocator = temp;
-    packet_type := Type.PACKET_TYPE;
+    set_allocator(*buffer, temp);
 
+    packet_type := Type.PACKET_TYPE;
     byte_buffer_write(*buffer, *packet_type);
     byte_buffer_write(*buffer, packet_data);
 
@@ -273,7 +221,7 @@ networking_broadcast :: (packet_data: *$Type) {
  */
 networking_send_packet :: (client: *Server.ClientConnection, packet_data: *$Type) {
     buffer: ByteBuffer;
-    buffer.buff.allocator = temp;
+    set_allocator(*buffer, temp);
 
     packet_type := Type.PACKET_TYPE;
     byte_buffer_write(*buffer, *packet_type);
@@ -345,7 +293,7 @@ server_update :: (server: *Server) {
 
             // copy the incoming data into the buffer
             buffer: ByteBuffer;
-            buffer.buff.allocator = temp;
+            set_allocator(*buffer, temp);
             array_copy(*buffer.buff, message_view);
 
             buffer.cursor = 0;
@@ -425,6 +373,8 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 node_id := server.clients[client_index].node_id;
 
                 array_unordered_remove_by_index(*server.clients, client_index);
+                input_ring := table_find_pointer(*per_player_input_rings, node_id);
+                if input_ring then array_reset(input_ring);
 
                 entity, found := table_find(*entity_node_id_table, node_id);
                 assert(found, "A client disconnected but we couldn't find their player entity. How did this happen!?");
@@ -478,14 +428,15 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.node_id = new_networking_id;
 
-                snapshot := generate_full_snapshot(*g_world);
+                snapshot := generate_full_snapshot(*g_world, temp);
                 conn_established.initial_snapshot.data = to_packet(snapshot);
 
                 networking_send_packet(*new_client, *conn_established);
-                free(*snapshot);
             }
         }
         case .Connected;
         case;
     }
 }
+
+#import "Pool";

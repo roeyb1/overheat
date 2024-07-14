@@ -29,7 +29,7 @@ client_main :: () {
     viewport.main_camera = spawn_entity(*g_world, Position, Camera);
 
     while true {
-        FrameMark();
+        //FrameMark();
 
         now := seconds_since_init();
         g_delta_time = cast(float) (now - last_time);
@@ -57,7 +57,7 @@ client_main :: () {
             }
             if ImGui.BeginPopupModal("Connecting...", null, .AlwaysAutoResize | .NoMove) {
                 ImGui.Text("Connecting to server...");
-                if !local_server_started && ImGui.Button("Host") {
+                if !local_server_started && ImGui.Button("Host", .{ ImGui.GetContentRegionAvail().x, 0}) {
                     start_local_server();
                 }
                 ImGui.EndPopup();
@@ -88,11 +88,11 @@ client_main :: () {
                     execute(*g_world, .OnValidate);
                     execute(*g_world, .PostUpdate);
 
-                    push_new_prediction(generate_prediction_snapshot(*g_world));
+                    push_new_prediction();
                 }
             }
 
-            if server_snapshots.count >= 2 && previous_snapshot().tick != 0 && current_snapshot().tick != 0 {
+            if last_received_snapshot_tick != -1 && previous_snapshot().tick != 0 && current_snapshot().tick != 0 {
                 server_interp_alpha := clamp(cast(float)(server_interp_time - last_known_server_time) / FIXED_TIMESTEP, 0, 1);
                 interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
             }

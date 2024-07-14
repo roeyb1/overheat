@@ -748,7 +748,7 @@ rdg_record_and_submit :: (rg: *RenderGraph) {
 
         for 0..batch.pass_index_count-1 {
             pass_data := *rg.passes[it + batch.pass_index_offset];
-            ZoneScoped(name = pass_data.debug_name);
+            //ZoneScoped(name = pass_data.debug_name);
 
             if pass_data.debug_name.count > 0 {
                 rhi_cmd_debug_label_begin(cmd_list, pass_data.debug_name);

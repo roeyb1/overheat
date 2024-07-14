@@ -22,6 +22,11 @@ copy :: (buffer: *ByteBuffer) -> ByteBuffer {
     return result;
 }
 
+set_allocator :: (buff: *ByteBuffer, allocator: Allocator) {
+    buff.allocator = allocator;
+    buff.buff.allocator = allocator;
+}
+
 byte_buffer_write :: (out_buffer: *ByteBuffer, data: *$Type, ignore_notes := false) {
     byte_buffer_write(out_buffer, data, type_info(Type), ignore_notes);
 }
@@ -151,7 +156,6 @@ free :: (byte_buff: *ByteBuffer) {
 }
 
 copy_to_buffer :: (buffer: *ByteBuffer, data: [] u8) {
-    buffer.buff.allocator = buffer.allocator;
     array_copy(*buffer.buff, data);
     buffer.cursor = data.count;
 }

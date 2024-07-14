@@ -23,7 +23,7 @@ server_main :: () {
         while g_current_tick < expected_tick {
             g_current_tick += 1;
 
-            FrameMark();
+            //FrameMark();
             scoped_smooth_timer(*g_sim_timer, 1. / 16.);
 
             execute(*g_world, .PreUpdate);
@@ -31,9 +31,9 @@ server_main :: () {
             execute(*g_world, .OnValidate);
             execute(*g_world, .PostUpdate);
 
-            push_new_snapshot(generate_full_snapshot(*g_world));
+            push_new_snapshot();
 
-            delta := generate_delta_snapshot(*g_world, get_snapshot(-1), get_snapshot(0));
+            delta := generate_delta_snapshot(*g_world, get_snapshot(-1), get_snapshot(0), temp);
 
             snapshot_packet := to_packet(*delta);
     
@@ -45,8 +45,6 @@ server_main :: () {
                 player_state_update.input = input_ring[g_current_tick % input_ring.count];
                 networking_send_packet(it, *player_state_update);
             }
-
-            free(*delta);
         }
 
         // Reset temporary storage at the end of each frame

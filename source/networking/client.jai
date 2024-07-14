@@ -6,11 +6,17 @@ Client :: struct {
 
     local_client_id: Node_ID = INVALID_NODE_ID;
 }
+
 g_client: Client;
 
-server_snapshots: [..] State_Snapshot; // currently only stores the last 2 server snapshots for interp
-prediction_ring: [TICK_RATE * 2] State_Snapshot;
 input_ring: [TICK_RATE * 2] Player_Commands;
+
+snapshot_ring: [TICK_RATE * 2] State_Snapshot; // currently only stores the last 2 server snapshots for interp
+snapshot_allocators: [TICK_RATE * 2] Pool;
+last_received_snapshot_tick: s64 = -1;
+
+prediction_ring: [TICK_RATE * 2] State_Snapshot;
+prediction_allocators: [TICK_RATE * 2] Pool;
 
 last_snapshot_time: float64;
 last_prediction_time: float64;
@@ -24,36 +30,60 @@ server_interp_time: float;
 
 g_enable_prediction: bool = true;
 
+push_new_server_snapshot :: (tick: u32) {
+    pool := *snapshot_allocators[tick % snapshot_allocators.count];
+
+    if !pool.block_allocator.proc {
+        set_allocators(pool);
+    } else {
+        reset(pool);
+    }
+
+    snapshot_ring[tick % snapshot_ring.count] = generate_full_snapshot(*g_world, .{pool_allocator_proc, pool});
+}
+
 previous_snapshot :: () -> *State_Snapshot {
-    return *server_snapshots[0];
+    assert(last_received_snapshot_tick != -1);
+    return *snapshot_ring[(last_received_snapshot_tick - 1) % snapshot_ring.count];
 }
 
 current_snapshot :: () -> *State_Snapshot {
-    return *server_snapshots[1];
+    assert(last_received_snapshot_tick != -1);
+    return *snapshot_ring[last_received_snapshot_tick % snapshot_ring.count];
 }
 
-push_new_prediction :: (snapshot: State_Snapshot) {
-    free(get_prediction(0));
-    get_prediction(0).* = snapshot;
+push_new_prediction :: () {
+    assert(g_enable_prediction);
+
+    pool := *prediction_allocators[prediction_index(0)];
+
+    if !pool.block_allocator.proc {
+        set_allocators(pool);
+    } else {
+        reset(pool);
+    }
+
+    get_prediction(0).* = generate_prediction_snapshot(*g_world, .{pool_allocator_proc, pool});
+}
+
+prediction_index :: inline (offset_from_current: s32) -> s64 {
+    index := ((cast(s64)g_current_tick) + offset_from_current) % prediction_ring.count;
+    return index;
 }
 
 get_prediction :: (offset_from_current: s32) -> *State_Snapshot {
     assert(g_enable_prediction);
-    previous_tick := cast(s64) g_current_tick + offset_from_current;
-    index := (previous_tick) % prediction_ring.count;
-    return *prediction_ring[index];
+    return *prediction_ring[prediction_index(offset_from_current)];
 }
 
 previous_prediction :: () -> *State_Snapshot {
     assert(g_enable_prediction);
-    result := get_prediction(-1);
-    return result;
+    return get_prediction(-1);
 }
 
 current_prediction :: () -> *State_Snapshot {
     assert(g_enable_prediction);
-    result := get_prediction(0);
-    return result;
+    return get_prediction(0);
 }
 
 is_prediction_valid :: (offset_from_current: s32) -> bool {
@@ -83,9 +113,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             log("Local player was assigned id %", conn_established.node_id);
 
-            snapshot := from_packet(conn_established.initial_snapshot.data);
-            array_add(*server_snapshots, snapshot);
-            array_add(*server_snapshots, from_packet(conn_established.initial_snapshot.data));
+            snapshot := from_packet(conn_established.initial_snapshot.data, temp);
             last_snapshot_time = seconds_since_init();
 
             apply_full_snapshot(*g_world, snapshot);
@@ -114,96 +142,39 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             last_known_server_time = snapshot_packet.time;
             last_received_server_time = xx seconds_since_init();
 
-            if server_snapshots.count > 1 then {
-                free(previous_snapshot());
-                array_ordered_remove_by_index(*server_snapshots, 0);
-            }
-
             // when we receive a new delta from the server:
             // - apply the delta to the world state
             // - build a new full snapshot  <--- @todo: this part is really slow and stupid, we should be able to apply the delta on top of the state
             // - store that snapshot for interpolation purposes
 
-            delta := from_packet(snapshot_packet.data);
+            delta := from_packet(snapshot_packet.data, temp);
             apply_delta_snapshot(*g_world, delta);
-            free(*delta);
-            new_snapshot := generate_full_snapshot(*g_world);
 
-            array_add(*server_snapshots, new_snapshot);
+            last_received_snapshot_tick = snapshot_packet.tick;
+            push_new_server_snapshot(snapshot_packet.tick);
         case;
     }
 }
 
-generate_full_snapshot :: (world: *World) -> State_Snapshot {
-    result: State_Snapshot;
-    result.tick = g_current_tick;
-    result.time = xx seconds_since_init();
-
-    // always send over component id list for every entity in the world if it's a full snapshot
-    for entity_node_id_table {
-        component_types_view := get_component_types(world, it);
-
-        types: [..] u64;
-        for component_types_view {
-            array_add(*types, it.unique_id);
-        }
-
-        entry := table_add(*result.new_nodes, it_index, types);
-    }
-
-    #insert -> string {
-        INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
-                datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
-
-                for 0..q.count-1 {
-                    state := find_or_add(*result.state, networking_ids[it].id);
-
-                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
-                    field.only_note = "Sync";
-
-                    byte_buffer_write(field, *datas[it]);
-                    field.cursor = 0;
-                }
-            }
-        DONE
-
-        sb: String_Builder;
-
-        for ALL_COMPONENT_TYPES {
-            has_sync_fields := false;
-            ti := cast(*Type_Info_Struct) it;
-            for * member : ti.members {
-                if has_note(member, "Sync") {
-                    has_sync_fields = true;
-                    break;
-                }
-            }
-
-            if !has_sync_fields then continue;
-
-            sbprint(*sb, INSERT_STRING, it);
-        }
-
-        return builder_to_string(*sb);
-    }
-
-    return result;
-}
-
-generate_prediction_snapshot :: (world: *World) -> State_Snapshot {
+generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_Snapshot {
     assert(g_enable_prediction, "We're trying to apply prediction when prediction is disabled");
 
     result: State_Snapshot;
     result.tick = g_current_tick;
     result.time = xx seconds_since_init();
 
+    result.state.allocator = allocator;
+    result.new_nodes.allocator = allocator;
+    result.added_fields.allocator = allocator;
+    result.removed_fields.allocator = allocator;
+    result.removed_nodes.allocator = allocator;
+
     // always send over component id list for every entity in the world if it's a full snapshot
     for entity_node_id_table {
         component_types_view := get_component_types(world, it);
 
         types: [..] u64;
+        types.allocator = allocator;
         for component_types_view {
             array_add(*types, it.unique_id);
         }
@@ -220,10 +191,13 @@ generate_prediction_snapshot :: (world: *World) -> State_Snapshot {
                 for 0..q.count-1 {
                     if networking_ids[it].id != g_client.local_client_id then continue;
 
-                    state := find_or_add(*result.state, networking_ids[it].id);
+                    state, newly_added := find_or_add(*result.state, networking_ids[it].id);
+                    if newly_added then state.fields.allocator = allocator;
 
-                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                    assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
+                    field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});
                     field.only_note = "Predict";
+                    set_allocator(field, allocator);
 
                     byte_buffer_write(field, *datas[it]);
                     field.cursor = 0;
@@ -389,10 +363,7 @@ interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snap
     }
 }
 
-apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
-    new_entities: [..] Node_ID;
-    new_entities.allocator = temp;
-
+spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #expand {
     for snapshot.new_nodes {
         _, found := table_find(*entity_node_id_table, it_index);
         if found then continue;
@@ -408,80 +379,38 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
         }
         entity := spawn_entity(world);
 
-        array_add(*new_entities, it_index);
-
         add_component(world, entity, Networking_ID, .{it_index});
         for ctid_list {
             add_component(world, entity, it, broadcast=false);
         }
     }
 
-    #insert -> string {
-        INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
-                datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
-
-                for 0..q.count-1 {
-                    state, success := table_find(*snapshot.state, networking_ids[it].id);
-                    // it's fine if we don't have an entry for the entity, since it may not exist on the client yet
-                    assert(success);
-
-                    field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
-                    assert(field != null);
-
-                    field.only_note = "Sync";
-                    field.cursor = 0;
-
-                    byte_buffer_read(field, *datas[it]);
-                }
-            }
-        DONE
-
-        sb: String_Builder;
-
-        for ALL_COMPONENT_TYPES {
-            has_sync_fields := false;
-            ti := cast(*Type_Info_Struct) it;
-            for * member : ti.members {
-                if has_note(member, "Sync") {
-                    has_sync_fields = true;
-                    break;
+    `defer {
+        for snapshot.new_nodes {
+            ctid_list: [..] Component_Type_ID;
+            ctid_list.allocator = temp;
+            for it {
+                for ctid : ALL_COMPONENT_TYPE_IDS {
+                    if ctid.unique_id == it {
+                        array_add(*ctid_list, ctid);
+                    }
                 }
             }
 
-            if !has_sync_fields then continue;
+            entity, found := table_find(*entity_node_id_table, it_index);
+            assert(found);
 
-            sbprint(*sb, INSERT_STRING, it);
-        }
+            for ctid_list {
+                // we already broadcasted networking id before, don't do it again
+                if it == #run component_type_id(Networking_ID) then continue;
 
-        return builder_to_string(*sb);
-    }
-
-    for new_entities {
-        ids, success := table_find(*snapshot.new_nodes, it);
-        assert(success);
-
-        ctid_list: [..] Component_Type_ID;
-        ctid_list.allocator = temp;
-        for ids {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == it {
-                    array_add(*ctid_list, ctid);
-                }
+                broadcast_on_component_add(world, entity, it);
             }
-        }
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found);
-
-        for ctid_list {
-            // we already broadcasted networking id before, don't do it again
-            if it == #run component_type_id(Networking_ID) then continue;
-
-            broadcast_on_component_add(world, entity, it);
         }
     }
+}
 
+destroy_entities_removed_in_snapshot :: (world: *World, snapshot: State_Snapshot) {
     for snapshot.removed_nodes {
         entity, found := table_find(*entity_node_id_table, it);
         assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
@@ -489,38 +418,42 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
     }
 }
 
+apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
+    destroy_entities_removed_in_snapshot(world, snapshot);
+
+    spawn_new_entities_from_snapshot(world, snapshot);
+
+    INSERT_STRING :: #string DONE 
+        for q : make_iter(world, Networking_ID, %1) {
+            datas := query_get(q, %1);
+            networking_ids := query_get(q, Networking_ID);
+
+            for 0..q.count-1 {
+                state, success := table_find(*snapshot.state, networking_ids[it].id);
+                // it's fine if we don't have an entry for the entity, since it may not exist on the client yet
+                assert(success);
+
+                field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
+                assert(field != null);
+
+                field.only_note = "Sync";
+                field.cursor = 0;
+
+                byte_buffer_read(field, *datas[it]);
+            }
+        }
+    DONE
+
+    #insert #run for_each_component_type_with_notes(.["Sync"], INSERT_STRING);
+}
+
 apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
     new_entities: [..] Node_ID;
     new_entities.allocator = temp;
 
-    for snapshot.removed_nodes {
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
-        destroy_entity(world, entity);
-    }
+    destroy_entities_removed_in_snapshot(world, snapshot);
 
-    for snapshot.new_nodes {
-        _, found := table_find(*entity_node_id_table, it_index);
-        if found then continue;
-
-        ctid_list: [..] Component_Type_ID;
-        ctid_list.allocator = temp;
-        for it {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == it {
-                    array_add(*ctid_list, ctid);
-                }
-            }
-        }
-        entity := spawn_entity(world);
-
-        array_add(*new_entities, it_index);
-
-        add_component(world, entity, Networking_ID, .{it_index});
-        for ctid_list {
-            add_component(world, entity, it, broadcast=false);
-        }
-    }
+    spawn_new_entities_from_snapshot(world, snapshot);
 
     for snapshot.added_fields {
         entity, found := table_find(*entity_node_id_table, it_index);
@@ -554,78 +487,35 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         }
     }
 
-    #insert -> string {
-        INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
-                datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
+    INSERT_STRING :: #string DONE 
+        for q : make_iter(world, Networking_ID, %1) {
+            datas := query_get(q, %1);
+            networking_ids := query_get(q, Networking_ID);
 
-                for 0..q.count-1 {
-                    state, success := table_find(*snapshot.state, networking_ids[it].id);
-                    // it's fine if we don't have an entry for the entity, since it may not exist on the client yet
-                    // @todo: this should really be an assert tho
-                    if !success then continue;
+            for 0..q.count-1 {
+                state, success := table_find(*snapshot.state, networking_ids[it].id);
+                // it's fine if we don't have an entry for the entity, since it may not exist on the client yet
+                // @todo: this should really be an assert tho
+                if !success then continue;
 
-                    field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
+                field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
 
-                    // field can be null in delta snapshots, it just didn't change
-                    if field == null then continue;
+                // field can be null in delta snapshots, it just didn't change
+                if field == null then continue;
 
-                    field.only_note = "Sync";
+                field.only_note = "Sync";
 
-                    // skip applying delta snapshots for data which is locally predicted
-                    if g_enable_prediction && networking_ids[it].id == g_client.local_client_id then field.skip_note = "Predict";
+                // skip applying delta snapshots for data which is locally predicted
+                if g_enable_prediction && networking_ids[it].id == g_client.local_client_id then field.skip_note = "Predict";
 
-                    field.cursor = 0;
+                field.cursor = 0;
 
-                    byte_buffer_read(field, *datas[it]);
-                }
-            }
-        DONE
-
-        sb: String_Builder;
-
-        for ALL_COMPONENT_TYPES {
-            has_sync_fields := false;
-            ti := cast(*Type_Info_Struct) it;
-            for * member : ti.members {
-                if has_note(member, "Sync") {
-                    has_sync_fields = true;
-                    break;
-                }
-            }
-
-            if !has_sync_fields then continue;
-
-            sbprint(*sb, INSERT_STRING, it);
-        }
-
-        return builder_to_string(*sb);
-    }
-
-    for new_entities {
-        ids, success := table_find(*snapshot.new_nodes, it);
-        assert(success);
-
-        ctid_list: [..] Component_Type_ID;
-        ctid_list.allocator = temp;
-        for ids {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == it {
-                    array_add(*ctid_list, ctid);
-                }
+                byte_buffer_read(field, *datas[it]);
             }
         }
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found);
+    DONE
 
-        for ctid_list {
-            // we already broadcasted networking id before, don't do it again
-            if it == #run component_type_id(Networking_ID) then continue;
-
-            broadcast_on_component_add(world, entity, it);
-        }
-    }
+    #insert #run for_each_component_type_with_notes(.["Sync"], INSERT_STRING);
 
     for snapshot.added_fields {
         entity, found := table_find(*entity_node_id_table, it_index);
@@ -651,50 +541,31 @@ apply_prediction_state :: (world: *World, snapshot: State_Snapshot) {
     assert(g_enable_prediction);
     assert(snapshot.tick != 0);
 
-    #insert -> string {
-        INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
-                datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
+    INSERT_STRING :: #string DONE 
+        for q : make_iter(world, Networking_ID, %1) {
+            datas := query_get(q, %1);
+            networking_ids := query_get(q, Networking_ID);
 
-                for 0..q.count-1 {
-                    if networking_ids[it].id != g_client.local_client_id then continue;
+            for 0..q.count-1 {
+                if networking_ids[it].id != g_client.local_client_id then continue;
 
-                    state, success := table_find(*snapshot.state, networking_ids[it].id);
-                    assert(success);
+                state, success := table_find(*snapshot.state, networking_ids[it].id);
+                assert(success);
 
-                    field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
+                field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
 
-                    assert(field != null);
+                assert(field != null);
 
-                    field.only_note = "Predict";
+                field.only_note = "Predict";
 
-                    field.cursor = 0;
+                field.cursor = 0;
 
-                    byte_buffer_read(field, *datas[it]);
-                }
+                byte_buffer_read(field, *datas[it]);
             }
-        DONE
-
-        sb: String_Builder;
-
-        for ALL_COMPONENT_TYPES {
-            has_interp_fields := false;
-            ti := cast(*Type_Info_Struct) it;
-            for * member : ti.members {
-                if has_note(member, "Sync") && has_note(member, "Interp") && has_note(member, "Predict") {
-                    has_interp_fields = true;
-                    break;
-                }
-            }
-
-            if !has_interp_fields then continue;
-
-            sbprint(*sb, INSERT_STRING, it);
         }
-
-        return builder_to_string(*sb);
-    }
+    DONE
+    
+    #insert #run for_each_component_type_with_notes(.["Sync", "Interp", "Predict"], INSERT_STRING);
 }
 
 /**
@@ -785,7 +656,7 @@ client_update :: (client: *Client) {
 
             // copy the incoming data into the buffer
             buffer: ByteBuffer;
-            buffer.allocator = temp;
+            set_allocator(*buffer, temp);
             copy_to_buffer(*buffer, message_view);
 
             buffer.cursor = 0;
@@ -852,3 +723,5 @@ handle_client_net_connection_status_changed :: (client: *Client, info: *Connecti
         case;
     }
 }
+
+#import "Pool";

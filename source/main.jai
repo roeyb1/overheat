@@ -67,7 +67,7 @@ using Random :: #import "Random";
 #import "File";
 #import "Process";
 
-#import "tracy"(IMPORT_MODE = .CLIENT);
+// #import "tracy"(IMPORT_MODE = .CLIENT);
 
 #import "System";
 
