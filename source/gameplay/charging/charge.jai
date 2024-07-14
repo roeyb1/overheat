@@ -7,8 +7,8 @@ Charging_Bundle :: struct @Bundle {
     charging: Charging; //tag must be put at end so the event fires when there is data
 }
 
-new_charge :: (world: *World, entity: Entity, charge_info: Charge) {
-    child := spawn_child_entity(world, entity);
+new_charge :: (world: *World, parent: Entity, charge_info: Charge) {
+    child := spawn_child_entity(world, parent);
     add_components_from_bundle(world, child, Charging_Bundle.{
         anim_list_index.value = charge_info.anim_list_index,
         duration.value = charge_info.duration,
@@ -17,12 +17,10 @@ new_charge :: (world: *World, entity: Entity, charge_info: Charge) {
 }
 
 start_charging :: (world: *World, entity: Entity) {
-    #if SERVER {
         parent := get_parent(world, entity);
         if is_valid(world,parent){
             modify_interuptor_anim_slot(world, parent, entity);
         }
-    }
 } @Event(EcsOnAdd,Charging)
 
 update_charging :: (q: Query) {
@@ -34,30 +32,57 @@ update_charging :: (q: Query) {
             health_queue := get_component(q.world, parent, Health_Change_Queue);
             if health_queue {
                 drain_energy_per_tick(health_queue,energy_costs[it]);
+                
+                //for now this lives here but eventually each charge could update it's power in a system
+                gather_power(q.world,parent,5.);
             }
         }
     }
-} @System(OnUpdate) @Write() @Read(Energy_Cost) 
+} @System(OnUpdate) @Write() @Read(Charging,Energy_Cost) 
+
+
 
 //tmp
-test_attack :: (q: Query) {
-    #if SERVER {
-        player_commands := query_get(q, Player_Commands);
-        positions := query_get(q, Position);
-        cooldowns := query_get(q, Cooldown);
+#if CLIENT {
+send_targeting_info_on_ability_cast :: (q: Query) {
+    player_commands := query_get(q, Player_Commands);
+    cooldowns := query_get(q, Cooldown);
 
-        for 0..q.count-1 {
-            attacking := player_commands[it].main_attack;
-            if attacking {
-                if cooldowns[it].current_value <= 0 {
-                    cooldowns[it].current_value = cooldowns[it].base_value;
-                    
-                    new_charge(q.world,q.entities[it],sword);
-                }
+    for 0..q.count-1 {
+        attacking := player_commands[it].main_attack;
+        if attacking {
+            if cooldowns[it].current_value <= 0 {
+                update_player_cursor_position(q.world, q.entities[it]);
+            }
+        }
+    }
+} @System(OnUpdate) @Write() @Read(Player,Position,Cooldown) 
+}
+
+//tmp
+#if SERVER {
+test_attack :: (q: Query) {
+    player_commands := query_get(q, Player_Commands);
+    positions := query_get(q, Position);
+    cooldowns := query_get(q, Cooldown);
+
+    for 0..q.count-1 {
+        attacking := player_commands[it].main_attack;
+        if attacking {
+            if cooldowns[it].current_value <= 0 {
+                cooldowns[it].current_value = cooldowns[it].base_value;
+                
+                new_charge(q.world,q.entities[it],sword);
+
+                //tmp
+                fragments: [..] Fragment_List_Indecies;
+                array_add(*fragments, Fragment_List_Indecies.PROJECTILE);
+                new_skill(q.world,q.entities[it], fragments);
             }
         }
     }
 } @System(OnUpdate) @Write() @Read(Player,Player_Commands,Position,Cooldown) 
+}
 
 //tmp
 test_attack2 :: (q: Query) {

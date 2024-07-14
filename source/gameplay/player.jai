@@ -47,6 +47,8 @@ Player_Bundle :: struct @Bundle {
     remote: Remote_Player;
     cooldown: Cooldown;
     anim_info: Interuptor_Anim_Slot;
+    current_target: Current_Target;
+    stored_power: Stored_Power;
 }
 
 init_player :: (node_id: Node_ID, position: Vector2) -> Entity {

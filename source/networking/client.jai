@@ -131,6 +131,19 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_commands := get_component(*g_world, entity, Player_Commands);
             assert(player_commands != null);
             << player_commands = player_commands_packet.commands;
+        case .TARGETING_LOCATION;
+            player_targeting_location_packet: Player_targeting_Location_Packet;
+            byte_buffer_read(buffer, *player_targeting_location_packet);
+
+            assert(player_targeting_location_packet.node_id != g_client.local_client_id, 
+                "The player should never receive a targeting packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
+
+            entity, found := table_find(*entity_node_id_table, player_targeting_location_packet.node_id);
+            assert(found, "Received a targeting packet for an entity which is not registered in the networking system. How did this happen!?");
+
+            current_target := get_component(*g_world, entity, Current_Target);
+            assert(current_target != null);
+            << current_target = player_targeting_location_packet.location;
         case .PLAYER_DELTA;
             snapshot_packet: Player_State_Snapshot_Packet;
             byte_buffer_read(buffer, *snapshot_packet);

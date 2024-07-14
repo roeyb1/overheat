@@ -1,6 +1,6 @@
 Energy_Cost :: struct @Component {
-    total: float;
-    per_tick: float;
+    total: float; 
+    per_tick: float; 
 }
 
 //if there is no duration componenet the base cost of an ability will be considered as the cost per second
@@ -10,7 +10,7 @@ calculate_energy_cost_per_tick :: (world: *World, entity: Entity) {
 
         if (duration) {
             number_of_ticks := duration.base_value/FIXED_TIMESTEP;
-            if number_of_ticks > 0 {
+            if number_of_ticks > 1 {
                 energy_cost.per_tick = energy_cost.total / number_of_ticks;
             }
             else {
@@ -24,4 +24,5 @@ calculate_energy_cost_per_tick :: (world: *World, entity: Entity) {
 
 drain_energy_per_tick :: (change_queue: Health_Change_Queue, energy_cost: Energy_Cost) {
     array_add(*change_queue.changes, -energy_cost.per_tick);
-} 
+}
+
