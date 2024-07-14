@@ -88,11 +88,11 @@ client_main :: () {
                     execute(*g_world, .OnValidate);
                     execute(*g_world, .PostUpdate);
 
-                    push_new_prediction(generate_prediction_snapshot(*g_world));
+                    push_new_prediction();
                 }
             }
 
-            if server_snapshots.count >= 2 && previous_snapshot().tick != 0 && current_snapshot().tick != 0 {
+            if previous_snapshot().tick != 0 && current_snapshot().tick != 0 {
                 server_interp_alpha := clamp(cast(float)(server_interp_time - last_known_server_time) / FIXED_TIMESTEP, 0, 1);
                 interpolate_server_states(*g_world, previous_snapshot(), current_snapshot(), server_interp_alpha);
             }

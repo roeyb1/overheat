@@ -1,14 +1,26 @@
 snapshot_ring: [TICK_RATE * 2] State_Snapshot;
+snapshot_allocators: [TICK_RATE * 2] Pool;
+
 per_player_input_rings: Table(Node_ID, [..] Player_Commands, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
-push_new_snapshot :: (snapshot: State_Snapshot) {
-    free(get_snapshot(0));
-    get_snapshot(0).* = snapshot;
+push_new_snapshot :: () {
+    pool := *snapshot_allocators[snapshot_index(0)];
+
+    if !pool.block_allocator.proc {
+        set_allocators(pool);
+    } else {
+        reset(pool);
+    }
+
+    get_snapshot(0).* = generate_full_snapshot(*g_world, .{pool_allocator_proc, pool});
+}
+snapshot_index :: inline (offset_from_current: s32) -> s64 {
+    index := ((cast(s64)g_current_tick) + offset_from_current) % snapshot_ring.count;
+    return index;
 }
 
 get_snapshot :: (offset_from_current: s32) -> *State_Snapshot {
-    index := ((cast(s64)g_current_tick) + offset_from_current) % snapshot_ring.count;
-    return *snapshot_ring[index];
+    return *snapshot_ring[snapshot_index(offset_from_current)];
 }
 
 previous_snapshot :: () -> *State_Snapshot {
@@ -23,6 +35,12 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
     result: State_Snapshot;
     result.time = xx seconds_since_init();
     result.tick = g_current_tick;
+
+    result.state.allocator = temp;
+    result.new_nodes.allocator = temp;
+    result.added_fields.allocator = temp;
+    result.removed_fields.allocator = temp;
+    result.removed_nodes.allocator = temp;
     
     array_append(*result.removed_nodes, removed_nodes);
 
@@ -196,7 +214,7 @@ networking_broadcast :: (packet_data: *$Type) {
  */
 networking_send_packet :: (client: *Server.ClientConnection, packet_data: *$Type) {
     buffer: ByteBuffer;
-    buffer.buff.allocator = temp;
+    set_allocator(*buffer, temp);
 
     packet_type := Type.PACKET_TYPE;
     byte_buffer_write(*buffer, *packet_type);
@@ -348,6 +366,8 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 node_id := server.clients[client_index].node_id;
 
                 array_unordered_remove_by_index(*server.clients, client_index);
+                input_ring := table_find_pointer(*per_player_input_rings, node_id);
+                if input_ring then array_reset(input_ring);
 
                 entity, found := table_find(*entity_node_id_table, node_id);
                 assert(found, "A client disconnected but we couldn't find their player entity. How did this happen!?");
@@ -401,14 +421,15 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 conn_established: ConnectionEstablished_Packet;
                 conn_established.node_id = new_networking_id;
 
-                snapshot := generate_full_snapshot(*g_world);
+                snapshot := generate_full_snapshot(*g_world, temp);
                 conn_established.initial_snapshot.data = to_packet(snapshot);
 
                 networking_send_packet(*new_client, *conn_established);
-                free(*snapshot);
             }
         }
         case .Connected;
         case;
     }
 }
+
+#import "Pool";

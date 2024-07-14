@@ -100,10 +100,17 @@ for_each_component_type_with_notes :: (notes: [] string, insert: string) -> stri
 }
 
 
-generate_full_snapshot :: (world: *World) -> State_Snapshot {
+generate_full_snapshot :: (world: *World, allocator: Allocator = context.allocator) -> State_Snapshot {
     result: State_Snapshot;
+
     result.time = xx seconds_since_init();
     result.tick = g_current_tick;
+
+    result.state.allocator = allocator;
+    result.new_nodes.allocator = allocator;
+    result.added_fields.allocator = allocator;
+    result.removed_fields.allocator = allocator;
+    result.removed_nodes.allocator = allocator;
 
     // always send over component id list for every entity in the world if it's a full snapshot
     for entity_node_id_table {
@@ -212,10 +219,16 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet_Data {
     return result;
 }
 
-from_packet :: (packet: State_Snapshot_Packet_Data) -> State_Snapshot {
+from_packet :: (packet: State_Snapshot_Packet_Data, allocator: Allocator = context.allocator) -> State_Snapshot {
     result: State_Snapshot;
     result.time = packet.time;
     result.tick = packet.tick;
+
+    result.state.allocator = allocator;
+    result.new_nodes.allocator = allocator;
+    result.added_fields.allocator = allocator;
+    result.removed_fields.allocator = allocator;
+    result.removed_nodes.allocator = allocator;
 
     array_append(*result.removed_nodes, packet.removed);
 

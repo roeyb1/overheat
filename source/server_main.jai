@@ -31,7 +31,7 @@ server_main :: () {
             execute(*g_world, .OnValidate);
             execute(*g_world, .PostUpdate);
 
-            push_new_snapshot(generate_full_snapshot(*g_world));
+            push_new_snapshot();
 
             delta := generate_delta_snapshot(*g_world, get_snapshot(-1), get_snapshot(0));
 
@@ -45,8 +45,6 @@ server_main :: () {
                 player_state_update.input = input_ring[g_current_tick % input_ring.count];
                 networking_send_packet(it, *player_state_update);
             }
-
-            free(*delta);
         }
 
         // Reset temporary storage at the end of each frame

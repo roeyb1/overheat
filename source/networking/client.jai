@@ -6,11 +6,17 @@ Client :: struct {
 
     local_client_id: Node_ID = INVALID_NODE_ID;
 }
+
 g_client: Client;
 
-server_snapshots: [..] State_Snapshot; // currently only stores the last 2 server snapshots for interp
-prediction_ring: [TICK_RATE * 2] State_Snapshot;
 input_ring: [TICK_RATE * 2] Player_Commands;
+
+snapshot_ring: [TICK_RATE * 2] State_Snapshot; // currently only stores the last 2 server snapshots for interp
+snapshot_allocators: [TICK_RATE * 2] Pool;
+last_received_snapshot_tick: u32;
+
+prediction_ring: [TICK_RATE * 2] State_Snapshot;
+prediction_allocators: [TICK_RATE * 2] Pool;
 
 last_snapshot_time: float64;
 last_prediction_time: float64;
@@ -24,36 +30,67 @@ server_interp_time: float;
 
 g_enable_prediction: bool = true;
 
+push_new_server_snapshot :: (tick: u32) {
+    pool := *snapshot_allocators[tick % snapshot_allocators.count];
+
+    if !pool.block_allocator.proc {
+        set_allocators(pool);
+    } else {
+        reset(pool);
+    }
+
+    snapshot_ring[tick % snapshot_ring.count] = generate_full_snapshot(*g_world, .{pool_allocator_proc, pool});
+}
+
+snapshot_index :: inline (offset_from_current: s32) -> s64 {
+    index := ((cast(s64)g_current_tick) + offset_from_current) % snapshot_ring.count;
+    return index;
+}
+
+get_snapshot :: (offset_from_current: s32) -> *State_Snapshot {
+    return *snapshot_ring[snapshot_index(offset_from_current)];
+}
+
 previous_snapshot :: () -> *State_Snapshot {
-    return *server_snapshots[0];
+    return *snapshot_ring[((cast(s32)last_received_snapshot_tick) - 1) % snapshot_ring.count];
 }
 
 current_snapshot :: () -> *State_Snapshot {
-    return *server_snapshots[1];
+    return *snapshot_ring[last_received_snapshot_tick % snapshot_ring.count];
 }
 
-push_new_prediction :: (snapshot: State_Snapshot) {
-    free(get_prediction(0));
-    get_prediction(0).* = snapshot;
+push_new_prediction :: () {
+    assert(g_enable_prediction);
+
+    pool := *prediction_allocators[prediction_index(0)];
+
+    if !pool.block_allocator.proc {
+        set_allocators(pool);
+    } else {
+        reset(pool);
+    }
+
+    get_prediction(0).* = generate_prediction_snapshot(*g_world, .{pool_allocator_proc, pool});
+}
+
+prediction_index :: inline (offset_from_current: s32) -> s64 {
+    index := ((cast(s64)g_current_tick) + offset_from_current) % prediction_ring.count;
+    return index;
 }
 
 get_prediction :: (offset_from_current: s32) -> *State_Snapshot {
     assert(g_enable_prediction);
-    previous_tick := cast(s64) g_current_tick + offset_from_current;
-    index := (previous_tick) % prediction_ring.count;
-    return *prediction_ring[index];
+    return *prediction_ring[prediction_index(offset_from_current)];
 }
 
 previous_prediction :: () -> *State_Snapshot {
     assert(g_enable_prediction);
-    result := get_prediction(-1);
-    return result;
+    return get_prediction(-1);
 }
 
 current_prediction :: () -> *State_Snapshot {
     assert(g_enable_prediction);
-    result := get_prediction(0);
-    return result;
+    return get_prediction(0);
 }
 
 is_prediction_valid :: (offset_from_current: s32) -> bool {
@@ -83,9 +120,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             log("Local player was assigned id %", conn_established.node_id);
 
-            snapshot := from_packet(conn_established.initial_snapshot.data);
-            array_add(*server_snapshots, snapshot);
-            array_add(*server_snapshots, from_packet(conn_established.initial_snapshot.data));
+            snapshot := from_packet(conn_established.initial_snapshot.data, temp);
             last_snapshot_time = seconds_since_init();
 
             apply_full_snapshot(*g_world, snapshot);
@@ -114,32 +149,32 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             last_known_server_time = snapshot_packet.time;
             last_received_server_time = xx seconds_since_init();
 
-            if server_snapshots.count > 1 then {
-                free(previous_snapshot());
-                array_ordered_remove_by_index(*server_snapshots, 0);
-            }
-
             // when we receive a new delta from the server:
             // - apply the delta to the world state
             // - build a new full snapshot  <--- @todo: this part is really slow and stupid, we should be able to apply the delta on top of the state
             // - store that snapshot for interpolation purposes
 
-            delta := from_packet(snapshot_packet.data);
+            delta := from_packet(snapshot_packet.data, temp);
             apply_delta_snapshot(*g_world, delta);
-            free(*delta);
-            new_snapshot := generate_full_snapshot(*g_world);
 
-            array_add(*server_snapshots, new_snapshot);
+            last_received_snapshot_tick = snapshot_packet.tick;
+            push_new_server_snapshot(snapshot_packet.tick);
         case;
     }
 }
 
-generate_prediction_snapshot :: (world: *World) -> State_Snapshot {
+generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_Snapshot {
     assert(g_enable_prediction, "We're trying to apply prediction when prediction is disabled");
 
     result: State_Snapshot;
     result.tick = g_current_tick;
     result.time = xx seconds_since_init();
+
+    result.state.allocator = allocator;
+    result.new_nodes.allocator = allocator;
+    result.added_fields.allocator = allocator;
+    result.removed_fields.allocator = allocator;
+    result.removed_nodes.allocator = allocator;
 
     // always send over component id list for every entity in the world if it's a full snapshot
     for entity_node_id_table {
@@ -624,7 +659,7 @@ client_update :: (client: *Client) {
 
             // copy the incoming data into the buffer
             buffer: ByteBuffer;
-            buffer.allocator = temp;
+            set_allocator(*buffer, temp);
             copy_to_buffer(*buffer, message_view);
 
             buffer.cursor = 0;
@@ -691,3 +726,5 @@ handle_client_net_connection_status_changed :: (client: *Client, info: *Connecti
         case;
     }
 }
+
+#import "Pool";
