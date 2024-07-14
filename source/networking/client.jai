@@ -331,10 +331,7 @@ interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snap
     }
 }
 
-apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
-    new_entities: [..] Node_ID;
-    new_entities.allocator = temp;
-
+spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #expand {
     for snapshot.new_nodes {
         _, found := table_find(*entity_node_id_table, it_index);
         if found then continue;
@@ -350,13 +347,49 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
         }
         entity := spawn_entity(world);
 
-        array_add(*new_entities, it_index);
-
         add_component(world, entity, Networking_ID, .{it_index});
         for ctid_list {
             add_component(world, entity, it, broadcast=false);
         }
     }
+
+    `defer {
+        for snapshot.new_nodes {
+            ctid_list: [..] Component_Type_ID;
+            ctid_list.allocator = temp;
+            for it {
+                for ctid : ALL_COMPONENT_TYPE_IDS {
+                    if ctid.unique_id == it {
+                        array_add(*ctid_list, ctid);
+                    }
+                }
+            }
+
+            entity, found := table_find(*entity_node_id_table, it_index);
+            assert(found);
+
+            for ctid_list {
+                // we already broadcasted networking id before, don't do it again
+                if it == #run component_type_id(Networking_ID) then continue;
+
+                broadcast_on_component_add(world, entity, it);
+            }
+        }
+    }
+}
+
+destroy_entities_removed_in_snapshot :: (world: *World, snapshot: State_Snapshot) {
+    for snapshot.removed_nodes {
+        entity, found := table_find(*entity_node_id_table, it);
+        assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
+        destroy_entity(world, entity);
+    }
+}
+
+apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
+    destroy_entities_removed_in_snapshot(world, snapshot);
+
+    spawn_new_entities_from_snapshot(world, snapshot);
 
     INSERT_STRING :: #string DONE 
         for q : make_iter(world, Networking_ID, %1) {
@@ -380,70 +413,15 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
     DONE
 
     #insert #run for_each_component_type_with_notes(.["Sync"], INSERT_STRING);
-
-    for new_entities {
-        ids, success := table_find(*snapshot.new_nodes, it);
-        assert(success);
-
-        ctid_list: [..] Component_Type_ID;
-        ctid_list.allocator = temp;
-        for ids {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == it {
-                    array_add(*ctid_list, ctid);
-                }
-            }
-        }
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found);
-
-        for ctid_list {
-            // we already broadcasted networking id before, don't do it again
-            if it == #run component_type_id(Networking_ID) then continue;
-
-            broadcast_on_component_add(world, entity, it);
-        }
-    }
-
-    for snapshot.removed_nodes {
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
-        destroy_entity(world, entity);
-    }
 }
 
 apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
     new_entities: [..] Node_ID;
     new_entities.allocator = temp;
 
-    for snapshot.removed_nodes {
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
-        destroy_entity(world, entity);
-    }
+    destroy_entities_removed_in_snapshot(world, snapshot);
 
-    for snapshot.new_nodes {
-        _, found := table_find(*entity_node_id_table, it_index);
-        if found then continue;
-
-        ctid_list: [..] Component_Type_ID;
-        ctid_list.allocator = temp;
-        for it {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == it {
-                    array_add(*ctid_list, ctid);
-                }
-            }
-        }
-        entity := spawn_entity(world);
-
-        array_add(*new_entities, it_index);
-
-        add_component(world, entity, Networking_ID, .{it_index});
-        for ctid_list {
-            add_component(world, entity, it, broadcast=false);
-        }
-    }
+    spawn_new_entities_from_snapshot(world, snapshot);
 
     for snapshot.added_fields {
         entity, found := table_find(*entity_node_id_table, it_index);
@@ -506,30 +484,6 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
     DONE
 
     #insert #run for_each_component_type_with_notes(.["Sync"], INSERT_STRING);
-
-    for new_entities {
-        ids, success := table_find(*snapshot.new_nodes, it);
-        assert(success);
-
-        ctid_list: [..] Component_Type_ID;
-        ctid_list.allocator = temp;
-        for ids {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == it {
-                    array_add(*ctid_list, ctid);
-                }
-            }
-        }
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found);
-
-        for ctid_list {
-            // we already broadcasted networking id before, don't do it again
-            if it == #run component_type_id(Networking_ID) then continue;
-
-            broadcast_on_component_add(world, entity, it);
-        }
-    }
 
     for snapshot.added_fields {
         entity, found := table_find(*entity_node_id_table, it_index);
