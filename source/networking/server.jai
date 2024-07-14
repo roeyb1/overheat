@@ -74,93 +74,74 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
     added_nodes.count = 0;
     removed_nodes.count = 0;
 
-    #insert -> string {
-        INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
-                datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
+    INSERT_STRING :: #string DONE 
+        for q : make_iter(world, Networking_ID, %1) {
+            datas := query_get(q, %1);
+            networking_ids := query_get(q, Networking_ID);
 
-                for 0..q.count-1 {
-                    // if the node is new, it must be sent
-                    changed := array_find(added_nodes, networking_ids[it].id, compare_node_id);
+            for 0..q.count-1 {
+                // if the node is new, it must be sent
+                changed := array_find(added_nodes, networking_ids[it].id, compare_node_id);
+
+                if !changed {
+                    state_a := table_find_pointer(*a.state, networking_ids[it].id);
+                    state_b := table_find_pointer(*b.state, networking_ids[it].id);
+
+                    // node must be in state b, otherwise how is it appearing in the query
+                    assert(state_b != null);
+
+                    // if the node has no data in state a, we can't delta compress so we must send everything
+                    if state_a == null {
+                        changed = true;
+                    }
 
                     if !changed {
-                        state_a := table_find_pointer(*a.state, networking_ids[it].id);
-                        state_b := table_find_pointer(*b.state, networking_ids[it].id);
+                        assert(state_a != null && state_b != null);
 
-                        // node must be in state b, otherwise how is it appearing in the query
-                        assert(state_b != null);
+                        field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
+                        field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
 
-                        // if the node has no data in state a, we can't delta compress so we must send everything
-                        if state_a == null {
-                            changed = true;
-                        }
+                        if field_a == null || field_b == null then continue;
 
-                        if !changed {
-                            assert(state_a != null && state_b != null);
+                        field_a.only_note = "Sync";
+                        field_b.only_note = "Sync";
 
-                            field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
-                            field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
+                        a_data: %1;
+                        b_data: %1;
+                        field_a.cursor = 0;
+                        byte_buffer_read(field_a, *a_data);
+                        field_b.cursor = 0;
+                        byte_buffer_read(field_b, *b_data);
 
-                            if field_a == null || field_b == null then continue;
-
-                            field_a.only_note = "Sync";
-                            field_b.only_note = "Sync";
-
-                            a_data: %1;
-                            b_data: %1;
-                            field_a.cursor = 0;
-                            byte_buffer_read(field_a, *a_data);
-                            field_b.cursor = 0;
-                            byte_buffer_read(field_b, *b_data);
-
-                            // always sync properties for newly added entities
-                            #insert -> string {
-                                sb: String_Builder;
-                                for member : type_info(%1).members {
-                                    if has_note(*member, "Sync") {
-                                        sbprint(*sb, "changed |= a_data.%%1 != b_data.%%1;\n", member.name);
-                                    }
+                        // always sync properties for newly added entities
+                        #insert -> string {
+                            sb: String_Builder;
+                            for member : type_info(%1).members {
+                                if has_note(*member, "Sync") {
+                                    sbprint(*sb, "changed |= a_data.%%1 != b_data.%%1;\n", member.name);
                                 }
-
-                                return builder_to_string(*sb);
                             }
 
+                            return builder_to_string(*sb);
                         }
-                    }
 
-                    if changed {
-                        state := find_or_add(*result.state, networking_ids[it].id);
-
-                        field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
-                        field.only_note = "Sync";
-
-                        byte_buffer_write(field, *datas[it]);
-                        field.cursor = 0;
                     }
                 }
-            }
-        DONE
 
-        sb: String_Builder;
+                if changed {
+                    state := find_or_add(*result.state, networking_ids[it].id);
 
-        for ALL_COMPONENT_TYPES {
-            has_sync_fields := false;
-            ti := cast(*Type_Info_Struct) it;
-            for * member : ti.members {
-                if has_note(member, "Sync") {
-                    has_sync_fields = true;
-                    break;
+                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                    field.only_note = "Sync";
+
+                    byte_buffer_write(field, *datas[it]);
+                    field.cursor = 0;
                 }
             }
-
-            if !has_sync_fields then continue;
-
-            sbprint(*sb, INSERT_STRING, it);
         }
+    DONE
 
-        return builder_to_string(*sb);
-    }
+    #insert #run for_each_component_type_with_notes(.["Sync"], INSERT_STRING);
 
     return result;
 }

@@ -70,11 +70,35 @@ Player_State_Snapshot_Packet :: struct {
     input: Player_Commands;
 }
 
-
 // any nodes that were newly created in the last simulation iter
 added_nodes: [..] Node_ID;
 // any nodes that were destroyed in the last simulation iter
 removed_nodes: [..] Node_ID;
+
+for_each_component_type_with_notes :: (notes: [] string, insert: string) -> string {
+    sb: String_Builder;
+
+    for ALL_COMPONENT_TYPES {
+        has_sync_fields := false;
+        ti := cast(*Type_Info_Struct) it;
+
+        has_at_least_one_member_with_notes := false;
+        for * member : ti.members {
+            member_has_notes: bool = true;
+            for note : notes {
+                member_has_notes &= has_note(member, note);
+            }
+            has_at_least_one_member_with_notes |= member_has_notes;
+        }
+
+        if !has_at_least_one_member_with_notes then continue;
+
+        sbprint(*sb, insert, it);
+    }
+
+    return builder_to_string(*sb);
+}
+
 
 generate_full_snapshot :: (world: *World) -> State_Snapshot {
     result: State_Snapshot;
@@ -93,43 +117,24 @@ generate_full_snapshot :: (world: *World) -> State_Snapshot {
         entry := table_add(*result.new_nodes, it_index, types);
     }
 
-    #insert -> string {
-        INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
-                datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
+    INSERT_STRING :: #string DONE 
+        for q : make_iter(world, Networking_ID, %1) {
+            datas := query_get(q, %1);
+            networking_ids := query_get(q, Networking_ID);
 
-                for 0..q.count-1 {
-                    state := find_or_add(*result.state, networking_ids[it].id);
+            for 0..q.count-1 {
+                state := find_or_add(*result.state, networking_ids[it].id);
 
-                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
-                    field.only_note = "Sync";
+                field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                field.only_note = "Sync";
 
-                    byte_buffer_write(field, *datas[it]);
-                    field.cursor = 0;
-                }
+                byte_buffer_write(field, *datas[it]);
+                field.cursor = 0;
             }
-        DONE
-
-        sb: String_Builder;
-
-        for ALL_COMPONENT_TYPES {
-            has_sync_fields := false;
-            ti := cast(*Type_Info_Struct) it;
-            for * member : ti.members {
-                if has_note(member, "Sync") {
-                    has_sync_fields = true;
-                    break;
-                }
-            }
-
-            if !has_sync_fields then continue;
-
-            sbprint(*sb, INSERT_STRING, it);
         }
+    DONE
 
-        return builder_to_string(*sb);
-    }
+    #insert #run for_each_component_type_with_notes(.["Sync"], INSERT_STRING);
 
     return result;
 }
