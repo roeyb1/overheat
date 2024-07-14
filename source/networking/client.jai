@@ -174,6 +174,7 @@ generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_S
         component_types_view := get_component_types(world, it);
 
         types: [..] u64;
+        types.allocator = allocator;
         for component_types_view {
             array_add(*types, it.unique_id);
         }
@@ -190,7 +191,8 @@ generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_S
                 for 0..q.count-1 {
                     if networking_ids[it].id != g_client.local_client_id then continue;
 
-                    state := find_or_add(*result.state, networking_ids[it].id);
+                    state, newly_added := find_or_add(*result.state, networking_ids[it].id);
+                    if newly_added then state.fields.allocator = allocator;
 
                     assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
                     field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});

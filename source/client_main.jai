@@ -29,7 +29,7 @@ client_main :: () {
     viewport.main_camera = spawn_entity(*g_world, Position, Camera);
 
     while true {
-        FrameMark();
+        //FrameMark();
 
         now := seconds_since_init();
         g_delta_time = cast(float) (now - last_time);

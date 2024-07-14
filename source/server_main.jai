@@ -23,7 +23,7 @@ server_main :: () {
         while g_current_tick < expected_tick {
             g_current_tick += 1;
 
-            FrameMark();
+            //FrameMark();
             scoped_smooth_timer(*g_sim_timer, 1. / 16.);
 
             execute(*g_world, .PreUpdate);

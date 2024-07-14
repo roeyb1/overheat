@@ -100,7 +100,7 @@ for_each_component_type_with_notes :: (notes: [] string, insert: string) -> stri
 }
 
 
-generate_full_snapshot :: (world: *World, allocator: Allocator = context.allocator) -> State_Snapshot {
+generate_full_snapshot :: (world: *World, allocator: Allocator) -> State_Snapshot {
     result: State_Snapshot;
 
     result.time = xx seconds_since_init();
@@ -117,6 +117,7 @@ generate_full_snapshot :: (world: *World, allocator: Allocator = context.allocat
         component_types_view := get_component_types(world, it);
 
         types: [..] u64;
+        types.allocator = allocator;
         for component_types_view {
             array_add(*types, it.unique_id);
         }
@@ -130,7 +131,8 @@ generate_full_snapshot :: (world: *World, allocator: Allocator = context.allocat
             networking_ids := query_get(q, Networking_ID);
 
             for 0..q.count-1 {
-                state := find_or_add(*result.state, networking_ids[it].id);
+                state, newly_added := find_or_add(*result.state, networking_ids[it].id);
+                if newly_added then state.fields.allocator = allocator;
 
                 assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
 
@@ -193,7 +195,7 @@ to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet_Data {
     return result;
 }
 
-from_packet :: (packet: State_Snapshot_Packet_Data, allocator: Allocator = context.allocator) -> State_Snapshot {
+from_packet :: (packet: State_Snapshot_Packet_Data, allocator: Allocator) -> State_Snapshot {
     result: State_Snapshot;
     result.time = packet.time;
     result.tick = packet.tick;
@@ -206,25 +208,32 @@ from_packet :: (packet: State_Snapshot_Packet_Data, allocator: Allocator = conte
 
     array_append(*result.removed_nodes, packet.removed);
 
-    for packet.state_pairs {
+    for * packet.state_pairs {
         new_state := table_add(*result.state, it.node_id, .{});
+        it.fields.allocator = allocator;
         // deep copy the state and all the fields, they were allocated from temp buffers
         for it.fields {
             new_data := copy(*it.data);
             new_field_data := table_add(*new_state.fields, it.field_id, new_data);
+            set_allocator(new_field_data, allocator);
         }
     }
     for packet.newly_added {
-        new_entry := table_add(*result.new_nodes, it.node_id, it.component_types);
+        component_types: [..] u64;
+        component_types.allocator = allocator;
+        array_copy(*component_types, it.component_types);
+        new_entry := table_add(*result.new_nodes, it.node_id, component_types);
     }
 
     for packet.added_field_pairs {
         fields: [..] u64;
+        fields.allocator = allocator;
         array_copy(*fields, it.field_ids);
         new_entry := table_add(*result.added_fields, it.node_id, fields);
     }
     for packet.removed_field_pairs {
         fields: [..] u64;
+        fields.allocator = allocator;
         array_copy(*fields, it.field_ids);
         new_entry := table_add(*result.removed_fields, it.node_id, fields);
     }

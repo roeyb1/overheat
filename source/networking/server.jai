@@ -51,6 +51,7 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
         component_types_view := get_component_types(world, entity);
 
         types: [..] u64;
+        types.allocator = allocator;
         for component_types_view {
             array_add(*types, it.unique_id);
         }
@@ -59,8 +60,9 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
     }
 
     /** Find fields that are in snapshot a but not in b. Any nodes in the expected_missing list will not assert if they are missing from the second state */
-    find_missing_fields :: (a: State_Snapshot, b: State_Snapshot, expected_missing: [] Node_ID) -> Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id) {
+    find_missing_fields :: (a: State_Snapshot, b: State_Snapshot, expected_missing: [] Node_ID, allocator: Allocator) -> Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id) {
         result: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+        result.allocator = allocator;
 
         // find any removed components in this delta
         for a.state {
@@ -76,7 +78,9 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
             for state_a.fields {
                 field_id := it_index;
                 if !table_contains(*state_b.fields, field_id) {
-                    diff_fields := find_or_add(*result, node_id);
+                    diff_fields, newly_added := find_or_add(*result, node_id);
+                    if newly_added then diff_fields.allocator = allocator;
+                    
                     array_add(diff_fields, field_id);
                 }
             }
@@ -85,8 +89,8 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
         return result;
     }
 
-    result.removed_fields = find_missing_fields(a, b, expected_missing = removed_nodes);
-    result.added_fields = find_missing_fields(b, a, expected_missing = added_nodes);
+    result.removed_fields = find_missing_fields(a, b, expected_missing = removed_nodes, allocator);
+    result.added_fields = find_missing_fields(b, a, expected_missing = added_nodes, allocator);
     
     // reset the list of nodes that were added/removed during this delta
     added_nodes.count = 0;
@@ -147,7 +151,8 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
                 }
 
                 if changed {
-                    state := find_or_add(*result.state, networking_ids[it].id);
+                    state, newly_added := find_or_add(*result.state, networking_ids[it].id);
+                    if newly_added then state.fields.allocator = allocator;
 
                     assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
                     field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});
@@ -199,9 +204,9 @@ get_unique_node_id :: () -> Node_ID {
  */
 networking_broadcast :: (packet_data: *$Type) {
     buffer: ByteBuffer;
-    buffer.buff.allocator = temp;
-    packet_type := Type.PACKET_TYPE;
+    set_allocator(*buffer, temp);
 
+    packet_type := Type.PACKET_TYPE;
     byte_buffer_write(*buffer, *packet_type);
     byte_buffer_write(*buffer, packet_data);
 
@@ -288,7 +293,7 @@ server_update :: (server: *Server) {
 
             // copy the incoming data into the buffer
             buffer: ByteBuffer;
-            buffer.buff.allocator = temp;
+            set_allocator(*buffer, temp);
             array_copy(*buffer.buff, message_view);
 
             buffer.cursor = 0;
