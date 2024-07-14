@@ -132,8 +132,11 @@ generate_full_snapshot :: (world: *World, allocator: Allocator = context.allocat
             for 0..q.count-1 {
                 state := find_or_add(*result.state, networking_ids[it].id);
 
-                field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
+
+                field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});
                 field.only_note = "Sync";
+                set_allocator(field, allocator);
 
                 byte_buffer_write(field, *datas[it]);
                 field.cursor = 0;
@@ -144,35 +147,6 @@ generate_full_snapshot :: (world: *World, allocator: Allocator = context.allocat
     #insert #run for_each_component_type_with_notes(.["Sync"], INSERT_STRING);
 
     return result;
-}
-
-free :: (snapshot: *State_Snapshot) {
-    for snapshot.state {
-        for * it.fields {
-            free(it);
-        }
-        deinit(*it.fields);
-    }
-    for snapshot.added_fields {
-        fields := it;
-        for it {
-            array_free(fields);
-        }
-    }
-    deinit(*snapshot.added_fields);
-    for snapshot.removed_fields {
-        fields := it;
-        for it {
-            array_free(fields);
-        }
-    }
-    deinit(*snapshot.removed_fields);
-    for snapshot.new_nodes {
-        array_reset(*it);
-    }
-    deinit(*snapshot.state);
-    deinit(*snapshot.new_nodes);
-    array_reset(*snapshot.removed_nodes);
 }
 
 to_packet :: (snapshot: State_Snapshot) -> State_Snapshot_Packet_Data {

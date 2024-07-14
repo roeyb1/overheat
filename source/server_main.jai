@@ -33,7 +33,7 @@ server_main :: () {
 
             push_new_snapshot();
 
-            delta := generate_delta_snapshot(*g_world, get_snapshot(-1), get_snapshot(0));
+            delta := generate_delta_snapshot(*g_world, get_snapshot(-1), get_snapshot(0), temp);
 
             snapshot_packet := to_packet(*delta);
     

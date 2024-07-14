@@ -31,16 +31,16 @@ current_snapshot :: () -> *State_Snapshot {
     return get_snapshot(0);
 }
 
-generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot) -> State_Snapshot {
+generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot, allocator: Allocator) -> State_Snapshot {
     result: State_Snapshot;
     result.time = xx seconds_since_init();
     result.tick = g_current_tick;
 
-    result.state.allocator = temp;
-    result.new_nodes.allocator = temp;
-    result.added_fields.allocator = temp;
-    result.removed_fields.allocator = temp;
-    result.removed_nodes.allocator = temp;
+    result.state.allocator = allocator;
+    result.new_nodes.allocator = allocator;
+    result.added_fields.allocator = allocator;
+    result.removed_fields.allocator = allocator;
+    result.removed_nodes.allocator = allocator;
     
     array_append(*result.removed_nodes, removed_nodes);
 
@@ -149,8 +149,10 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot)
                 if changed {
                     state := find_or_add(*result.state, networking_ids[it].id);
 
-                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                    assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
+                    field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});
                     field.only_note = "Sync";
+                    set_allocator(field, allocator);
 
                     byte_buffer_write(field, *datas[it]);
                     field.cursor = 0;

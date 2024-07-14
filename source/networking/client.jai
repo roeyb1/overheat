@@ -13,7 +13,7 @@ input_ring: [TICK_RATE * 2] Player_Commands;
 
 snapshot_ring: [TICK_RATE * 2] State_Snapshot; // currently only stores the last 2 server snapshots for interp
 snapshot_allocators: [TICK_RATE * 2] Pool;
-last_received_snapshot_tick: u32;
+last_received_snapshot_tick: s64 = -1;
 
 prediction_ring: [TICK_RATE * 2] State_Snapshot;
 prediction_allocators: [TICK_RATE * 2] Pool;
@@ -42,20 +42,13 @@ push_new_server_snapshot :: (tick: u32) {
     snapshot_ring[tick % snapshot_ring.count] = generate_full_snapshot(*g_world, .{pool_allocator_proc, pool});
 }
 
-snapshot_index :: inline (offset_from_current: s32) -> s64 {
-    index := ((cast(s64)g_current_tick) + offset_from_current) % snapshot_ring.count;
-    return index;
-}
-
-get_snapshot :: (offset_from_current: s32) -> *State_Snapshot {
-    return *snapshot_ring[snapshot_index(offset_from_current)];
-}
-
 previous_snapshot :: () -> *State_Snapshot {
-    return *snapshot_ring[((cast(s32)last_received_snapshot_tick) - 1) % snapshot_ring.count];
+    assert(last_received_snapshot_tick != -1);
+    return *snapshot_ring[(last_received_snapshot_tick - 1) % snapshot_ring.count];
 }
 
 current_snapshot :: () -> *State_Snapshot {
+    assert(last_received_snapshot_tick != -1);
     return *snapshot_ring[last_received_snapshot_tick % snapshot_ring.count];
 }
 
@@ -199,8 +192,10 @@ generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_S
 
                     state := find_or_add(*result.state, networking_ids[it].id);
 
-                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
+                    assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
+                    field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});
                     field.only_note = "Predict";
+                    set_allocator(field, allocator);
 
                     byte_buffer_write(field, *datas[it]);
                     field.cursor = 0;
