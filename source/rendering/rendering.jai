@@ -47,6 +47,18 @@ rendering_shutdown :: () {
     log("Rendering systems shutdown successfully");
 }
 
+#if CLIENT {
+render_scene :: (q: Query) {
+    viewport := get_singleton(q.world, Game_Viewport);
+    pos := get_component(q.world, viewport.main_camera, Position);
+    cam := get_component(q.world, viewport.main_camera, Camera);
+
+    render_scene(cam.projection, pos);
+} @System(OnRender) @Write() @Read(Game_Viewport) @OptionalRead(Position,Camera)
+}
+
+
+
 rendering_begin_frame :: () {
     if g_window_resized_this_frame {
         rhi_swapchain_resize(xx g_window_width, xx g_window_height, acquire_image = true);

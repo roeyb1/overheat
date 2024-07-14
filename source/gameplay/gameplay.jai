@@ -6,6 +6,7 @@
 #load "enemy.jai";
 #load "follower.jai";
 #load "singletons.jai";
+#load "systems.jai";
 
 #if CLIENT {
     #load "input.jai";
