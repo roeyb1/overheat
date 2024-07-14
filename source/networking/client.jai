@@ -134,64 +134,6 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     }
 }
 
-generate_full_snapshot :: (world: *World) -> State_Snapshot {
-    result: State_Snapshot;
-    result.tick = g_current_tick;
-    result.time = xx seconds_since_init();
-
-    // always send over component id list for every entity in the world if it's a full snapshot
-    for entity_node_id_table {
-        component_types_view := get_component_types(world, it);
-
-        types: [..] u64;
-        for component_types_view {
-            array_add(*types, it.unique_id);
-        }
-
-        entry := table_add(*result.new_nodes, it_index, types);
-    }
-
-    #insert -> string {
-        INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
-                datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
-
-                for 0..q.count-1 {
-                    state := find_or_add(*result.state, networking_ids[it].id);
-
-                    field := find_or_add(*state.fields, #run component_type_id(%1).unique_id);
-                    field.only_note = "Sync";
-
-                    byte_buffer_write(field, *datas[it]);
-                    field.cursor = 0;
-                }
-            }
-        DONE
-
-        sb: String_Builder;
-
-        for ALL_COMPONENT_TYPES {
-            has_sync_fields := false;
-            ti := cast(*Type_Info_Struct) it;
-            for * member : ti.members {
-                if has_note(member, "Sync") {
-                    has_sync_fields = true;
-                    break;
-                }
-            }
-
-            if !has_sync_fields then continue;
-
-            sbprint(*sb, INSERT_STRING, it);
-        }
-
-        return builder_to_string(*sb);
-    }
-
-    return result;
-}
-
 generate_prediction_snapshot :: (world: *World) -> State_Snapshot {
     assert(g_enable_prediction, "We're trying to apply prediction when prediction is disabled");
 

@@ -57,7 +57,7 @@ client_main :: () {
             }
             if ImGui.BeginPopupModal("Connecting...", null, .AlwaysAutoResize | .NoMove) {
                 ImGui.Text("Connecting to server...");
-                if !local_server_started && ImGui.Button("Host") {
+                if !local_server_started && ImGui.Button("Host", .{ ImGui.GetContentRegionAvail().x, 0}) {
                     start_local_server();
                 }
                 ImGui.EndPopup();
