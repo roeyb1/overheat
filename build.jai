@@ -591,6 +591,7 @@ INSERT_STRING :: #string DONE
         component_reads = #run,stallable component_type_ids(.[%4]),
         component_writes = #run component_type_ids(.[%5]),
         optional_writes = #run component_type_ids(.[%6]),
+        is_predicted = %7,
     },
 DONE
 
@@ -598,26 +599,36 @@ DONE
     for system_functions {
         // need at least three notes: @System(Phase); @Read(..), @Write(..)
         assert(it.notes.count >= 3);
+         
+        phase_valid := false;
+        write_valid := false;
+        read_valid := false;
+        phase, write, read, opt_write: string;
+        is_predicted: bool;
 
-        phase_valid, phase := parse_system_phase(it.notes[0].text);
-        assert(phase_valid, "System phase note is not in the correct syntax! (%, %)", it.name, it_index);
-
-        write_valid, write := parse_write_types(it.notes[1].text);
-        assert(write_valid, "System write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[1].text);
-
-        read_valid, read := parse_read_types(it.notes[2].text);
-        assert(read_valid, "System read note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[2].text);
-
-        opt_write: string;
-        if it.notes.count >= 4 {
-            if contains(it.notes[3].text, "OptionalWrite") {
+        for note: it.notes {
+            if contains(note.text, "System") {
+                assert(!phase_valid);
+                phase_valid, phase = parse_system_phase(it.notes[0].text);
+                assert(phase_valid, "System phase note is not in the correct syntax! (%, %)", it.name, it_index);
+            } else if contains(note.text, "Write") && !contains(note.text, "Optional") {
+                assert(!write_valid);
+                write_valid, write = parse_write_types(it.notes[1].text);
+                assert(write_valid, "System write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, note.text);
+            } else if contains(note.text, "Read") && !contains(note.text, "Optional") {
+                assert(!read_valid);
+                read_valid, read = parse_read_types(it.notes[2].text);
+                assert(read_valid, "System read note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, note.text);
+            } else if contains(note.text, "OptionalWrite") {
                 opt_write_valid: bool;
                 opt_write_valid, opt_write = parse_opt_write_types(it.notes[3].text);
-                assert(opt_write_valid, "System opt-write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[3].text);
+                assert(opt_write_valid, "System opt-write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, note.text);
+            } else if note.text == "Predict" {
+                is_predicted = true;
             }
         }
 
-        sbprint(*sb, INSERT_STRING, it.name, it.name, phase, read, write, opt_write);
+        sbprint(*sb, INSERT_STRING, it.name, it.name, phase, read, write, opt_write, is_predicted);
     }
     sbprint(*sb, "];");
 

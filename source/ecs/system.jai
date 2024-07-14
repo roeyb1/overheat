@@ -71,6 +71,8 @@ System_Def :: struct {
     component_writes: [] Component_Type_ID;
     optional_writes: [] Component_Type_ID;
     archetype: [..] Component_Type_ID;
+
+    is_predicted: bool;
 }
 
 System_Scheduler :: struct {
