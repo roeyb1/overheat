@@ -17,7 +17,6 @@ SpriteSheet :: struct {
     heigth_in_sprites: u32;
 }
 
-// just for now, store some common stuff globally until we have a proper map loading system with asset references
 g_default_grid: TextureHandle;
 g_point_light_texture: TextureHandle;
 

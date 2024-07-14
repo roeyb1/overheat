@@ -148,7 +148,6 @@ move_proxy :: (tree: *BoundingTree, proxy_id: int, aabb: AABB, displacement: Vec
     fat_aabb.max = aabb.max + r;
 
 	// Predict AABB movement
-    // TODO I don't really understand what's happening here
     d := AABB_MULTIPLIER * displacement;
 
 	if d.x < 0 {
@@ -243,7 +242,6 @@ for_expansion :: (query: BoundingQuery($T), body: Code, flags: For_Flags) #expan
 		}
 
 		if intersects(tree.nodes[node_id].aabb, aabb) {
-            // TODO does this syntax perform a copy?
 			if is_leaf(tree.nodes[node_id]) {
                 `it := tree.nodes[node_id].user_data;
                 `it_index := node_id;
@@ -257,136 +255,7 @@ for_expansion :: (query: BoundingQuery($T), body: Code, flags: For_Flags) #expan
 	}
 }
 
-// query :: inline (tree: *BoundingTree($T), aabb: AABB, $callback: (value: T) -> bool) {
-//     // expecting there to be `value: T` and `cont: bool` before calling
-
-//     push(*tree.stack, tree.root_index);
-
-// 	while !empty(tree.stack) {
-// 		node_id := pop(*tree.stack);
-// 		if node_id == NULL_NODE {
-// 			continue;
-// 		}
-
-// 		if intersects(tree.nodes[node_id].aabb, aabb) {
-//             // TODO does this syntax perform a copy?
-// 			if is_leaf(tree.nodes[node_id]) {
-// 				cont := inline callback(tree.nodes[node_id].user_data);
-// 				if !cont {
-// 					return;
-// 				}
-// 			} else {
-//                 push(*tree.stack, tree.nodes[node_id].child1);
-//                 push(*tree.stack, tree.nodes[node_id].child2);
-// 			}
-// 		}
-// 	}
-// }
-
-// query :: inline (tree: *BoundingTree($T), aabb: AABB, code: Code) #expand {
-//     push(*tree.stack, tree.root_index);
-
-// 	while !empty(tree.stack) {
-// 		node_id := pop(*tree.stack);
-// 		if node_id == NULL_NODE {
-// 			continue;
-// 		}
-
-// 		if intersects(tree.nodes[node_id].aabb, aabb) {
-//             // TODO does this syntax perform a copy?
-// 			if is_leaf(tree.nodes[node_id]) {
-//                 it := tree.nodes[node_id].user_data;
-//                 it_index := node_id;
-
-//                 #insert,scope() code;
-// 			} else {
-//                 push(*tree.stack, tree.nodes[node_id].child1);
-//                 push(*tree.stack, tree.nodes[node_id].child2);
-// 			}
-// 		}
-// 	}
-// }
-
-// query :: inline (tree: *BoundingTree($T), aabb: AABB, $callback: (value: T, data: $D) -> bool, data: D) {
-//     push(*tree.stack, tree.root_index);
-
-// 	while !empty(tree.stack) {
-// 		node_id := pop(*tree.stack);
-// 		if node_id == NULL_NODE {
-// 			continue;
-// 		}
-
-// 		if intersects(tree.nodes[node_id].aabb, aabb) {
-//             // TODO does this syntax perform a copy?
-// 			if is_leaf(tree.nodes[node_id]) {
-// 				cont := inline callback(tree.nodes[node_id].user_data, data);
-// 				if !cont {
-// 					return;
-// 				}
-// 			} else {
-//                 push(*tree.stack, tree.nodes[node_id].child1);
-//                 push(*tree.stack, tree.nodes[node_id].child2);
-// 			}
-// 		}
-// 	}
-// }
-
-// query :: inline (tree: *BoundingTree($T), aabb: AABB, callback: (value: T, id: int) -> bool) {
-//     // expecting there to be `value: T` and `cont: bool` before calling
-
-//     // TODO really should not be re allocating this, unless I want this tree to be queryable in parallel?
-//     push(*tree.stack, tree.root_index);
-
-// 	while !empty(tree.stack) {
-// 		node_id := pop(*tree.stack);
-// 		if node_id == NULL_NODE {
-// 			continue;
-// 		}
-
-// 		if intersects(tree.nodes[node_id].aabb, aabb) {
-//             // TODO does this syntax perform a copy?
-// 			if is_leaf(tree.nodes[node_id]) {
-// 				cont := callback(tree.nodes[node_id].user_data, node_id);
-// 				if !cont {
-// 					return;
-// 				}
-// 			} else {
-//                 push(*tree.stack, tree.nodes[node_id].child1);
-//                 push(*tree.stack, tree.nodes[node_id].child2);
-// 			}
-// 		}
-// 	}
-// }
-
-// query :: inline (tree: *BoundingTree($T), aabb: AABB, $callback: (value: T, data: $D, id: int) -> bool, data: D) {
-//     // expecting there to be `value: T` and `cont: bool` before calling
-
-//     // TODO really should not be re allocating this, unless I want this tree to be queryable in parallel?
-//     push(*tree.stack, tree.root_index);
-
-// 	while !empty(tree.stack) {
-// 		node_id := pop(*tree.stack);
-// 		if node_id == NULL_NODE {
-// 			continue;
-// 		}
-
-// 		if intersects(tree.nodes[node_id].aabb, aabb) {
-//             // TODO does this syntax perform a copy?
-// 			if is_leaf(tree.nodes[node_id]) {
-// 				cont := inline callback(tree.nodes[node_id].user_data, data, node_id);
-// 				if !cont {
-// 					return;
-// 				}
-// 			} else {
-//                 push(*tree.stack, tree.nodes[node_id].child1);
-//                 push(*tree.stack, tree.nodes[node_id].child2);
-// 			}
-// 		}
-// 	}
-// }
-
 raycast :: inline (tree: BoundingTree($T), ray: Ray, callback: (ray: Ray, value: T) -> bool) {
-    // TODO this stack can probably be pre allocated based on the depth of the tree
     stack: Stack(s32);
     defer free_stack(stack);
 
@@ -416,7 +285,6 @@ raycast :: inline (tree: BoundingTree($T), ray: Ray, callback: (ray: Ray, value:
 }
 
 raycast :: inline (tree: BoundingTree($T), ray: Ray, $callback: (ray: Ray, value: T, data: $D) -> bool, data: D) {
-    // TODO this stack can probably be pre allocated based on the depth of the tree
     stack: Stack(s32);
     defer free_stack(stack);
 
@@ -445,21 +313,7 @@ raycast :: inline (tree: BoundingTree($T), ray: Ray, $callback: (ray: Ray, value
     }
 }
 
-// raycast :: inline (tree: BoundingTree($T), ray: Ray, $callback: (ray: Ray3, value: T) -> (hit: bool)) -> (hit: bool) {
-//     hit: bool;
-//     hit, point, data := raycast(tree, ray, (ray: Ray, value: T) -> bool {
-//         if callback(ray, value) {
-//             return false;
-//         }
-
-//         return true, false, .{};
-//     });
-
-//     return hit;
-// }
-
 raycast :: inline (tree: BoundingTree($T), segment: Line_Segment, $callback: (segment: Line_Segment, value: T, data: $D) -> bool, data: D) {
-    // TODO this stack can probably be pre allocated based on the depth of the tree
     stack: Stack(s32);
     defer free_stack(stack);
     push(*stack, tree.root_index);
@@ -480,9 +334,6 @@ raycast :: inline (tree: BoundingTree($T), segment: Line_Segment, $callback: (se
         if !intersection(segment_aabb, tree.nodes[index].aabb) {
             continue;
         }
-
-        // TODO you can apparently do an optimization here that has to do with the
-        // separating axis for segment (Gino, p80) but I'm not sure how to do it in 3 dimensions
 
         if !intersection(current_segment, tree.nodes[index].aabb) {
             continue;
@@ -508,7 +359,6 @@ raycast :: inline (tree: BoundingTree($T), segment: Line_Segment, $callback: (se
 }
 
 raycast :: inline (tree: BoundingTree($T), segment: Line_Segment, $callback: (segment: Line_Segment, value: T, data: $D) -> (hit: bool), data: D) {
-    // TODO this could be improved with scope context capturing
     hit, point, data := raycast(tree, segment, (segment: Line_Segment, value: T) -> (bool, bool, Vector2) {
         if inline callback(segment, value) {
             return false, true, .{};
