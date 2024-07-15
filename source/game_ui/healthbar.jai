@@ -79,8 +79,6 @@ draw_remote_player_health_bar :: (q: Query) {
 
     HEALTHBAR_SIZE :: #run ui_size(Vector2.{50, 5});
 
-    HEALTH_COLOR :: #run ImGui.IM_COL32(255, 0, 0);
-
     ImGui.PushStyleVar(.FrameRounding, 2);
     ImGui.PushStyleVar(.ItemSpacing, .{0, 0});
     ImGui.PushStyleColor(.PlotHistogram, HEALTH_COLOR);
