@@ -5,4 +5,4 @@ update_positions :: (q: Query) {
     for 0..q.count-1 {
         positions[it].value = positions[it] + velocities[it] * FIXED_TIMESTEP;
     }
-} @System(OnUpdate) @Write(Position) @Read(Velocity)
+} @Predict @System(OnUpdate) @Write(Position) @Read(Velocity)

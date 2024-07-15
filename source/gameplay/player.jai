@@ -113,7 +113,7 @@ update_player_controllers :: (q: Query) {
         velocities[it].value += (velocity_from_input - player_controllers[it].velocity_from_input);
         player_controllers[it].velocity_from_input = velocity_from_input;
     }
-} @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed)
+} @Predict @System(PreUpdate) @Write(Player_Controller,Velocity) @Read(Player_Commands,Move_Speed)
 
 #if CLIENT {
 broadcast_local_player_commands :: (q: Query) {

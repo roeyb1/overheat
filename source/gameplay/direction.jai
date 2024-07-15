@@ -24,4 +24,4 @@ update_directions:: (q: Query) {
             directions[it].value = Directions.RIGHT;
         } 
     }
-} @System(PostUpdate) @Write(Direction) @Read(Velocity)
+} @Predict @System(PostUpdate) @Write(Direction) @Read(Velocity)

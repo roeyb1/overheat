@@ -609,19 +609,19 @@ DONE
         for note: it.notes {
             if contains(note.text, "System") {
                 assert(!phase_valid);
-                phase_valid, phase = parse_system_phase(it.notes[0].text);
+                phase_valid, phase = parse_system_phase(note.text);
                 assert(phase_valid, "System phase note is not in the correct syntax! (%, %)", it.name, it_index);
             } else if contains(note.text, "Write") && !contains(note.text, "Optional") {
                 assert(!write_valid);
-                write_valid, write = parse_write_types(it.notes[1].text);
+                write_valid, write = parse_write_types(note.text);
                 assert(write_valid, "System write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, note.text);
             } else if contains(note.text, "Read") && !contains(note.text, "Optional") {
                 assert(!read_valid);
-                read_valid, read = parse_read_types(it.notes[2].text);
+                read_valid, read = parse_read_types(note.text);
                 assert(read_valid, "System read note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, note.text);
             } else if contains(note.text, "OptionalWrite") {
                 opt_write_valid: bool;
-                opt_write_valid, opt_write = parse_opt_write_types(it.notes[3].text);
+                opt_write_valid, opt_write = parse_opt_write_types(note.text);
                 assert(opt_write_valid, "System opt-write note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, note.text);
             } else if note.text == "Predict" {
                 is_predicted = true;

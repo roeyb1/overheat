@@ -36,7 +36,7 @@ reset_collision_spatial :: (q: Query) {
     // rebuild the spatial from scratch every frame.
     tree_reset(*spatial.aabb_tree);
     // #todo: only update the pieces that changed using events
-} @System(OnUpdate) @Write(Collision_Spatial) @Read()
+} @Predict @System(OnUpdate) @Write(Collision_Spatial) @Read()
 
 build_collision_spatial :: (q: Query) {
     spatial := get_singleton(q.world, Collision_Spatial);
@@ -49,7 +49,7 @@ build_collision_spatial :: (q: Query) {
 
         create_proxy(*spatial.aabb_tree, bounds, q.entities[it]);
     }
-} @System(OnValidate) @Write(Collision_Spatial) @Read(Position,Collider_AABB) @Optional(Collision_Invoker)
+} @Predict @System(OnValidate) @Write(Collision_Spatial) @Read(Position,Collider_AABB) @Optional(Collision_Invoker)
 
 Overlap_Pair_Bundle :: struct @Bundle {
     overlap_pair: Overlap_Pair;
@@ -82,14 +82,14 @@ detect_collisions :: (q: Query) {
             }
         }
     }
-} @System(OnValidate) @Write(Collision_List) @Read(Collision_Invoker,Position,Collider_AABB,Collision_Spatial)
+} @Predict @System(OnValidate) @Write(Collision_List) @Read(Collision_Invoker,Position,Collider_AABB,Collision_Spatial)
 
 sort_hit_pairs :: (q: Query) {
     hit_list := get_singleton(q.world, Collision_List);
 
     quick_sort(hit_list.blocking_pairs, (hit) => hit.sort_key);
     quick_sort(hit_list.event_pairs, (hit) => hit.sort_key);
-} @System(OnUpdate) @Write(Collision_List) @Read()
+} @Predict @System(OnUpdate) @Write(Collision_List) @Read()
 
 emit_overlap_events :: (q: Query) {
     collision_list := get_singleton(q.world, Collision_List);
@@ -126,7 +126,7 @@ resolve_overlap :: (q: Query) {
 
     array_reset(*collision_list.blocking_pairs);
     array_reset(*collision_list.event_pairs);
-} @System(PostUpdate) @Write() @Read(Collision_List) @OptionalWrite(Position)
+} @Predict @System(PostUpdate) @Write() @Read(Collision_List) @OptionalWrite(Position)
 
 generate_overlap_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, self: Entity, sort_key: u64) -> [..] Overlap_Pair {
     result: [..] Overlap_Pair;

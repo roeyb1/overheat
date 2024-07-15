@@ -127,9 +127,24 @@ NUM_SYSTEM_PHASES :: #run enum_highest_value(System_Phase) + 1;
 /** List of all system definitions, generated at compile time. */
 #placeholder ALL_SYSTEMS;
 
+is_sim_phase :: inline (phase: System_Phase) -> bool {
+    if phase == {
+        case .PreUpdate; #through;
+        case .OnUpdate; #through;
+        case .OnValidate; #through;
+        case .PostUpdate;
+            return true;
+    }
+    return false;
+}
+
 register_system_functions :: () {
     for * ALL_SYSTEMS {
-        add_system(it.phase, it);
+        #if CLIENT {
+            if !is_sim_phase(it.phase) || it.is_predicted then add_system(it.phase, it);
+        } else {
+            add_system(it.phase, it);
+        }
     }
     build_system_dependency_graphs();
 }
