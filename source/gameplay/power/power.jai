@@ -20,6 +20,7 @@ gather_power :: (world: *World, parent: Entity, power: float) {
     }
 }
 
+//this is for the power on skills
 modify_power :: (q: Query) {
     power_components := query_get(q, Power);
     power_change_queues := query_get(q, Power_Change_Queue);

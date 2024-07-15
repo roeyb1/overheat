@@ -191,18 +191,6 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             input_ring, success := table_find(*per_player_input_rings, player_commands_packet.node_id);
             assert(success);
             input_ring[player_commands_packet.tick % input_ring.count] = <<player_commands;
-        case .TARGETING_LOCATION;
-            player_targeting_location_packet: Player_targeting_Location_Packet;
-            byte_buffer_read(buffer, *player_targeting_location_packet);
-
-            entity, found := table_find(*entity_node_id_table, player_targeting_location_packet.node_id);
-            if !found then return;
-            // @todo: is this still valid
-            //assert(found, "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
-
-            current_target := get_component(*g_world, entity, Current_Target);
-            assert(current_target != null);
-            << current_target =  player_targeting_location_packet.location;
         case;
     }
 }

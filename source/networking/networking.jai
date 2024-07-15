@@ -64,7 +64,6 @@ PacketType :: enum u8 #specified {
     INVALID                 :: 0;
     CONNECTION_ESTABLISHED  :: 1;
     PLAYER_COMMANDS         :: 2;
-    TARGETING_LOCATION      :: 3;
     SNAPSHOT                :: 4;
     PLAYER_DELTA            :: 5;
 }
@@ -84,14 +83,6 @@ Player_Commands_Packet :: struct {
     node_id: Node_ID;
     tick: u32;
     commands: Player_Commands;
-}
-
-Player_targeting_Location_Packet :: struct {
-    PACKET_TYPE :: PacketType.TARGETING_LOCATION;
-
-    node_id: Node_ID;
-    tick: u32;
-    location: Current_Target;
 }
 
 get_ticks_from_time :: (time: float) -> u32 {

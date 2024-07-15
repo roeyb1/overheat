@@ -24,21 +24,18 @@ Animation_Definition :: struct {
     directional_mode: Anim_Direction_Mode;
 }
 
-
-
 Interuptor_Anim_Slot :: struct @Component {
     anim_list_index: Anim_List_Indecies; @Sync
     active: bool; @Sync 
     runtime: float; @Sync 
 }
 
-
-modify_interuptor_anim_slot :: (world: *World, parent: Entity, new_anim: Entity) {
-    assert(get_component(world, new_anim , Charging) != null);
+modify_interuptor_anim_slot_from_charge :: (world: *World, parent: Entity, charge: Entity) {
+    assert(get_component(world, charge , Charging) != null);
     assert(get_component(world, parent, Interuptor_Anim_Slot) != null);
     
-    anim_index := get_component(world, new_anim, Anim_List_Index).value;
-    runtime := get_component(world, new_anim, Duration).value;
+    anim_index := get_component(world, charge, Anim_List_Index).value;
+    runtime := get_component(world, charge, Duration).value;
     interuptor_anim_slot := get_component(world,parent,Interuptor_Anim_Slot);
 
     interuptor_anim_slot.anim_list_index = anim_index;
@@ -55,7 +52,7 @@ interuptor_runtime_update :: (q: Query) {
     }
 } @System(OnUpdate) @Write(Interuptor_Anim_Slot) @Read()
 
-//#HACK this will run in pre update after the client has started the animation in the last frame as animations are client side and its not worth communicating to the server an anim has started
+//this will run in pre update to stop the client from looping the first frame of the animation
 reset_interuptor_after_anim :: (q: Query) {
     #if SERVER {
         Anim_Slots := query_get(q, Interuptor_Anim_Slot);
@@ -66,6 +63,5 @@ reset_interuptor_after_anim :: (q: Query) {
         }
     }
 } @System(PreUpdate) @Write(Interuptor_Anim_Slot) @Read()
-
 
 #load "player_animation_list.jai";

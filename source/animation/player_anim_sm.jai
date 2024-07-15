@@ -38,7 +38,6 @@ update_player_anim_state :: (q: Query) {
         anim_info := get_component(q.world, q.entities[it], Interuptor_Anim_Slot);
         if anim_info.active {
             anim_info.active = false;
-
             anim_states[it].state = .INTERUPTOR;
             play_animation(q.world, *anims[it], ANIMATION_LIST[anim_info.anim_list_index]);
         }

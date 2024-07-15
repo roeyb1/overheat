@@ -1,10 +1,10 @@
+//every tick a skill is powering-up, power from the player's stored power will be drained and sent to the skill(s)
 power_skill_per_tick :: (q: Query) {
     stored_powers := query_get(q, Stored_Power);
 
     for 0..q.count-1 {
 
         iter := make_children_iter(q.world, q.entities[it], Skill);
-
         children: [..] Entity;
         children.allocator = temp;
         for * iter : make_children_iter(q.world, q.entities[it]) {

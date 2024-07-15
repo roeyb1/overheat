@@ -19,10 +19,11 @@ new_charge :: (world: *World, parent: Entity, charge_info: Charge) {
 start_charging :: (world: *World, entity: Entity) {
         parent := get_parent(world, entity);
         if is_valid(world,parent){
-            modify_interuptor_anim_slot(world, parent, entity);
+            modify_interuptor_anim_slot_from_charge(world, parent, entity);
         }
 } @Event(EcsOnAdd,Charging)
 
+//while a charge exists, it will send power to it's parent player in exchange for his mana
 update_charging :: (q: Query) {
     energy_costs := query_get(q, Energy_Cost);
 
@@ -41,25 +42,7 @@ update_charging :: (q: Query) {
 } @System(OnUpdate) @Write() @Read(Charging,Energy_Cost) 
 
 
-
-//tmp
-#if CLIENT {
-send_targeting_info_on_ability_cast :: (q: Query) {
-    player_commands := query_get(q, Player_Commands);
-    cooldowns := query_get(q, Cooldown);
-
-    for 0..q.count-1 {
-        attacking := player_commands[it].main_attack;
-        if attacking {
-            if cooldowns[it].current_value <= 0 {
-                update_player_cursor_position(q.world, q.entities[it]);
-            }
-        }
-    }
-} @System(OnUpdate) @Write() @Read(Player,Position,Cooldown) 
-}
-
-//tmp
+//temporary way of translating user input into an ability cast on the server, should be fleshed out when proper support is available
 #if SERVER {
 test_attack :: (q: Query) {
     player_commands := query_get(q, Player_Commands);
@@ -82,27 +65,26 @@ test_attack :: (q: Query) {
         }
     }
 } @System(OnUpdate) @Write() @Read(Player,Player_Commands,Position,Cooldown) 
-}
 
-//tmp
+
+//see above 
 test_attack2 :: (q: Query) {
-    #if SERVER {
-        player_commands := query_get(q, Player_Commands);
-        positions := query_get(q, Position);
-        cooldowns := query_get(q, Cooldown);
+    player_commands := query_get(q, Player_Commands);
+    positions := query_get(q, Position);
+    cooldowns := query_get(q, Cooldown);
 
-        for 0..q.count-1 {
-            attacking := player_commands[it].secondary_attack;
-            if attacking {
-                if cooldowns[it].current_value <= 0 {
-                    cooldowns[it].current_value = cooldowns[it].base_value;
-                    
-                    new_charge(q.world,q.entities[it],bow);
-                }
+    for 0..q.count-1 {
+        attacking := player_commands[it].secondary_attack;
+        if attacking {
+            if cooldowns[it].current_value <= 0 {
+                cooldowns[it].current_value = cooldowns[it].base_value;
+                
+                new_charge(q.world,q.entities[it],bow);
             }
         }
     }
 } @System(OnUpdate) @Write() @Read(Player,Player_Commands,Position,Cooldown) 
+}
 
 #load "charges.jai";
 #load "energy_cost.jai";
