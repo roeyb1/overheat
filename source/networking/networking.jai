@@ -64,8 +64,8 @@ PacketType :: enum u8 #specified {
     INVALID                 :: 0;
     CONNECTION_ESTABLISHED  :: 1;
     PLAYER_COMMANDS         :: 2;
-    SNAPSHOT                :: 3;
-    PLAYER_DELTA            :: 4;
+    SNAPSHOT                :: 4;
+    PLAYER_DELTA            :: 5;
 }
 
 /** Packet sent from the server to the client assigning it a player id. */

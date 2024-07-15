@@ -2,8 +2,7 @@ Player_Animation :: struct @Component {
     State :: enum u8 {
         IDLE;
         WALK;
-        ATTACK_WIND_UP;
-        ATTACK;
+        INTERUPTOR;
     }
 
     state: State;
@@ -23,20 +22,6 @@ Player_Animation :: struct @Component {
             flags = .LOOP,
             directional_mode = .UNIQUE_SPRITES,
         },
-        .{
-            frames = .[10],
-            frame_duration = 0.09,
-            name = "attack_wind_up",
-            flags = .NONE,
-            directional_mode = .UNIQUE_SPRITES,
-        },
-        .{
-            frames = .[11, 12, 13, 14],
-            frame_duration = 0.09,
-            name = "attack",
-            flags = .NONE,
-            directional_mode = .UNIQUE_SPRITES,
-        },
     ];
 }
 
@@ -50,10 +35,13 @@ update_player_anim_state :: (q: Query) {
     for 0..q.count-1 {
         current_state := anim_states[it].state;
 
-        if player_commands[it].main_attack && current_state != .ATTACK {
-            anim_states[it].state = .ATTACK_WIND_UP;
-            transition_to_state(q.world, *anims[it], anim_states[it]);
+        anim_info := get_component(q.world, q.entities[it], Interuptor_Anim_Slot);
+        if anim_info.active {
+            anim_info.active = false;
+            anim_states[it].state = .INTERUPTOR;
+            play_animation(q.world, *anims[it], ANIMATION_LIST[anim_info.anim_list_index]);
         }
+        
         if current_state == {
             case .IDLE;
                 if !equals(length_squared(velocities[it]), 0) {
@@ -65,13 +53,8 @@ update_player_anim_state :: (q: Query) {
                     anim_states[it].state = .IDLE;
                     transition_to_state(q.world, *anims[it], anim_states[it]);
                 }
-            case .ATTACK_WIND_UP;
-                if anims[it].finished then {
-                    anim_states[it].state = .ATTACK;
-                    transition_to_state(q.world, *anims[it], anim_states[it]);
-                }
-            case .ATTACK;
-                if anims[it].finished then {
+            case .INTERUPTOR;
+                if anim_info.runtime <= 0 then {
                     if equals(length_squared(velocities[it]), 0) {
                         anim_states[it].state = .IDLE;
                         transition_to_state(q.world, *anims[it], anim_states[it]);
@@ -81,6 +64,7 @@ update_player_anim_state :: (q: Query) {
                     }
                 }
         }
+        
     }
 } @System(PreRender) @Write(Player_Animation,Sprite_Animator) @Read(Player,Player_Commands,Velocity)
 
@@ -88,4 +72,8 @@ update_player_anim_state :: (q: Query) {
 
 transition_to_state :: (world: *World, animator: *Sprite_Animator, anim_state: Player_Animation){
     << animator = .{ anim_state.defs[anim_state.state], 0, anim_state.defs[anim_state.state].frame_duration, false };
+}
+
+play_animation :: (world: *World, animator: *Sprite_Animator, anim_definition: Animation_Definition){
+    << animator = .{ anim_definition, 0, anim_definition.frame_duration, false };
 }

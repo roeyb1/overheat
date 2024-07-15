@@ -30,6 +30,7 @@ load_all_assets :: () {
     load_spritesheet("assets/players/player_character2.png", 48, 0, 0,23,4);
     load_spritesheet("assets/enemies/skeleton.png", 32, 0, 0, 10, 4);
     load_spritesheet("assets/enemies/bat2.png", 96, 0, 0, 15, 4);
+    load_spritesheet("assets/skills/blue_orb.png", 48, 0, 0, 8, 1);
 
     log("Asset loading complete");
 }

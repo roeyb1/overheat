@@ -20,6 +20,8 @@ Player_Commands :: struct @Component {
 
     main_attack: bool;
     secondary_attack: bool;
+
+    cursor_position: Vector2;
 }
 
 operator== :: (a: Player_Commands, b: Player_Commands) -> bool {
@@ -42,8 +44,12 @@ Player_Bundle :: struct @Bundle {
     sprite: Sprite;
     collider: Collider_AABB;
     health: Health;
+    health_change_queue: Health_Change_Queue;
     networking_id: Networking_ID;
     remote: Remote_Player;
+    cooldown: Cooldown;
+    anim_info: Interuptor_Anim_Slot;
+    stored_power: Stored_Power;
 }
 
 init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
@@ -62,6 +68,7 @@ init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
         health = .{90., 100.},
         networking_id = .{node_id},
+        cooldown = .{base_value=1.},
     });
 
     return entity;
@@ -97,6 +104,12 @@ update_local_player_commands_from_input :: (q: Query) {
         if is_button_down(input_states, .MAIN_ATTACK) {
             player_commands[it].main_attack = true;
         }
+
+        if is_button_down(input_states, .SECONDARY_ATTACK) {
+            player_commands[it].secondary_attack = true;
+        }
+
+        player_commands[it].cursor_position = get_mouse_worldspace();
     }
 } @System(PostLoad) @Write(Player_Commands) @Read(Local_Player,Input_States)
 }
@@ -147,6 +160,17 @@ on_player_component_added :: (world: *World, entity: Entity) {
     }
 }
 } @Event(EcsOnAdd,Player)
+
+#if CLIENT {
+get_mouse_worldspace :: () -> Vector2 {
+    viewport := get_singleton(*g_world, Game_Viewport);
+    camera := get_component(*g_world, viewport.main_camera, Camera);
+    cam_pos := get_component(*g_world, viewport.main_camera, Position);
+    s_x, s_y := get_mouse_cursor_pos();
+    v := viewspace_to_worldspace(camera.projection, cam_pos, .{cast(float)s_x, cast(float)s_y});
+    return v;
+}
+}
 
 on_player_component_removed :: (world: *World, entity: Entity) {
     log("Player % has left the game", get_component(world, entity, Name).name);

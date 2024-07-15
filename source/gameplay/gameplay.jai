@@ -6,7 +6,13 @@
 #load "enemy.jai";
 #load "follower.jai";
 #load "singletons.jai";
+#load "charging/charge.jai";
+#load "power/power.jai";
+#load "skills/skill.jai";
+#load "duration.jai";
+#load "cooldown.jai";
 #load "systems.jai";
+
 
 #if CLIENT {
     #load "input.jai";
