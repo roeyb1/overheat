@@ -4,7 +4,6 @@
 ByteBuffer :: struct {
     buff: [..] u8;
     cursor: s64;
-    allocator: Allocator; @NoSerialize;
 
     // if only-note is set, it will only serialize members with the note
     only_note: string;
@@ -23,7 +22,6 @@ copy :: (buffer: *ByteBuffer) -> ByteBuffer {
 }
 
 set_allocator :: (buff: *ByteBuffer, allocator: Allocator) {
-    buff.allocator = allocator;
     buff.buff.allocator = allocator;
 }
 
@@ -101,8 +99,6 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ign
                 append(*sb, byte);
             }
             {
-                if buffer.allocator.proc == null    buffer.allocator = context.allocator;
-                push_allocator(buffer.allocator);
                 << str = builder_to_string(*sb);
             }
     case .ARRAY;
@@ -121,11 +117,9 @@ byte_buffer_read :: (buffer: *ByteBuffer, data_out: *void, info: *Type_Info, ign
                 // Reallocing here could lead to a memory leak if we try to read into an array that already has some data allocated.
                 assert(result.allocated == 0);
                 {
-                    if buffer.allocator.proc == null    buffer.allocator = context.allocator;
-                    push_allocator(buffer.allocator);
                     result.data = realloc(null, array_count * array_info.element_type.runtime_size, 0);
                     memset(result.data, 0, array_count * array_info.element_type.runtime_size);
-                    result.allocator = buffer.allocator;
+                    result.allocator = context.allocator;
                 }
                 result.count = array_count;
                 result.allocated = array_count;

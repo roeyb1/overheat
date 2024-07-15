@@ -41,6 +41,8 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
     result.added_fields.allocator = allocator;
     result.removed_fields.allocator = allocator;
     result.removed_nodes.allocator = allocator;
+
+    push_allocator(allocator);
     
     array_append(*result.removed_nodes, removed_nodes);
 
