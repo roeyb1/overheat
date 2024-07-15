@@ -35,7 +35,7 @@ logger :: (message: string, data: *void, info: Log_Info) {
         calendar_local.second);
     write_string(timestamp);
 
-    framecount := tprint("[%] ", g_frame_number % 1000);
+    framecount := tprint("[%] ", g_current_tick % 1000);
     write_string(framecount);
 
     file_prefix := tprint("[%]: ", path_filename(info.location.fully_pathed_filename));

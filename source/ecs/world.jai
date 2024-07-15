@@ -143,6 +143,7 @@ destroy_entity :: (world: *World, entity: Entity) {
     }
 
     remove_entity(*world.stage, entity);
+    log("Entity % was destroyed in world %", entity, world);
 }
 
 /** Returns true of a given entity has a component of the given type */

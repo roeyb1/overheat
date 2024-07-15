@@ -9,7 +9,6 @@ update_duration :: (q: Query) {
         durations[it].value -= FIXED_TIMESTEP;
         
         if durations[it].value < 0 {
-            log("deleted %",q.entities[it]);
             destroy_entity(q.world, q.entities[it]);
         }
     }
