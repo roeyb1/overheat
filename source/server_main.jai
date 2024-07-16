@@ -1,7 +1,9 @@
 #assert SERVER;
 
 server_main :: () {
-    import_ldtk_level(*g_world);
+    level := spawn_entity(*g_world);
+    add_component(*g_world, level, Level, .{"assets/levels/prison/prison.ldtk"});
+    add_component(*g_world, level, Networking_ID, .{get_unique_node_id()});
 
     last_time = seconds_since_init();
 

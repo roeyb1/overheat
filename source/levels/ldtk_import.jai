@@ -54,11 +54,11 @@ g_player_start: Vector2;
 
 TILE_PIXEL_SIZE :: 32;
 
-import_ldtk_level :: (world: *World) {
+import_ldtk_level :: (world: *World, path: string) {
     old_allocator := context.allocator;
     context.allocator = temp;
 
-    data, read_success := read_entire_file("assets/levels/prison/prison.ldtk", log_errors=false);
+    data, read_success := read_entire_file(path, log_errors=false);
     assert(read_success);
 
     parse_success, root := json_parse_string(data, LDTK_Root, ignore_unknown=true);

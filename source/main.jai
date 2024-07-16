@@ -94,7 +94,7 @@ using Random :: #import "Random";
 #load "ecs/ecs.jai";
 #load "gameplay/gameplay.jai";
 #load "physics/collision.jai";
-#load "levels/ldtk_import.jai";
+#load "levels/level.jai";
 #load "animation/sprite_animation.jai";
 #load "animation/player_anim_sm.jai";
 #load "animation/skeleton_anim_sm.jai";

@@ -20,7 +20,6 @@ client_main :: () {
     rendering_init();
 
     load_all_assets();
-    import_ldtk_level(*g_world);
 
     last_time = seconds_since_init();
 

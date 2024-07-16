@@ -21,7 +21,7 @@ set_camera_follow_target :: (world: *World, entity: Entity) {
     camera := get_component(*g_world, viewport.main_camera, Camera);
     cam_pos := get_component(*g_world, viewport.main_camera, Position);
 
-    << cam_pos = .{ g_player_start };
+    << cam_pos = .{ get_component(world, entity, Position).value };
     camera.entity_to_track = entity;
 
 } @Event(EcsOnAdd,Local_Player)
