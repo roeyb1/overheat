@@ -176,6 +176,7 @@ render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_image
             stencil_load_op = .DONT_CARE,
             stencil_store_op = .DONT_CARE,
         };
+        depth_buffer_desc.clear_value.depth = 1.;
 
         color_buffer_desc := RHIColorAttachmentDesc.{
             image_view = rdg_get_image_view(color_image_view),
