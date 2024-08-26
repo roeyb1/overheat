@@ -5,3 +5,4 @@ bin/
 *.rdbg
 *.10x
 imgui.ini
+*.DS_STORE

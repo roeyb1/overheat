@@ -48,20 +48,6 @@ GameNetworkingSockets :: struct
     GetISockets :: () -> *ISockets #foreign lib "SteamAPI_SteamNetworkingSockets_v009";
     GetIUtils   :: () -> *IUtils   #foreign lib "SteamAPI_SteamNetworkingUtils_v003";
 
-    // Custom memory allocation methods.  If you call this, you MUST call it exactly once,
-    // before calling any other API function.  *Most* allocations will pass through these,
-    // especially all allocations that are per-connection.  A few allocations
-    // might still go to the default CRT malloc and operator new.
-    // To use this, you must compile the library with STEAMNETWORKINGSOCKETS_ENABLE_MEM_OVERRIDE
-    //
-    // The included binaries in gns-jai DO NOT compile with STEAMNETWORKINGSOCKETS_ENABLE_MEM_OVERRIDE
-    // so you MUST make your own binaries to use this feature.
-    //
-    SetCustomMemoryAllocator :: (
-        pfn_malloc: Malloc,
-        pfn_free: Free,
-        pfn_realloc: Realloc) #foreign lib "SteamNetworkingSockets_SetCustomMemoryAllocator";
-
     Malloc  :: #type (s: u64) -> *void;
     Free    :: #type (p: *void);
     Realloc :: #type (p: *void, s: u64) -> *void;
@@ -2129,4 +2115,4 @@ GlobalInterfaceWrapper :: inline ($pp : **$T) -> *T
 
 #if      OS == .WINDOWS lib ::  #library,no_dll "win/GameNetworkingSockets";
 else #if OS == .LINUX   lib ::  #library        "linux/libGameNetworkingSockets"; // UNTESTED
-else #if OS == .MACOS   lib ::  #library        "mac/libGameNetworkingSockets";      // UNTESTED
+else #if OS == .MACOS   lib ::  #library        "macos/libGameNetworkingSockets";      // UNTESTED

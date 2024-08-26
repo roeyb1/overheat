@@ -10,7 +10,7 @@ compile_shaders :: (base_directory: string, debug_symbols := false) -> bool {
     } else #if OS == .LINUX {
         #assert false, "Vulkan shader compilation is not supported in this platform";
     } else #if OS == .MACOS {
-        #assert false, "Vulkan shader compilation is not supported in this platform";
+        shader_compiler := "dxc";
     } else {
         #assert false, "Vulkan shader compilation is not supported in this platform";
     }

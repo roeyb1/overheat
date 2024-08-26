@@ -474,15 +474,23 @@ copy_module_libraries_to_target :: (target_options: Build_Options) {
 
     module_directories := dir_list("modules", recursive=false);
     for module : module_directories {
-        os_names := string.["win", "linux", "mac"];
-        
-        os_name := "win";
+        #if OS == {
+            case .WINDOWS;
+                os_name := "win";
+                lib_ext := ".dll";
+            case .MACOS;
+                os_name := "macos";
+                lib_ext := ".dylib";
+            case .LINUX;
+                os_name := "linux";
+                lib_ext := ".so";
+        }
         module_lib_dir_name := tprint("%/%", module, os_name);
         if is_directory(module_lib_dir_name) {
 
             module_binary_list := file_list(module_lib_dir_name);
             for binary : module_binary_list {
-                if ends_with(binary, ".dll") {
+                if ends_with(binary, lib_ext) {
                     copy_file(binary, tprint("%/%", target_options.output_path, path_filename(binary)));
                 }
             }
@@ -713,21 +721,6 @@ generated_event_functions := false;
 
 component_type_names: [..] string;
 generated_component_types := false;
-
-is_absolute_path :: (path: string) -> bool { // This routine is probably not as correct as we'd like. We'd like to put in a better one! But maybe we will stop doing the cwd thing, or do it differently; hard to say.
-    if !path return false;
-
-    if path[0] == #char "/" return true;   // Backslashes have not been converted to forward slashes by this point.
-    if path[0] == #char "\\" return true;  // Backslashes have not been converted to forward slashes by this point.
-    if (path.count > 2) && (path[1] == #char ":") && (OS == .WINDOWS) return true;  // Drive letter stuff. Probably incomplete.
-
-    if path.count >= 3 {
-        // @Robustness: Check for a drive letter in character 0?  Anything else?
-        if path[1] == #char ":" return true;
-    }
-
-    return false;
-}
 
 shuffle :: (array: [] $T) {
     Random :: #import "Random";
