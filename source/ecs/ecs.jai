@@ -11,3 +11,6 @@
 #load "event.jai";
 #load "defer.jai";
 #load "stage.jai";
+
+#load "tests/entity.jai";
+#load "tests/stage.jai";

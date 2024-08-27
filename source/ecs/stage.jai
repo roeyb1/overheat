@@ -1,9 +1,12 @@
 Stage :: struct {
-    /** A list of all currently alive entities */
+    /**
+     * All entities in the world. 
+     * Also contains dead indices which match the list of `free_entity_indices`
+     */
     entities: [..] Entity;
     free_entity_indices: [..] s32;
 
-    /** Maps an entity to it's archetype index */
+    /** Maps an entity to its archetype index */
     entity_records: Table(s64, Entity_Record);
 
     archetypes: [..] Archetype;
@@ -183,6 +186,12 @@ get_or_create_archetype :: (stage: *Stage, ctids: [] Component_Type_ID) -> (*Arc
     add_archetype_to_active_cache(stage, result, archetype_id);
 
     return result, archetype_id;
+}
+
+find_archetype_for_entity :: (stage: *Stage, entity: Entity) -> *Archetype {
+    record := table_find_pointer(*stage.entity_records, entity.raw);
+    assert(record != null);
+    return *stage.archetypes[record.archetype_id];
 }
 
 add_archetype_to_active_cache :: (stage: *Stage, archetype: *Archetype, archetype_id: s64) {
