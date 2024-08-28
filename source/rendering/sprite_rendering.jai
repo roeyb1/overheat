@@ -273,7 +273,7 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
 
     // collect all the draws for this frame
     {
-        for q : make_iter(*g_world, Position, Sprite) {
+        for q : iter_make(*g_world, Position, Sprite) {
             positions := query_get(q, Position);
             sprites := query_get(q, Sprite);
             for 0..q.count-1 {

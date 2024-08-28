@@ -31,12 +31,12 @@ Interuptor_Anim_Slot :: struct @Component {
 }
 
 modify_interuptor_anim_slot_from_charge :: (world: *World, parent: Entity, charge: Entity) {
-    assert(get_component(world, charge , Charging) != null);
-    assert(get_component(world, parent, Interuptor_Anim_Slot) != null);
+    assert(ecs_get(world, charge , Charging) != null);
+    assert(ecs_get(world, parent, Interuptor_Anim_Slot) != null);
     
-    anim_index := get_component(world, charge, Anim_List_Index).value;
-    runtime := get_component(world, charge, Duration).value;
-    interuptor_anim_slot := get_component(world,parent,Interuptor_Anim_Slot);
+    anim_index := ecs_get(world, charge, Anim_List_Index).value;
+    runtime := ecs_get(world, charge, Duration).value;
+    interuptor_anim_slot := ecs_get(world,parent,Interuptor_Anim_Slot);
 
     interuptor_anim_slot.anim_list_index = anim_index;
     interuptor_anim_slot.runtime = runtime;

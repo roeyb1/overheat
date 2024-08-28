@@ -58,7 +58,7 @@ init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
     PLAYER_SIZE :: Vector2.{2.3, 2.3};
     PLAYER_COLLIDER_SIZE :: Vector2.{1., 1.};
 
-    entity := spawn_entity_from_bundle(*g_world, Player_Bundle.{
+    entity := entity_spawn_bundle(*g_world, Player_Bundle.{
         name = .{ sprint("Player_%", node_id.id) },
         position = .{ position },
         invoker = .{ id = node_id.id },
@@ -77,7 +77,7 @@ init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
 #if CLIENT {
 update_local_player_commands_from_input :: (q: Query) {
     player_commands := query_get(q, Player_Commands);
-    input_states := get_singleton(q.world, Input_States);
+    input_states := ecs_singleton_get(q.world, Input_States);
 
     for 0..q.count-1 {
         // reset previous frame's command state:
@@ -146,15 +146,15 @@ broadcast_local_player_commands :: (q: Query) {
 }
 
 on_player_component_added :: (world: *World, entity: Entity) {
-    log("Player % has joined the game", get_component(world, entity, Name).name);
+    log("Player % has joined the game", ecs_get(world, entity, Name).name);
 #if CLIENT {
-    networking_id := get_component(world, entity, Networking_ID);
+    networking_id := ecs_get(world, entity, Networking_ID);
     assert(networking_id != null);
     if networking_id.id == g_client.local_client_id {
-        remove_component(*g_world, entity, Remote_Player);
-        add_component(*g_world, entity, Local_Player);
+        ecs_remove(*g_world, entity, Remote_Player);
+        ecs_add(*g_world, entity, Local_Player);
 
-        sprite := get_component(world, entity, Sprite);
+        sprite := ecs_get(world, entity, Sprite);
         sprite.sheet = null;
         sprite.sheet_path = "assets/players/player_character1.png";
     }
@@ -163,9 +163,9 @@ on_player_component_added :: (world: *World, entity: Entity) {
 
 #if CLIENT {
 get_mouse_worldspace :: () -> Vector2 {
-    viewport := get_singleton(*g_world, Game_Viewport);
-    camera := get_component(*g_world, viewport.main_camera, Camera);
-    cam_pos := get_component(*g_world, viewport.main_camera, Position);
+    viewport := ecs_singleton_get(*g_world, Game_Viewport);
+    camera := ecs_get(*g_world, viewport.main_camera, Camera);
+    cam_pos := ecs_get(*g_world, viewport.main_camera, Position);
     s_x, s_y := get_mouse_cursor_pos();
     v := viewspace_to_worldspace(camera.projection, cam_pos, .{cast(float)s_x, cast(float)s_y});
     return v;
@@ -173,7 +173,7 @@ get_mouse_worldspace :: () -> Vector2 {
 }
 
 on_player_component_removed :: (world: *World, entity: Entity) {
-    log("Player % has left the game", get_component(world, entity, Name).name);
+    log("Player % has left the game", ecs_get(world, entity, Name).name);
 } @Event(EcsOnRemove,Player)
 
 #import "Math";

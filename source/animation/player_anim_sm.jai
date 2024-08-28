@@ -35,7 +35,7 @@ update_player_anim_state :: (q: Query) {
     for 0..q.count-1 {
         current_state := anim_states[it].state;
 
-        anim_info := get_component(q.world, q.entities[it], Interuptor_Anim_Slot);
+        anim_info := ecs_get(q.world, q.entities[it], Interuptor_Anim_Slot);
         if anim_info.active {
             anim_info.active = false;
             anim_states[it].state = .INTERUPTOR;

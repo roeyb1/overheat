@@ -22,18 +22,18 @@ Enemy_Bundle :: struct @Bundle {
 }
 
 spawn_enemy :: (world: *World, position: Vector2, node_id: Node_ID, type: Enemy_Type) {
-    entity := spawn_entity_from_bundle(world, Enemy_Bundle.{
+    entity := entity_spawn_bundle(world, Enemy_Bundle.{
         position = .{ position },
         enemy.type = type,
         networking_id.id = node_id,
         health = .{100., 100.},
     });
 
-    add_components_from_bundle(world, entity, Follower.{
+    ecs_add_bundle(world, entity, Follower.{
         move_speed.speed = 3,
         follow = .{
             mode = .TAG,
-            tag = #run component_type_id(Player),
+            tag = cid_get(world, Player),
             max_distance = 5,
         },
     });
@@ -47,16 +47,16 @@ spawn_enemy :: (world: *World, position: Vector2, node_id: Node_ID, type: Enemy_
             size = Vector2.{1.0, 1.0};
             collider_size = Vector2.{0.6, 0.6};
             spritesheet_path = "assets/enemies/skeleton.png";
-            add_component(world, entity, Skeleton_Animation);
+            ecs_add(world, entity, Skeleton_Animation);
         case .BAT;
             size = Vector2.{2.3, 2.3};
             collider_size = Vector2.{0.6, 0.8};
             spritesheet_path = "assets/enemies/bat2.png";
-            add_component(world, entity, Bat_Animation);
+            ecs_add(world, entity, Bat_Animation);
     }
 
-    sprite := add_component(world, entity, Sprite, .{spritesheet_path, null, size, 0, 4, 0});
-    << get_component(world, entity, Collider_AABB) = .{aabb = make_aabb(.{0, 0}, collider_size), blocking = false};
+    sprite := ecs_add(world, entity, Sprite, .{spritesheet_path, null, size, 0, 4, 0});
+    << ecs_get(world, entity, Collider_AABB) = .{aabb = make_aabb(.{0, 0}, collider_size), blocking = false};
 }
 
 spawn_enemy_pack :: (world: *World, center: Vector2, radius: float, type: Enemy_Type) {

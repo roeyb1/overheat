@@ -33,7 +33,7 @@ get_button_state :: (input_states: *Input_States, gameplay_input: Gameplay_Input
 
 load_input_system :: (q: Query) {
     // load the HAL inputs into the ecs.
-    input_states := get_singleton(q.world, Input_States);
+    input_states := ecs_singleton_get(q.world, Input_States);
 
     for 0..input_states.states.count-1 {
         input_states.states[it] = hal_input_button_states[it];

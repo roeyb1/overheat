@@ -128,7 +128,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             entity, found := table_find(*entity_node_id_table, player_commands_packet.node_id);
             assert(found, "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
 
-            player_commands := get_component(*g_world, entity, Player_Commands);
+            player_commands := ecs_get(*g_world, entity, Player_Commands);
             assert(player_commands != null);
             << player_commands = player_commands_packet.commands;
         case .PLAYER_DELTA;
@@ -171,12 +171,12 @@ generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_S
 
     // always send over component id list for every entity in the world if it's a full snapshot
     for entity_node_id_table {
-        component_types_view := get_component_types(world, it);
+        component_types_view := entity_types_get(world, it);
 
-        types: [..] u64;
+        types: [..] s64;
         types.allocator = allocator;
         for component_types_view {
-            array_add(*types, it.unique_id);
+            array_add(*types, it);
         }
 
         entry := table_add(*result.new_nodes, it_index, types);
@@ -184,7 +184,7 @@ generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_S
 
     #insert -> string {
         INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
+            for q : iter_make(world, Networking_ID, %1) {
                 datas := query_get(q, %1);
                 networking_ids := query_get(q, Networking_ID);
 
@@ -194,8 +194,8 @@ generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_S
                     state, newly_added := find_or_add(*result.state, networking_ids[it].id);
                     if newly_added then state.fields.allocator = allocator;
 
-                    assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
-                    field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});
+                    assert(!table_contains(*state.fields, cid_get(world, %1)));
+                    field := table_add(*state.fields, cid_get(world, %1), .{});
                     field.only_note = "Predict";
                     set_allocator(field, allocator);
 
@@ -232,7 +232,7 @@ interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapsho
     assert(a.tick != 0 && b.tick != 0);
     #insert -> string {
         INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
+            for q : iter_make(world, Networking_ID, %1) {
                 datas := query_get(q, %1);
                 networking_ids := query_get(q, Networking_ID);
 
@@ -242,8 +242,8 @@ interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapsho
 
                     if !success_a || !success_b then continue;
 
-                    field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
-                    field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
+                    field_a: *ByteBuffer = table_find_pointer(*state_a.fields, cid_get(world, %1));
+                    field_b: *ByteBuffer = table_find_pointer(*state_b.fields, cid_get(world, %1));
 
                     if field_a == null || field_b == null then continue;
 
@@ -300,7 +300,7 @@ interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snap
     assert(a.tick != 0 && b.tick != 0);
     #insert -> string {
         INSERT_STRING :: #string DONE 
-            for q : make_iter(world, Networking_ID, %1) {
+            for q : iter_make(world, Networking_ID, %1) {
                 datas := query_get(q, %1);
                 networking_ids := query_get(q, Networking_ID);
 
@@ -312,9 +312,9 @@ interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snap
 
                     if !success_a || !success_b then continue;
 
-                    field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
+                    field_a: *ByteBuffer = table_find_pointer(*state_a.fields, cid_get(world, %1));
 
-                    field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
+                    field_b: *ByteBuffer = table_find_pointer(*state_b.fields, cid_get(world, %1));
 
                     if field_a == null || field_b == null then continue;
 
@@ -368,31 +368,35 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
         _, found := table_find(*entity_node_id_table, it_index);
         if found then continue;
 
-        ctid_list: [..] Component_Type_ID;
-        ctid_list.allocator = temp;
+        cid_list: [..] s64;
+        cid_list.allocator = temp;
         for it {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == it {
-                    array_add(*ctid_list, ctid);
+            for q : iter_make(world, ECS_Component) {
+                for cent : q.entities {
+                    if cid_from_entity(cent) == it then array_add(*cid_list, it);
                 }
             }
         }
-        entity := spawn_entity(world);
 
-        add_component(world, entity, Networking_ID, .{it_index});
-        for ctid_list {
-            add_component(world, entity, it, broadcast=false);
+        entity := entity_spawn(world);
+
+        ecs_add(world, entity, Networking_ID, .{it_index});
+
+        for cid_list {
+            // #todo: need a way to disable broadcast
+            //ecs_add(world, entity, it, broadcast=false);
+            ecs_add(world, entity, it);
         }
     }
 
     `defer {
         for snapshot.new_nodes {
-            ctid_list: [..] Component_Type_ID;
-            ctid_list.allocator = temp;
+            cid_list: [..] s64;
+            cid_list.allocator = temp;
             for it {
-                for ctid : ALL_COMPONENT_TYPE_IDS {
-                    if ctid.unique_id == it {
-                        array_add(*ctid_list, ctid);
+                for q : iter_make(world, ECS_Component) {
+                    for cent : q.entities {
+                        if cid_from_entity(cent) == it then array_add(*cid_list, );
                     }
                 }
             }
@@ -400,9 +404,9 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
             entity, found := table_find(*entity_node_id_table, it_index);
             assert(found);
 
-            for ctid_list {
+            for cid_list {
                 // we already broadcasted networking id before, don't do it again
-                if it == #run component_type_id(Networking_ID) then continue;
+                if it == cid_get(world, Networking_ID) then continue;
 
                 broadcast_on_component_add(world, entity, it);
             }
@@ -414,7 +418,7 @@ destroy_entities_removed_in_snapshot :: (world: *World, snapshot: State_Snapshot
     for snapshot.removed_nodes {
         entity, found := table_find(*entity_node_id_table, it);
         assert(found, "A node was removed on the server but we couldn't find the corresponding entity on the client");
-        destroy_entity(world, entity);
+        entity_destroy(world, entity);
     }
 }
 
@@ -424,7 +428,7 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
     spawn_new_entities_from_snapshot(world, snapshot);
 
     INSERT_STRING :: #string DONE 
-        for q : make_iter(world, Networking_ID, %1) {
+        for q : iter_make(world, Networking_ID, %1) {
             datas := query_get(q, %1);
             networking_ids := query_get(q, Networking_ID);
 
@@ -433,7 +437,7 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
                 // it's fine if we don't have an entry for the entity, since it may not exist on the client yet
                 assert(success);
 
-                field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
+                field: *ByteBuffer = table_find_pointer(*state.fields, cid_get(world, %1));
                 assert(field != null);
 
                 field.only_note = "Sync";
@@ -459,18 +463,20 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         entity, found := table_find(*entity_node_id_table, it_index);
         assert(found);
 
-        ctid_list: [..] Component_Type_ID;
-        ctid_list.allocator = temp;
+        cid_list: [..] s64;
+        cid_list.allocator = temp;
         for field_id : it {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == field_id {
-                    array_add(*ctid_list, ctid);
+            for q : iter_make(world, ECS_Component) {
+                for cent : q.entities {
+                    if cid_from_entity(cent) == field_id then array_add(*cid_list, field_id);
                 }
             }
         }
 
-        for ctid_list {
-            add_component(world, entity, it, broadcast=false);
+        for cid_list {
+            // #todo: need a way to disable broadcast
+            //ecs_add(world, entity, it, broadcast=false);
+            ecs_add(world, entity, it);
         }
     }
 
@@ -479,16 +485,16 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         assert(found);
 
         for field_id : it {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == field_id {
-                    remove_component(world, entity, ctid);
+            for q : iter_make(world, ECS_Component) {
+                for cent : q.entities {
+                    if cid_from_entity(cent) == field_id then ecs_remove(world, entity, field_id);
                 }
             }
         }
     }
 
     INSERT_STRING :: #string DONE 
-        for q : make_iter(world, Networking_ID, %1) {
+        for q : iter_make(world, Networking_ID, %1) {
             datas := query_get(q, %1);
             networking_ids := query_get(q, Networking_ID);
 
@@ -498,7 +504,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
                 // @todo: this should really be an assert tho
                 if !success then continue;
 
-                field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
+                field: *ByteBuffer = table_find_pointer(*state.fields, cid_get(world, %1));
 
                 // field can be null in delta snapshots, it just didn't change
                 if field == null then continue;
@@ -521,17 +527,17 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         entity, found := table_find(*entity_node_id_table, it_index);
         assert(found);
 
-        ctid_list: [..] Component_Type_ID;
-        ctid_list.allocator = temp;
+        cid_list: [..] s64;
+        cid_list.allocator = temp;
         for field_id : it {
-            for ctid : ALL_COMPONENT_TYPE_IDS {
-                if ctid.unique_id == field_id {
-                    array_add(*ctid_list, ctid);
-                }
-            }
+            //for ctid : ALL_COMPONENT_TYPE_IDS {
+            //    if ctid.unique_id == field_id {
+            //        array_add(*cid_list, ctid);
+            //    }
+            //}
         }
 
-        for ctid_list {
+        for cid_list {
             broadcast_on_component_add(world, entity, it);
         }
     }
@@ -542,7 +548,7 @@ apply_prediction_state :: (world: *World, snapshot: State_Snapshot) {
     assert(snapshot.tick != 0);
 
     INSERT_STRING :: #string DONE 
-        for q : make_iter(world, Networking_ID, %1) {
+        for q : iter_make(world, Networking_ID, %1) {
             datas := query_get(q, %1);
             networking_ids := query_get(q, Networking_ID);
 
@@ -552,7 +558,7 @@ apply_prediction_state :: (world: *World, snapshot: State_Snapshot) {
                 state, success := table_find(*snapshot.state, networking_ids[it].id);
                 assert(success);
 
-                field: *ByteBuffer = table_find_pointer(*state.fields, #run component_type_id(%1).unique_id);
+                field: *ByteBuffer = table_find_pointer(*state.fields, cid_get(world, %1));
 
                 assert(field != null);
 

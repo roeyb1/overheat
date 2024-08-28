@@ -18,9 +18,9 @@ Skill_Bundle :: struct @Bundle {
 FRAGMENT_LIST :: (world: *World, skill: Entity).[add_projectile,];
 
 new_skill :: (world: *World, entity: Entity, fragments: [..] Fragment_List_Indecies) {
-    child := spawn_child_entity(world, entity);
+    child := entity_spawn(world, parent = entity);
     
-    add_components_from_bundle(world, child, Skill_Bundle.{
+    ecs_add_bundle(world, child, Skill_Bundle.{
         duration.base_value = 6.,
     });   
 
@@ -29,7 +29,7 @@ new_skill :: (world: *World, entity: Entity, fragments: [..] Fragment_List_Indec
     }
 
     //run at the end once the skill is initialized
-    add_component(world, child, Networking_ID, .{get_unique_node_id()});
+    ecs_add(world, child, Networking_ID, .{get_unique_node_id()});
 }
 }
 

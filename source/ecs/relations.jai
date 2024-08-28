@@ -1,0 +1,1 @@
+Child_Of :: struct @Component { }

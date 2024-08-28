@@ -81,9 +81,9 @@ import_ldtk_level :: (world: *World, path: string) {
                     if ldtk_entity.__identifier == "light" {
                         x := cast(float) (ldtk_entity.__worldX / xx layer.__gridSize);
                         y := cast(float) ((layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / layer.__gridSize);
-                        light := spawn_entity(world);
-                        add_component(world, light, Position, .{.{x,y}});
-                        add_component(world, light, Point_Light, .{intensity = 2., color = .{ 255. / 255., 115. / 255., 23. / 255.}, radius = 10.});
+                        light := entity_spawn(world);
+                        ecs_add(world, light, Position, .{.{x,y}});
+                        ecs_add(world, light, Point_Light, .{intensity = 2., color = .{ 255. / 255., 115. / 255., 23. / 255.}, radius = 10.});
                     } else if ldtk_entity.__identifier == "collider" {
                         x := (cast(float) ldtk_entity.__worldX / cast(float) TILE_PIXEL_SIZE) - ldtk_entity.__pivot[0];
                         y := cast(float)(layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / cast(float)(TILE_PIXEL_SIZE) + ldtk_entity.__pivot[1];
@@ -94,10 +94,10 @@ import_ldtk_level :: (world: *World, path: string) {
                         
                         bounds := make_aabb(.{0, 0}, .{width, height});
 
-                        collider := spawn_entity(world);
-                        add_component(world, collider, Position, .{.{x,y} });
-                        add_component(world, collider, Shadow_Caster, .{bounds});
-                        add_component(world, collider, Collider_AABB, .{bounds, true});
+                        collider := entity_spawn(world);
+                        ecs_add(world, collider, Position, .{.{x,y} });
+                        ecs_add(world, collider, Shadow_Caster, .{bounds});
+                        ecs_add(world, collider, Collider_AABB, .{bounds, true});
                     } else if ldtk_entity.__identifier == "pack_spawner" {
                         x := (cast(float) ldtk_entity.__worldX / cast(float) TILE_PIXEL_SIZE) - ldtk_entity.__pivot[0];
                         y := cast(float)(layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / cast(float)(TILE_PIXEL_SIZE) + ldtk_entity.__pivot[1];
@@ -133,9 +133,9 @@ spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32,
         x := (cast(float) tile.px[0] / cast(float) TILE_PIXEL_SIZE);
         y := (cast(float) (grid_size * layer_height - xx tile.px[1]) / cast(float) TILE_PIXEL_SIZE);
 
-        tile_entity := spawn_entity(world);
+        tile_entity := entity_spawn(world);
 
-        pos := add_component(world, tile_entity, Position, .{.{x, y}});
+        pos := ecs_add(world, tile_entity, Position, .{.{x, y}});
 
         sprite: Sprite;
         sprite.sheet_path = layer_spritesheet;
@@ -143,7 +143,7 @@ spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32,
         sprite.scale = make_vector2(tile_size);
         sprite.index = tile.t;
         sprite.flip = cast(Flip_Flags) tile.f;
-        add_component(world, tile_entity, Sprite, sprite);
+        ecs_add(world, tile_entity, Sprite, sprite);
     }
 }
 

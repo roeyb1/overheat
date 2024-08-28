@@ -423,6 +423,15 @@ message_loop :: (w: Workspace) {
                     if has_note_substr(info, "Component") {
                         array_add(*component_type_names, info.name);
                     }
+                    if has_note_substr(info, "SingletonComponent") {
+                        array_add(*component_type_names, info.name);
+                    }
+                    if has_note_substr(info, "Tag") {
+                        array_add(*component_type_names, info.name);
+                    }
+                    if has_note_substr(info, "Pair") {
+                        array_add(*component_type_names, info.name);
+                    }
                 }
                 
             case .PHASE;
@@ -596,9 +605,9 @@ INSERT_STRING :: #string DONE
         func = %1,
         debug_name = "%2",
         phase = .%3,
-        component_reads = #run,stallable component_type_ids(.[%4]),
-        component_writes = #run component_type_ids(.[%5]),
-        optional_writes = #run component_type_ids(.[%6]),
+        component_reads = .[%4],
+        component_writes = .[%5],
+        optional_writes = .[%6],
         is_predicted = %7,
     },
 DONE
@@ -673,7 +682,7 @@ INSERT_STRING :: #string DONE
         callback = %1,
         debug_name = "%2",
         event_id = *%3,
-        ctid = #run component_type_id(%4),
+        type = %4,
     },
 DONE
 

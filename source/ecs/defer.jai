@@ -1,88 +1,103 @@
-Deferred_ECS_Op_Type :: enum {
+ECS_Deferred_Op_Type :: enum {
     DESTROY;
     SPAWN;
-    REMOVE_COMPONENT;
-    ADD_COMPONENT;
+    REMOVE;
+    ADD;
 }
 
-Deferred_ECS_Operation :: struct {
-    type: Deferred_ECS_Op_Type;
+ECS_Deferred_Operation :: struct {
+    type: ECS_Deferred_Op_Type;
     entity: Entity;
 
-    // used for component add/remove operations
-    type_id: Component_Type_ID;
-    // new component data is allocated from the temp allocator and will be copied into the entity when the op is processed.
+    cid: s64;
     component_data: *void;
 }
 
-process_deferred_operations :: (world: *World) {
-    assert(world.should_defer == false);
+entity_defer_spawn :: (using world: *World, entity: Entity, components: [] s64) {
+    deferred_entity := entity_make(*deferred_stage, entity, components);
+
+    array_add(*deferred_ops, .{type = .SPAWN, entity = entity });
+}
+
+entity_defer_destroy :: (using world: *World, entity: Entity) -> bool {
+    if !is_deferring then return false;
+    if !entity_is_alive(deferred_stage, entity) then return false;
+
+    stage_entity_delete(*deferred_stage, entity);
+
+    array_add(*deferred_ops, .{ type = .DESTROY, entity = entity });
+
+    return true;
+}
+
+ecs_defer_add :: (using world: *World, entity: Entity, cid: s64) -> *void {
+    assert(is_deferring);
+
+    ci := ecs_get(world, entity_from_cid(cid), ECS_Component);
+
+    ptr := talloc(ci.runtime_size);
+    array_add(*deferred_ops, .{ type = .ADD, entity = entity, cid = cid, component_data = ptr });
+
+    return ptr;
+}
+
+
+ecs_defer_remove :: (using world: *World, entity: Entity, cid: s64) -> bool {
+    exists := ecs_has(world, entity, cid);
+    array_add(*deferred_ops, .{ type = .REMOVE, entity = entity, cid = cid });
+    return exists;
+}
+
+process_deferred_operations :: (using world: *World) {
+    assert(is_deferring == false);
 
     for world.deferred_ops {
         if #complete it.type == {
             case .DESTROY;
-                assert(!table_contains(*world.deferred_entities, it.entity.raw), "Deferred entities should be deleted immediately and not enter the deferred queue");
-                if ensure(is_valid(world, it.entity), "Destroyed entity is not valid") {
-                    destroy_entity(world, it.entity);
+                assert(!entity_is_alive(*deferred_stage, it.entity), "Deferred entities should be deleted immediately and not enter the deferred queue");
+                if ensure(entity_is_valid(world, it.entity), "Destroyed entity is not valid") {
+                    entity_destroy(world, it.entity);
                 }
             case .SPAWN;
-                // It's possible that the entity was destoyed in the staging world before we could copy it to the main world, very unlikely though
-                if ensure(is_valid(world, it.entity), "Spawned entity is not valid anymore") {
-                    deferred, found := table_find(*world.deferred_entities, it.entity.raw);
-                    assert(found);
-                    copy_entity_between_deferred(world, it.entity, deferred);
-                    remove_entity(*world.deferred_stage, deferred);
-
-                    record, success := table_find(*world.stage.entity_records, it.entity.raw);
-                    assert(success);
+                // It's possible that the entity was destoyed in the staging world before we could copy it to the main world
+                if entity_is_alive(world.stage, it.entity) {
+                    move_entity_from_deferred(world, it.entity);
                 }
-            case .REMOVE_COMPONENT;
-                // it's possible that the entity was destroyed before component removal was queued
-                if is_valid(world, it.entity) {
-                    remove_component(*world.stage, it.entity, it.type_id);
+            case .REMOVE;
+                // it's possible that the entity was destroyed after component removal was queued
+                if entity_is_alive(world.stage, it.entity) {
+                    ecs_remove(world, it.entity, it.cid);
                 }
-            case .ADD_COMPONENT;
-                // it's possible that the entity was destroyed before component removal was queued
-                if is_valid(world, it.entity) {
-                    ptr := add_component(*world.stage, it.entity, it.type_id);
-                    memcpy(ptr, it.component_data, it.type_id.runtime_size);
+            case .ADD;
+                // it's possible that the entity was destroyed after component add was queued
+                if entity_is_alive(world.stage, it.entity) {
+                    ptr := ecs_add(world, it.entity, it.cid);
+                    ci := ecs_get(world, entity_from_cid(it.cid), ECS_Component);
+                    assert(ci != null);
+                    memcpy(ptr, it.component_data, ci.runtime_size);
+                    // ptr was allocated from temp storage, don't need to free it
                 }
         }
     }
-    assert((world.deferred_stage.entities.count - world.deferred_stage.free_entity_indices.count) == 0);
+    assert(world.deferred_stage.entities.count == world.deferred_stage.free_indices.count);
     world.deferred_ops.count = 0;
-    table_reset(*world.deferred_entities);
 }
 
-#scope_file 
+#scope_file
 
-copy_entity_between_deferred :: (world: *World, to_entity: Entity, from_entity: Entity) {
-    source_stage := *world.deferred_stage;
-    dest_stage := *world.stage;
+move_entity_from_deferred :: (using world: *World, entity: Entity) {
+    assert(entity_is_alive(deferred_stage, entity));
+    assert(entity_is_alive(stage, entity));
 
-    s_record := table_find_pointer(*source_stage.entity_records, from_entity.raw);
-    assert(s_record != null);
+    def_record := entity_record_get_ptr(deferred_stage, entity);
+    assert(def_record != null);
+    record := entity_record_get_ptr(stage, entity);
+    assert(record != null);
 
-    from := *source_stage.archetypes[s_record.archetype_id];
+    from_arch := entity_archetype_get(deferred_stage, entity);
+    to_arch := archetype_get_or_create(*stage, from_arch.type_ids);
 
-    to, to_id := get_or_create_archetype(*world.stage, from.type_ids);
+    entity_storage_move(*deferred_stage, *stage, to_arch, from_arch, entity);
 
-    d_record := table_find_pointer(*dest_stage.entity_records, to_entity.raw);
-    assert(d_record != null);
-
-    dest_row := add_entity(to, to_entity);
-    if dest_row == 0 {
-        add_archetype_to_active_cache(*world.stage, to, to_id);
-    }
-
-    d_record.row = dest_row;
-    d_record.archetype_id = to_id;
-
-    for ctid : from.type_ids {
-        src_component, src_size := get_component(from, s_record.row, ctid);
-        dst_component, dst_size := get_component(to, d_record.row, ctid);
-        assert(src_size == dst_size);
-
-        memcpy(dst_component, src_component, src_size);
-    }
+    stage_entity_mark_unused(*deferred_stage, entity);
 }

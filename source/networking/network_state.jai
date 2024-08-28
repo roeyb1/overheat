@@ -1,6 +1,6 @@
 Node_State :: struct {
     // maps component type id to a byte buffer containing the serialized component data
-    fields: Table(u64, ByteBuffer);
+    fields: Table(s64, ByteBuffer);
 }
 
 State_Snapshot :: struct {
@@ -8,11 +8,11 @@ State_Snapshot :: struct {
 
     // a list of all newly created entities and their component types
     // any synchronized state for those components is included in the state table
-    new_nodes: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    new_nodes: Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
     // for any nodes that
-    removed_fields: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
-    added_fields: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    removed_fields: Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    added_fields: Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
 
     removed_nodes: [..] Node_ID;
 
@@ -27,7 +27,7 @@ State_Snapshot_Packet_Data :: struct {
         node_id: Node_ID;
 
         Node_Field :: struct {
-            field_id: u64; // component_type_id.unique_id
+            field_id: s64; // cid
 
             data: ByteBuffer;
         }
@@ -38,7 +38,7 @@ State_Snapshot_Packet_Data :: struct {
     Field_Pair :: struct {
         node_id: Node_ID;
 
-        field_ids: [..] u64;
+        field_ids: [..] s64;
     }
 
     state_pairs: [..] State_Pair;
@@ -47,7 +47,7 @@ State_Snapshot_Packet_Data :: struct {
 
     New_Pair :: struct {
         node_id: Node_ID;
-        component_types: [..] u64;
+        component_types: [..] s64;
     }
 
     newly_added: [..] New_Pair;
@@ -114,19 +114,19 @@ generate_full_snapshot :: (world: *World, allocator: Allocator) -> State_Snapsho
 
     // always send over component id list for every entity in the world if it's a full snapshot
     for entity_node_id_table {
-        component_types_view := get_component_types(world, it);
+        component_types_view := entity_types_get(world, it);
 
-        types: [..] u64;
+        types: [..] s64;
         types.allocator = allocator;
         for component_types_view {
-            array_add(*types, it.unique_id);
+            array_add(*types, it);
         }
 
         entry := table_add(*result.new_nodes, it_index, types);
     }
 
     INSERT_STRING :: #string DONE 
-        for q : make_iter(world, Networking_ID, %1) {
+        for q : iter_make(world, Networking_ID, %1) {
             datas := query_get(q, %1);
             networking_ids := query_get(q, Networking_ID);
 
@@ -134,9 +134,9 @@ generate_full_snapshot :: (world: *World, allocator: Allocator) -> State_Snapsho
                 state, newly_added := find_or_add(*result.state, networking_ids[it].id);
                 if newly_added then state.fields.allocator = allocator;
 
-                assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
+                assert(!table_contains(*state.fields, cid_get(world, %1)));
 
-                field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});
+                field := table_add(*state.fields, cid_get(world, %1), .{});
                 field.only_note = "Sync";
                 set_allocator(field, allocator);
 
@@ -219,20 +219,20 @@ from_packet :: (packet: State_Snapshot_Packet_Data, allocator: Allocator) -> Sta
         }
     }
     for packet.newly_added {
-        component_types: [..] u64;
+        component_types: [..] s64;
         component_types.allocator = allocator;
         array_copy(*component_types, it.component_types);
         new_entry := table_add(*result.new_nodes, it.node_id, component_types);
     }
 
     for packet.added_field_pairs {
-        fields: [..] u64;
+        fields: [..] s64;
         fields.allocator = allocator;
         array_copy(*fields, it.field_ids);
         new_entry := table_add(*result.added_fields, it.node_id, fields);
     }
     for packet.removed_field_pairs {
-        fields: [..] u64;
+        fields: [..] s64;
         fields.allocator = allocator;
         array_copy(*fields, it.field_ids);
         new_entry := table_add(*result.removed_fields, it.node_id, fields);

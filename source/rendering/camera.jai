@@ -16,12 +16,12 @@ update_camera_projections :: (q: Query) {
 } @System(PreRender) @Write(Camera) @Read()
 
 set_camera_follow_target :: (world: *World, entity: Entity) {
-    viewport := get_singleton(*g_world, Game_Viewport);
+    viewport := ecs_singleton_get(*g_world, Game_Viewport);
 
-    camera := get_component(*g_world, viewport.main_camera, Camera);
-    cam_pos := get_component(*g_world, viewport.main_camera, Position);
+    camera := ecs_get(*g_world, viewport.main_camera, Camera);
+    cam_pos := ecs_get(*g_world, viewport.main_camera, Position);
 
-    << cam_pos = .{ get_component(world, entity, Position).value };
+    << cam_pos = .{ ecs_get(world, entity, Position).value };
     camera.entity_to_track = entity;
 
 } @Event(EcsOnAdd,Local_Player)
@@ -33,9 +33,9 @@ update_camera_positions :: (q: Query) {
     camera := query_get(q, Camera);
 
     for 0..q.count-1 {
-        if !is_valid(q.world, camera[it].entity_to_track) continue;
+        if !entity_is_valid(q.world, camera[it].entity_to_track) continue;
 
-        target_location := get_component(q.world, camera[it].entity_to_track, Position);
+        target_location := ecs_get(q.world, camera[it].entity_to_track, Position);
         assert(target_location != null);
 
         camera_dist_to_target := distance(target_location, camera_positions[it]);

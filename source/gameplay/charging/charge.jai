@@ -8,8 +8,8 @@ Charging_Bundle :: struct @Bundle {
 }
 
 new_charge :: (world: *World, parent: Entity, charge_info: Charge) {
-    child := spawn_child_entity(world, parent);
-    add_components_from_bundle(world, child, Charging_Bundle.{
+    child := entity_spawn(world, parent = parent);
+    ecs_add_bundle(world, child, Charging_Bundle.{
         anim_list_index.value = charge_info.anim_list_index,
         duration.value = charge_info.duration,
         energy_cost.total = charge_info.energy_cost
@@ -17,8 +17,8 @@ new_charge :: (world: *World, parent: Entity, charge_info: Charge) {
 }
 
 start_charging :: (world: *World, entity: Entity) {
-        parent := get_parent(world, entity);
-        if is_valid(world,parent){
+        parent := ecs_get_target(world, entity, Child_Of);
+        if entity_is_valid(world, parent){
             modify_interuptor_anim_slot_from_charge(world, parent, entity);
         }
 } @Event(EcsOnAdd,Charging)
@@ -28,9 +28,9 @@ update_charging :: (q: Query) {
     energy_costs := query_get(q, Energy_Cost);
 
     for 0..q.count-1 {
-        parent := get_parent(q.world, q.entities[it]);
-        if is_valid(q.world,parent){
-            health_queue := get_component(q.world, parent, Health_Change_Queue);
+        parent := ecs_get_target(q.world, q.entities[it], Child_Of);
+        if entity_is_valid(q.world, parent){
+            health_queue := ecs_get(q.world, parent, Health_Change_Queue);
             if health_queue {
                 drain_energy_per_tick(health_queue,energy_costs[it]);
                 

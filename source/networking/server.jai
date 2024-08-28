@@ -50,20 +50,20 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
         entity, found := table_find(*entity_node_id_table, it);
         assert(found, "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
 
-        component_types_view := get_component_types(world, entity);
+        component_types_view := entity_types_get(world, entity);
 
-        types: [..] u64;
+        types: [..] s64;
         types.allocator = allocator;
         for component_types_view {
-            array_add(*types, it.unique_id);
+            array_add(*types, it);
         }
 
         entry := table_add(*result.new_nodes, it, types);
     }
 
     /** Find fields that are in snapshot a but not in b. Any nodes in the expected_missing list will not assert if they are missing from the second state */
-    find_missing_fields :: (a: State_Snapshot, b: State_Snapshot, expected_missing: [] Node_ID, allocator: Allocator) -> Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id) {
-        result: Table(Node_ID, [..] u64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    find_missing_fields :: (a: State_Snapshot, b: State_Snapshot, expected_missing: [] Node_ID, allocator: Allocator) -> Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id) {
+        result: Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
         result.allocator = allocator;
 
         // find any removed components in this delta
@@ -99,7 +99,7 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
     removed_nodes.count = 0;
 
     INSERT_STRING :: #string DONE 
-        for q : make_iter(world, Networking_ID, %1) {
+        for q : iter_make(world, Networking_ID, %1) {
             datas := query_get(q, %1);
             networking_ids := query_get(q, Networking_ID);
 
@@ -122,8 +122,8 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
                     if !changed {
                         assert(state_a != null && state_b != null);
 
-                        field_a: *ByteBuffer = table_find_pointer(*state_a.fields, #run component_type_id(%1).unique_id);
-                        field_b: *ByteBuffer = table_find_pointer(*state_b.fields, #run component_type_id(%1).unique_id);
+                        field_a: *ByteBuffer = table_find_pointer(*state_a.fields, cid_get(world, %1));
+                        field_b: *ByteBuffer = table_find_pointer(*state_b.fields, cid_get(world, %1));
 
                         if field_a == null || field_b == null then continue;
 
@@ -156,8 +156,8 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
                     state, newly_added := find_or_add(*result.state, networking_ids[it].id);
                     if newly_added then state.fields.allocator = allocator;
 
-                    assert(!table_contains(*state.fields, #run component_type_id(%1).unique_id));
-                    field := table_add(*state.fields, #run component_type_id(%1).unique_id, .{});
+                    assert(!table_contains(*state.fields, cid_get(world, %1)));
+                    field := table_add(*state.fields, cid_get(world, %1), .{});
                     field.only_note = "Sync";
                     set_allocator(field, allocator);
 
@@ -184,7 +184,7 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             // @todo: is this still valid
             //assert(found, "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
 
-            player_commands := get_component(*g_world, entity, Player_Commands);
+            player_commands := ecs_get(*g_world, entity, Player_Commands);
             assert(player_commands != null);
             << player_commands = player_commands_packet.commands;
 
@@ -381,7 +381,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 entity, found := table_find(*entity_node_id_table, node_id);
                 assert(found, "A client disconnected but we couldn't find their player entity. How did this happen!?");
 
-                destroy_entity(*g_world, entity);
+                entity_destroy(*g_world, entity);
 
             } else {
                 assert(info.m_eOldState == .Connecting);

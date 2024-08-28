@@ -57,6 +57,6 @@ Transient :: struct @Component {}
 
 destroy_transients :: (q: Query) {
     for 0..q.count-1 {
-        destroy_entity(q.world, q.entities[it]);
+        entity_destroy(q.world, q.entities[it]);
     }
 } @System(PreUpdate) @Write() @Read(Transient)
