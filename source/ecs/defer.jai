@@ -45,11 +45,14 @@ ecs_defer_add :: (using world: *World, entity: Entity, cid: s64) -> *void {
 ecs_defer_remove :: (using world: *World, entity: Entity, cid: s64) -> bool {
     exists := ecs_has(world, entity, cid);
     array_add(*deferred_ops, .{ type = .REMOVE, entity = entity, cid = cid });
+    log("Queued a defered remove. entity % for comp % ", entity.index, cid);
     return exists;
 }
 
 process_deferred_operations :: (using world: *World) {
     assert(is_deferring == false);
+    assert(reentrant_guard == false);
+    scoped_guard(*reentrant_guard, true);
 
     for world.deferred_ops {
         if #complete it.type == {
@@ -84,6 +87,8 @@ process_deferred_operations :: (using world: *World) {
 }
 
 #scope_file
+
+reentrant_guard := false;
 
 move_entity_from_deferred :: (using world: *World, entity: Entity) {
     assert(entity_is_alive(deferred_stage, entity));

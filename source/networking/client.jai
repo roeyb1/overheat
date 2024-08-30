@@ -364,9 +364,13 @@ interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snap
 }
 
 spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #expand {
+    new_nodes: [..] Node_ID;
+    new_nodes.allocator = temp;
+
     for snapshot.new_nodes {
         _, found := table_find(*entity_node_id_table, it_index);
         if found then continue;
+        array_add(*new_nodes, it_index);
 
         cid_list: [..] s64;
         cid_list.allocator = temp;
@@ -382,33 +386,37 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
 
         ecs_add(world, entity, Networking_ID, .{it_index});
 
+        log("Spawning new networked entity: % nid: %", entity.index, it_index);
+
         for cid_list {
-            // #todo: need a way to disable broadcast
-            //ecs_add(world, entity, it, broadcast=false);
-            ecs_add(world, entity, it);
+            ecs_add(world, entity, it, broadcast=false);
         }
     }
 
     `defer {
-        for snapshot.new_nodes {
+        for node_id : new_nodes {
+            fields, success := table_find(*snapshot.new_nodes, node_id);
+            assert(success);
+
             cid_list: [..] s64;
             cid_list.allocator = temp;
-            for it {
+
+            for fields {
                 for q : iter_make(world, EcsComponent) {
                     for cent : q.entities {
-                        if cid_from_entity(cent) == it then array_add(*cid_list, );
+                        if cid_from_entity(cent) == it then array_add(*cid_list, it);
                     }
                 }
             }
 
-            entity, found := table_find(*entity_node_id_table, it_index);
+            entity, found := table_find(*entity_node_id_table, node_id);
             assert(found);
 
             for cid_list {
                 // we already broadcasted networking id before, don't do it again
                 if it == cid_get(world, Networking_ID) then continue;
 
-                broadcast_on_component_add(world, entity, it);
+                event_broadcast(world, cid_pair(world, EcsOnAdd, it), entity);
             }
         }
     }
@@ -474,9 +482,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         }
 
         for cid_list {
-            // #todo: need a way to disable broadcast
-            //ecs_add(world, entity, it, broadcast=false);
-            ecs_add(world, entity, it);
+            ecs_add(world, entity, it, broadcast=false);
         }
     }
 
@@ -530,15 +536,15 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         cid_list: [..] s64;
         cid_list.allocator = temp;
         for field_id : it {
-            //for ctid : ALL_COMPONENT_TYPE_IDS {
-            //    if ctid.unique_id == field_id {
-            //        array_add(*cid_list, ctid);
-            //    }
-            //}
+            for q : iter_make(world, EcsComponent) {
+                for cent : q.entities {
+                    if cid_from_entity(cent) == field_id then array_add(*cid_list, field_id);
+                }
+            }
         }
 
         for cid_list {
-            broadcast_on_component_add(world, entity, it);
+            event_broadcast(world, cid_pair(world, EcsOnAdd, it), entity);
         }
     }
 }

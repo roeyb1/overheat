@@ -49,6 +49,7 @@ on_entity_begin_networking :: (world: *World, entity: Entity) {
     #if SERVER {
         array_add(*added_nodes, networking_id.id);
     }
+    log("Networking registered for entity % (%)", entity.index, networking_id.id);
 } @Event(EcsOnAdd,Networking_ID)
 
 on_entity_end_networking :: (world: *World, entity: Entity) {

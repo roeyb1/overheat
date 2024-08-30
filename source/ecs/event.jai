@@ -21,11 +21,17 @@ event_broadcast :: inline (world: *World, event: Entity, source: Entity) {
 }
 
 event_broadcast :: (world: *World, cid: s64, source: Entity) {
-    for q : iter_make_raw(world, .[cid, cid_get(world, Event)]) {
+    callbacks: [..] Event_Callback;
+    callbacks.allocator = temp;
+
+    for * q : iter_make_raw(world, .[cid, cid_get(world, Event)]) {
         events := query_get(q, Event);
         for 0..q.count-1 {
-            events[it].desc.callback(world, source);
+            array_add(*callbacks, events[it].desc.callback);
         }
+    }
+    for callbacks {
+        it(world, source);
     }
 }
 

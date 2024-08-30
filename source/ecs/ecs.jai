@@ -77,12 +77,12 @@ entity_is_valid :: (using world: World, entity: Entity) -> bool {
     return entity_is_alive(stage, entity);
 }
 
-entity_spawn :: inline (using world: *World, components: ..Type, parent: Entity = INVALID_ENTITY) -> Entity {
+entity_spawn :: inline (using world: *World, components: ..Type, parent: Entity = INVALID_ENTITY, broadcast: bool = true) -> Entity {
     cids := cids_from_types(world, components);
-    return entity_spawn(world, cids, parent);
+    return entity_spawn(world, cids, parent, broadcast);
 }
 
-entity_spawn :: (using world: *World, components: [] s64, parent: Entity = INVALID_ENTITY) -> Entity {
+entity_spawn :: (using world: *World, components: [] s64, parent: Entity = INVALID_ENTITY, broadcast: bool = true) -> Entity {
     entity: Entity;
     if is_deferring {
         // if we're deferring, we will add an entity to the main stage and use that as the reference to the entity
@@ -100,12 +100,14 @@ entity_spawn :: (using world: *World, components: [] s64, parent: Entity = INVAL
         ecs_add_pair(world, entity, Child_Of, parent);
     }
 
-    for cid : components {
-        // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
-        // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnAdd,Target(*));
+    if broadcast {
+        for cid : components {
+            // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
+            // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnAdd,Target(*));
 
-        cid_low := cast(s64) (cast,no_check(s32) cid);
-        event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low), entity);
+            cid_low := cast(s64) (cast,no_check(s32) cid);
+            event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low), entity);
+        }
     }
 
     return entity;
@@ -161,7 +163,7 @@ ecs_get_target :: (using world: *World, entity: Entity, type: Type) -> Entity {
     return INVALID_ENTITY;
 }
 
-ecs_add :: inline (using world: *World, entity: Entity, $type: Type, val: type, broadcast: bool = true) -> *type {
+ecs_add :: (using world: *World, entity: Entity, $type: Type, val: type, broadcast: bool = true) -> *type {
     ptr := cast(*type) ecs_add(world, entity, type, broadcast = false);
     ptr.* = val;
     if broadcast {
@@ -237,6 +239,7 @@ ecs_remove :: (using world: *World, entity: Entity, cid: s64) -> bool {
         return ecs_defer_remove(world, entity, cid);
     }
 
+    assert(ecs_has(world, entity, cid));
     removed := stage_component_remove(*stage, entity, cid);
     return removed;
 }
