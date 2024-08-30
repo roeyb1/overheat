@@ -420,16 +420,16 @@ message_loop :: (w: Workspace) {
 
                 for tc : typechecked.structs {
                     info := tc.expression.defined_type;
-                    if has_note_substr(info, "Component") {
+                    if has_note(info, "Component") {
                         array_add(*component_type_names, info.name);
                     }
-                    if has_note_substr(info, "SingletonComponent") {
+                    if has_note(info, "SingletonComponent") {
                         array_add(*component_type_names, info.name);
                     }
-                    if has_note_substr(info, "Tag") {
+                    if has_note(info, "Tag") {
                         array_add(*component_type_names, info.name);
                     }
-                    if has_note_substr(info, "Pair") {
+                    if has_note(info, "Pair") {
                         array_add(*component_type_names, info.name);
                     }
                 }
@@ -653,11 +653,11 @@ DONE
 }
 
 generate_event_functions :: (w: Workspace) {
-    parse_event_tag :: (str: string) -> (valid: bool, event_id: string, optional_component_type: string) {
+    parse_event_tag :: (str: string) -> (valid: bool, event_id: string, optional_component_type: string, has_target: bool) {
         found, left, right := split_from_left(str, #char "(");
         assert(found);
         if left != "Event" {
-            return false, "", "";
+            return false, "", "", false;
         }
 
         {
@@ -666,12 +666,12 @@ generate_event_functions :: (w: Workspace) {
             // if the comma wasn't found, there's no optional type but it's still perfectly valid
             if !found {
                 left.count -= 1;
-                return true, left, "";
+                return true, left, "", false;
             }
 
             // remove the closing parenthesis and return the view:
             right.count -= 1;
-            return true, left, right;
+            return true, left, right, true;
         }
     }
 
@@ -681,21 +681,20 @@ INSERT_STRING :: #string DONE
     .{
         callback = %1,
         debug_name = "%2",
-        event_id = *%3,
-        type = %4,
+        source = %3,
+        opt_target = %4,
+        has_target = %5,
     },
 DONE
 
-    sbprint(*sb, "ALL_EVENT_LISTENERS := Event_Listener.[\n");
+    sbprint(*sb, "STATIC_EVENT_DESCS := Event_Descriptor.[\n");
     for event_functions {
-        // @Event(EventID[,ComponentType])
         assert(it.notes.count >= 1);
-        if contains(it.notes[0].text, "DynamicEvent") then continue;
 
-        event_valid, event_id, optional_ctid := parse_event_tag(it.notes[0].text);
+        event_valid, source, opt_target, has_target := parse_event_tag(it.notes[0].text);
         assert(event_valid, "Event note is not in the correct syntax! (%, %) (\"%\")", it.name, it_index, it.notes[0].text);
 
-        sbprint(*sb, INSERT_STRING, it.name, it.name, event_id, optional_ctid);
+        sbprint(*sb, INSERT_STRING, it.name, it.name, source, opt_target, has_target);
     }
     sbprint(*sb, "];\n");
 

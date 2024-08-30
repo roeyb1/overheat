@@ -168,7 +168,13 @@ stage_component_add :: (using stage: *Stage, entity: Entity, cid: s64) -> *void 
     entity_storage_move(stage, to_arch, from_arch, entity);
 
     result := stage_component_get(stage, entity, cid);
-    assert(result != null);
+
+    #if DEBUG {
+        // result should always be non null if the component type has a non-zero size:
+        cti := cid_to_type_info(stage.world, cid);
+        assert(result != null || cti.ti.runtime_size == 0);
+    }
+
     return result;
 }
 
@@ -199,6 +205,18 @@ entity_storage_move :: (from_stage: *Stage, to_stage: *Stage, to_arch: *Archetyp
 
     source_row := from_record.row;
 
+    entity_storage_copy(from_stage, to_stage, to_arch, from_arch, entity);
+
+    array_unordered_remove_by_index(*from_arch.entities, source_row);
+}
+
+entity_storage_copy :: (from_stage: *Stage, to_stage: *Stage, to_arch: *Archetype, from_arch: *Archetype, entity: Entity) {
+    from_record := entity_record_get_ptr(from_stage, entity);
+    assert(from_record != null);
+
+    source_row := from_record.row;
+    assert(from_arch.entities[source_row] == entity);
+
     dest_row := archetype_entity_add(to_arch, entity);
 
     cids_to_copy := ifx from_arch.type_ids.count > to_arch.type_ids.count then to_arch.type_ids else from_arch.type_ids;
@@ -210,8 +228,6 @@ entity_storage_move :: (from_stage: *Stage, to_stage: *Stage, to_arch: *Archetyp
 
         memcpy(dst_component, src_component, src_size);
     }
-
-    array_unordered_remove_by_index(*from_arch.entities, source_row);
 
     to_record := entity_record_get_ptr(to_stage, entity);
     to_record.row = dest_row;
@@ -284,17 +300,6 @@ archetype_cache_find_or_create :: (using stage: *Stage, cids: [] s64) -> [] s64 
     }
 
     return result.*;
-}
-
-stage_bootstrap :: (using stage: *Stage) {
-    carch := array_add(*archetypes);
-    carch.id = archetypes.count-1;
-
-    storage := array_add(*carch.storage);
-    storage.component_size = type_info(ECS_Component).runtime_size;
-    storage.initializer = type_info(ECS_Component).initializer;
-
-    array_add(*carch.type_ids, cid_get(stage.world, ECS_Component));
 }
 
 #import "Basic";

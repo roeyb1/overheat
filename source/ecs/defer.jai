@@ -33,7 +33,7 @@ entity_defer_destroy :: (using world: *World, entity: Entity) -> bool {
 ecs_defer_add :: (using world: *World, entity: Entity, cid: s64) -> *void {
     assert(is_deferring);
 
-    ci := ecs_get(world, entity_from_cid(cid), ECS_Component);
+    ci := ecs_get(world, entity_from_cid(cid), EcsComponent);
 
     ptr := talloc(ci.runtime_size);
     array_add(*deferred_ops, .{ type = .ADD, entity = entity, cid = cid, component_data = ptr });
@@ -72,7 +72,7 @@ process_deferred_operations :: (using world: *World) {
                 // it's possible that the entity was destroyed after component add was queued
                 if entity_is_alive(world.stage, it.entity) {
                     ptr := ecs_add(world, it.entity, it.cid);
-                    ci := ecs_get(world, entity_from_cid(it.cid), ECS_Component);
+                    ci := ecs_get(world, entity_from_cid(it.cid), EcsComponent);
                     assert(ci != null);
                     memcpy(ptr, it.component_data, ci.runtime_size);
                     // ptr was allocated from temp storage, don't need to free it
@@ -97,7 +97,7 @@ move_entity_from_deferred :: (using world: *World, entity: Entity) {
     from_arch := entity_archetype_get(deferred_stage, entity);
     to_arch := archetype_get_or_create(*stage, from_arch.type_ids);
 
-    entity_storage_move(*deferred_stage, *stage, to_arch, from_arch, entity);
+    entity_storage_copy(*deferred_stage, *stage, to_arch, from_arch, entity);
 
-    stage_entity_mark_unused(*deferred_stage, entity);
+    stage_entity_delete(*deferred_stage, entity);
 }

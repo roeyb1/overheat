@@ -371,7 +371,7 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
         cid_list: [..] s64;
         cid_list.allocator = temp;
         for it {
-            for q : iter_make(world, ECS_Component) {
+            for q : iter_make(world, EcsComponent) {
                 for cent : q.entities {
                     if cid_from_entity(cent) == it then array_add(*cid_list, it);
                 }
@@ -394,7 +394,7 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
             cid_list: [..] s64;
             cid_list.allocator = temp;
             for it {
-                for q : iter_make(world, ECS_Component) {
+                for q : iter_make(world, EcsComponent) {
                     for cent : q.entities {
                         if cid_from_entity(cent) == it then array_add(*cid_list, );
                     }
@@ -466,7 +466,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         cid_list: [..] s64;
         cid_list.allocator = temp;
         for field_id : it {
-            for q : iter_make(world, ECS_Component) {
+            for q : iter_make(world, EcsComponent) {
                 for cent : q.entities {
                     if cid_from_entity(cent) == field_id then array_add(*cid_list, field_id);
                 }
@@ -485,7 +485,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         assert(found);
 
         for field_id : it {
-            for q : iter_make(world, ECS_Component) {
+            for q : iter_make(world, EcsComponent) {
                 for cent : q.entities {
                     if cid_from_entity(cent) == field_id then ecs_remove(world, entity, field_id);
                 }

@@ -40,7 +40,6 @@ main :: () {
     execute_unit_tests();
 
     ecs_world_init(*g_world);
-    register_static_events(*g_world);
 
     // set the working direction to be the root of the project (should always two directories up from the executable)
     working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));

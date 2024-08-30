@@ -12,22 +12,65 @@ World :: struct {
     is_deferring: bool = false;
 }
 
+
+bootstrap_component_id :: (using world: *World, type: Type, id: s64) {
+    entity := Entity.{ raw = id };
+    entity_make(*world.stage, entity, .[]);
+    assert((cast(*Type_Info)type).type == .STRUCT);
+    table_add(*cid_map, (cast(*Type_Info_Struct)type).name, entity.raw);
+
+    cti := get_component_type_info(type);
+    cti.cid = entity.raw;
+    table_add(*type_info_map, entity.raw, cti);
+}
+
+bootstrap_component :: (using world: *World, type: Type, id: s64) {
+    entity := Entity.{ raw = id };
+    entity_make(*world.stage, entity, .[]);
+    assert((cast(*Type_Info)type).type == .STRUCT);
+    table_add(*cid_map, (cast(*Type_Info_Struct)type).name, entity.raw);
+
+    cti := get_component_type_info(type);
+    cti.cid = entity.raw;
+    table_add(*type_info_map, entity.raw, cti);
+
+    ecs_add(world, entity, EcsComponent, .{runtime_size = cti.ti.runtime_size}, broadcast=false);
+}
+
+
 ecs_world_init :: (using world: *World) {
     stage.world = world;
     deferred_stage.world = world;
 
+
+    // bootstrap the component archetype:
+    {
+        bootstrap_component_id(world, EcsComponent, 0);
+        arch := array_add(*stage.archetypes);
+        arch_id := stage.archetypes.count-1;
+        arch.id = arch_id;
+
+        storage := array_add(*arch.storage);
+        storage.component_size = type_info(EcsComponent).runtime_size;
+        storage.initializer = type_info(EcsComponent).initializer;
+        
+        array_add(*arch.type_ids, cid_get(world, EcsComponent));
+
+        ecs_add(world, entity_from_cid(0), EcsComponent, .{runtime_size = type_info(EcsComponent).runtime_size}, broadcast=false);
+    }
+
     // set up builtin components
-    ecs_component := Entity.{ index = 0, generation = 0 };
-    entity_make(*world.stage, ecs_component, .[]);
-
-    table_add(*cid_map, type_info(ECS_Component).name, ecs_component.raw);
-
-    stage_bootstrap(*stage);
-    stage_bootstrap(*deferred_stage);
+    bootstrap_component(world, EcsOnAdd, 1);
+    bootstrap_component(world, Event, 2);
 
     for ALL_COMPONENT_TYPES {
+        if it == EcsComponent then continue;
+        if it == EcsOnAdd then continue;
+        if it == Event then continue;
         cid_register(world, it);
     }
+
+    register_static_events(world);
 }
 
 entity_is_valid :: (using world: World, entity: Entity) -> bool {
@@ -57,6 +100,14 @@ entity_spawn :: (using world: *World, components: [] s64, parent: Entity = INVAL
         ecs_add_pair(world, entity, Child_Of, parent);
     }
 
+    for cid : components {
+        // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
+        // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnAdd,Target(*));
+
+        cid_low := cast(s64) (cast,no_check(s32) cid);
+        event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low), entity);
+    }
+
     return entity;
 }
 
@@ -79,7 +130,15 @@ entity_delete :: (using world: *World, entity: Entity) {
 }
 
 ecs_has :: (using world: *World, entity: Entity, cid: s64) -> bool {
-    return ecs_get(world, entity, cid) != null;
+    assert(entity_is_valid(world, entity));
+
+    arch: *Archetype;
+    if entity_is_alive(*deferred_stage, entity) {
+        arch = entity_archetype_get(deferred_stage, entity);
+    } else {
+        arch = entity_archetype_get(stage, entity);
+    }
+    return archetype_types_contains(arch, cid);
 }
 
 ecs_get :: (using world: *World, entity: Entity, $type: Type) -> *type {
@@ -102,21 +161,30 @@ ecs_get_target :: (using world: *World, entity: Entity, type: Type) -> Entity {
     return INVALID_ENTITY;
 }
 
-ecs_add :: (using world: *World, entity: Entity, $type: Type, val: type) -> *type {
-    ptr := cast(*type) ecs_add(world, entity, type);
+ecs_add :: inline (using world: *World, entity: Entity, $type: Type, val: type, broadcast: bool = true) -> *type {
+    ptr := cast(*type) ecs_add(world, entity, type, broadcast = false);
     ptr.* = val;
+    if broadcast {
+        // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
+        // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnAdd,Target(*));
+
+        cid_low := cast(s64) (cast,no_check(s32) cid_get(world, type));
+
+        event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low), entity);
+    }
     return ptr;
 }
 
-ecs_add :: (using world: *World, entity: Entity, $type: Type) -> *type {
-    return cast(*type) ecs_add(world, entity, cid_get(world, type));
+ecs_add :: inline (using world: *World, entity: Entity, $type: Type, broadcast: bool = true) -> *type {
+    return cast(*type) ecs_add(world, entity, cid_get(world, type), broadcast);
 }
 
-ecs_add :: (using world: *World, entity: Entity, cid: s64) -> *void {
+ecs_add :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = true) -> *void {
     assert(entity_is_valid(world, entity));
 
-    existing := ecs_get(world, entity, cid);
-    if existing then return existing;
+    if ecs_has(world, entity, cid) {
+        return ecs_get(world, entity, cid);
+    }
 
     if entity_is_alive(deferred_stage, entity) {
         result := stage_component_add(*deferred_stage, entity, cid);
@@ -128,12 +196,29 @@ ecs_add :: (using world: *World, entity: Entity, cid: s64) -> *void {
     }
 
     result := stage_component_add(*stage, entity, cid);
+
+    if broadcast {
+        // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
+        // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnAdd,Target(*));
+
+        cid_low := cast(s64) (cast,no_check(s32) cid);
+
+        event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low), entity);
+    }
     return result;
 }
 
-ecs_add_pair :: (using world: *World, entity: Entity, $type: Type, target: Entity) -> *type {
+ecs_add_pair :: (using world: *World, entity: Entity, type: Type, target: Type, broadcast: bool = true) {
+    ecs_add_pair(world, entity, type, cid_get(world, target), broadcast);
+}
+
+ecs_add_pair :: (using world: *World, entity: Entity, type: Type, target: Entity, broadcast: bool = true) {
+    ecs_add_pair(world, entity, type, cast(s64) entity.index, broadcast);
+}
+
+ecs_add_pair :: (using world: *World, entity: Entity, type: Type, target: s64, broadcast: bool = true) -> *void {
     pair_cid := cid_pair(world, type, target);
-    return cast(*type) ecs_add(world, entity, pair_cid);
+    return ecs_add(world, entity, pair_cid, broadcast);
 }
 
 ecs_remove :: (using world: *World, entity: Entity, type: Type) -> bool {
@@ -170,9 +255,7 @@ ecs_singleton_get :: (using world: *World, $type: Type) -> *type {
     entity := entity_from_cid(cid);
 
     ptr := ecs_get(world, entity, type);
-    if !ptr {
-        ptr = ecs_add(world, entity, type);
-    }
+    assert(ptr != null); // singletons cannot ever return null
     return ptr;
 }
 
@@ -210,3 +293,4 @@ entity_destroy_children :: (using world: *World, parent: Entity) {
 
 #load "tests/entity.jai";
 #load "tests/stage.jai";
+#load "tests/event.jai";

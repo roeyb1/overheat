@@ -10,7 +10,9 @@ Archetype :: struct {
 
 archetype_init :: (using archetype: *Archetype, world: *World, cids: [] s64, arch_id: s64) {
     for cid : cids {
-        ci := ecs_get(world, entity_from_cid(cid), ECS_Component);
+        ci := ecs_get(world, entity_from_cid(cid), EcsComponent);
+        assert(ci != null);
+
         cti := cid_to_type_info(world, cid);
 
         storage := array_add(*archetype.storage);
@@ -38,6 +40,7 @@ archetype_component_get :: (using archetype: *Archetype, row: s64, cid: s64) -> 
             return ecs_storage_row_get(storage[it_index], row), storage[it_index].component_size;
         }
     }
+
     return null, 0;
 }
 

@@ -1,4 +1,4 @@
-ECS_Component :: struct @Component {
+EcsComponent :: struct @Component {
     runtime_size: s64 = 0;
 }
 
@@ -24,31 +24,50 @@ cid_get :: (using world: *World, type: Type) -> s64 {
     ti := cast(*Type_Info_Struct)type;
     
     cid, success := table_find(*cid_map, ti.name);
-    assert(success);
+    assert(success, "Failed to find CID for type: %", ti.name);
 
     return cid;
+}
+
+get_component_type_info :: (type: Type) -> Component_Type_Info {
+    cti: Component_Type_Info;
+    cti.ti = cast(*Type_Info_Struct)type;
+
+    if has_note(cti.ti, "SingletonComponent") then cti.is_singleton = true;
+    if has_note(cti.ti, "Tag") then cti.is_tag = true;
+    if has_note(cti.ti, "Pair") then cti.is_pair = true;
+
+    return cti;
 }
 
 cid_register :: (using world: *World, type: Type) {
     cent := entity_spawn(world);
 
-    ci := ecs_add(world, cent, ECS_Component);
+    cid := cid_from_entity(cent);
+
+    ci := ecs_add(world, cent, EcsComponent);
 
     assert((cast(*Type_Info)type).type == .STRUCT);
     ti := cast(*Type_Info_Struct)type;
 
     ci.runtime_size = ti.runtime_size;
 
-    cti: Component_Type_Info;
-    cti.ti = ti;
-    cti.cid = cent.raw;
+    table_add(*cid_map, ti.name, cid);
 
-    table_add(*cid_map, ti.name, cent.raw);
-    table_add(*type_info_map, cent.raw, cti);
+    cti := get_component_type_info(type);
+    cti.cid = cid;
+    table_add(*type_info_map, cid, cti);
+
+    log("Registered CID %: %", ti.name, cid);
+
+    if cti.is_singleton {
+        ecs_add(world, cent, cid);
+        log("Initialized singleton %", ti.name);
+    }
 }
 
 cid_to_type_info :: (using world: *World, cid: s64) -> Component_Type_Info {
-    result, success := table_find(*type_info_map, cid);
+    result, success := table_find(*type_info_map, cast(s64) (cast,no_check(s32)cid));
     assert(success);
     return result;
 }
@@ -66,9 +85,9 @@ cids_from_types :: (using world: *World, types: [] Type) -> [..] s64 {
     return result;
 }
 
-cid_pair :: (using world: *World, type: Type, entity: Entity) -> s64 {
+cid_pair :: (using world: *World, type: Type, cid: s64) -> s64 {
     cid_low := cid_get(world, type);
-    cid_high := entity.index;
+    cid_high := cast(s32)cid;
 
     result: Entity;
     result.index = cast(s32) cid_low;
@@ -77,9 +96,13 @@ cid_pair :: (using world: *World, type: Type, entity: Entity) -> s64 {
     return result.raw;
 }
 
+cid_pair :: inline (using world: *World, type: Type, entity: Entity) -> s64 {
+    return cid_pair(world, type, cast(s64) entity.index);
+}
+
 entity_from_cid :: inline (cid: s64) -> Entity {
     assert(cid != NULL_COMPONENT_ID);
-    return .{ raw = cid };
+    return .{ index = cast,no_check(s32) cid };
 }
 
 compare_cids :: (a: [] s64, b: [] s64) -> bool {
