@@ -119,11 +119,19 @@ ecs_entity_from_index :: (using world: *World, index: s32) -> Entity {
     return entity;
 }
 
-entity_destroy :: (using world: *World, entity: Entity) {
+entity_destroy :: (using world: *World, entity: Entity, broadcast: bool = true) {
     assert(entity_is_valid(world, entity));
 
     if entity_defer_destroy(world, entity) {
         return;
+    }
+
+    if broadcast {
+        for type : entity_types_get(world, entity) {
+            cid_lo := cid_low(type);
+
+            event_broadcast(world, cid_pair(world, EcsOnRemove, cid_lo), entity);
+        }
     }
 
     entity_delete(world, entity);
@@ -179,10 +187,9 @@ ecs_add :: (using world: *World, entity: Entity, val: $type, broadcast: bool = t
     if broadcast {
         // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
         // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnAdd,Target(*));
+        cid_lo := cid_low(cid_get(world, type));
 
-        cid_low := cast(s64) (cast,no_check(s32) cid_get(world, type));
-
-        event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low), entity);
+        event_broadcast(world, cid_pair(world, EcsOnAdd, cid_lo), entity);
     }
     return ptr;
 }
@@ -212,10 +219,9 @@ ecs_add :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = tru
     if broadcast {
         // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
         // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnAdd,Target(*));
+        cid_lo := cid_low(cid);
 
-        cid_low := cast(s64) (cast,no_check(s32) cid);
-
-        event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low), entity);
+        event_broadcast(world, cid_pair(world, EcsOnAdd, cid_lo), entity);
     }
     return result;
 }
@@ -233,25 +239,39 @@ ecs_add_pair :: (using world: *World, entity: Entity, type: Type, target: s64, b
     return ecs_add(world, entity, pair_cid, broadcast);
 }
 
-ecs_remove :: (using world: *World, entity: Entity, type: Type) -> bool {
+ecs_remove :: (using world: *World, entity: Entity, type: Type, broadcast: bool = true) -> bool {
     return ecs_remove(world, entity, cid_get(world, type));
 }
 
-ecs_remove :: (using world: *World, entity: Entity, cid: s64) -> bool {
+ecs_remove :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = true) -> bool {
     assert(entity_is_valid(world, entity));
+    assert(ecs_has(world, entity, cid));
 
     if entity_is_alive(deferred_stage, entity) {
-        removed := stage_component_remove(*deferred_stage, entity, cid);
-        return removed;
+        if broadcast {
+            // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
+            // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnRemove,Target(*));
+            cid_lo := cid_low(cid);
+
+            event_broadcast(world, cid_pair(world, EcsOnRemove, cid_lo), entity);
+        }
+
+        return stage_component_remove(*deferred_stage, entity, cid);
     }
 
     if is_deferring {
         return ecs_defer_remove(world, entity, cid);
     }
 
-    assert(ecs_has(world, entity, cid));
-    removed := stage_component_remove(*stage, entity, cid);
-    return removed;
+    if broadcast {
+        // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
+        // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnRemove,Target(*));
+        cid_lo := cid_low(cid);
+
+        event_broadcast(world, cid_pair(world, EcsOnRemove, cid_lo), entity);
+    }
+
+    return stage_component_remove(*stage, entity, cid);
 }
 
 entity_types_get :: (using world: *World, entity: Entity) -> [] s64 {
