@@ -18,7 +18,7 @@ ecs_iter_term :: (world: *World, type: Type, op: ECS_Iter_Op = .AND) -> ECS_Iter
     return .{cid = cid_get(world, type), op = op};
 }
 
-iter_make :: (world: *World, terms: ..ECS_Iter_Term) -> ECS_Iter {
+iter_make_uncached :: (world: *World, terms: ..ECS_Iter_Term) -> ECS_Iter {
     iter: ECS_Iter;
     iter.world = world;
     iter.archetype_ids = archetype_cache_match_terms(world, terms);

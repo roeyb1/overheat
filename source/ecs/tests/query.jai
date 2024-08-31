@@ -96,6 +96,35 @@ pair_query :: (ctx: *TestContext) {
     }
     test_expect_equals(arch_count, 2);
     test_expect_equals(iter_count, 2);
+
+    e3 := entity_spawn(*w);
+    ecs_add_pair(*w, e3, Test_Pair, e);
+
+    // this uses EcsWildcard so it will match any (*, e)
+    iter_count = 0;
+    arch_count = 0;
+    for q : iter_make_uncached(*w, cid_pair(*w, Ecs_Wildcard, e)) {
+        arch_count += 1;
+        for 0..q.count-1 {
+            iter_count += 1;
+        }
+    }
+    test_expect_equals(arch_count, 1);
+    test_expect_equals(iter_count, 2);
+
+    ecs_add_pair(*w, e3, Child_Of, e);
+
+    // this uses EcsWildcard so it will match any (*, e)
+    iter_count = 0;
+    arch_count = 0;
+    for q : iter_make_uncached(*w, cid_pair(*w, Ecs_Wildcard, e)) {
+        arch_count += 1;
+        for 0..q.count-1 {
+            iter_count += 1;
+        }
+    }
+    test_expect_equals(arch_count, 2);
+    test_expect_equals(iter_count, 2);
 } @UnitTest
 
 term_query_and :: (ctx: *TestContext) {
@@ -109,7 +138,7 @@ term_query_and :: (ctx: *TestContext) {
 
     iter_count := 0;
     arch_count := 0;
-    for q : iter_make(*w, ecs_iter_term(*w, Component_A, .AND), ecs_iter_term(*w, Component_B, .AND)) {
+    for q : iter_make_uncached(*w, ecs_iter_term(*w, Component_A, .AND), ecs_iter_term(*w, Component_B, .AND)) {
         arch_count += 1;
         for 0..q.count-1 {
             iter_count += 1;
@@ -131,7 +160,7 @@ term_query_or :: (ctx: *TestContext) {
 
     iter_count := 0;
     arch_count := 0;
-    for q : iter_make(*w, ecs_iter_term(*w, Component_A, .OR), ecs_iter_term(*w, Component_B, .OR)) {
+    for q : iter_make_uncached(*w, ecs_iter_term(*w, Component_A, .OR), ecs_iter_term(*w, Component_B, .OR)) {
         arch_count += 1;
         for 0..q.count-1 {
             iter_count += 1;
@@ -153,7 +182,7 @@ term_query_not :: (ctx: *TestContext) {
 
     iter_count := 0;
     arch_count := 0;
-    for q : iter_make(*w,
+    for q : iter_make_uncached(*w,
                         ecs_iter_term(*w, Component_A),
                         ecs_iter_term(*w, Component_B, .NOT)) {
         arch_count += 1;
@@ -180,7 +209,7 @@ term_query_and_plus_or :: (ctx: *TestContext) {
     iter_count := 0;
     arch_count := 0;
     // A && (B || C)
-    for q : iter_make(*w,
+    for q : iter_make_uncached(*w,
                         ecs_iter_term(*w, Component_A), 
                         ecs_iter_term(*w, Component_B, .OR),
                         ecs_iter_term(*w, Component_C, .OR)) {
@@ -196,7 +225,7 @@ term_query_and_plus_or :: (ctx: *TestContext) {
     iter_count = 0;
     arch_count = 0;
     // (A || B) && C
-    for q : iter_make(*w,
+    for q : iter_make_uncached(*w,
                         ecs_iter_term(*w, Component_A, .OR),
                         ecs_iter_term(*w, Component_B, .OR),
                         ecs_iter_term(*w, Component_C)) {
@@ -212,7 +241,7 @@ term_query_and_plus_or :: (ctx: *TestContext) {
     iter_count = 0;
     arch_count = 0;
     // (A || B || C)
-    for q : iter_make(*w,
+    for q : iter_make_uncached(*w,
                         ecs_iter_term(*w, Component_A, .OR),
                         ecs_iter_term(*w, Component_B, .OR),
                         ecs_iter_term(*w, Component_C, .OR)) {
