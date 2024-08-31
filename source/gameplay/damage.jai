@@ -20,7 +20,7 @@ modify_health :: (q: Query) {
         health_change_queues[it].changes.count = 0;
 
         if health_components[it].value <= 0 {
-            destroy_entity(q.world, q.entities[it]);
+            entity_destroy(q.world, q.entities[it]);
         }
     }
 } @System(OnValidate) @Write(Health) @Read(Health_Change_Queue)

@@ -67,10 +67,11 @@ System_Def :: struct {
 
     phase: System_Phase;
 
-    component_reads: [] Component_Type_ID;
-    component_writes: [] Component_Type_ID;
-    optional_writes: [] Component_Type_ID;
-    archetype: [..] Component_Type_ID;
+    component_reads: [] Type;
+    component_writes: [] Type;
+    optional_writes: [] Type;
+
+    archetype: [..] s64;
 
     is_predicted: bool;
 }
@@ -92,20 +93,21 @@ System_Scheduler :: struct {
 
 system_groups: [NUM_SYSTEM_PHASES] System_Scheduler;
 
-add_system :: (phase: System_Phase, def: *System_Def) {
+add_system :: (world: *World, phase: System_Phase, def: *System_Def) {
     scheduler := *system_groups[phase];
     system := array_add(*scheduler.systems);
     system.def = def;
 
-    array_append(*def.archetype, def.component_writes);
-    array_append(*def.archetype, def.component_reads);
+    array_append(*def.archetype, cids_from_types(world, def.component_writes));
+    array_append(*def.archetype, cids_from_types(world, def.component_reads));
 
     // remove any singleton components from the archetype so we can still declare them in the component usages but they don't get included in the archetype iterators:
-    for ctid : def.archetype {
-        if ctid.is_singleton remove ctid;
+    for cid : def.archetype {
+        cti := cid_to_type_info(world, cid);
+        if cti.is_singleton then remove cid;
     }
 
-    quick_sort(def.archetype, (x) => x.unique_id);
+    quick_sort(def.archetype, (x) => x);
 
     log("Registered system: %", system.debug_name);
 }
@@ -138,12 +140,12 @@ is_sim_phase :: inline (phase: System_Phase) -> bool {
     return false;
 }
 
-register_system_functions :: () {
+register_system_functions :: (world: *World) {
     for * ALL_SYSTEMS {
         #if CLIENT {
-            if !is_sim_phase(it.phase) || it.is_predicted then add_system(it.phase, it);
+            if !is_sim_phase(it.phase) || it.is_predicted then add_system(world, it.phase, it);
         } else {
-            add_system(it.phase, it);
+            add_system(world, it.phase, it);
         }
     }
     build_system_dependency_graphs();
@@ -165,17 +167,17 @@ build_dependency_graph :: (scheduler: *System_Scheduler) {
     }
 
     for * system : scheduler.systems {
-        write_dependencies: [..] Component_Type_ID;
+        write_dependencies: [..] Type;
         write_dependencies.allocator = temp;
 
         array_append(*write_dependencies, system.component_writes);
         array_append(*write_dependencies, system.optional_writes);
 
-        for ctid : write_dependencies {
+        for write_dep : write_dependencies {
             for * other : scheduler.systems {
                 if system == other then continue;
-                other_reads_ctid := array_find(other.component_reads, ctid, compare_ctid);
-                if other_reads_ctid {
+                other_reads := array_find(other.component_reads, write_dep);
+                if other_reads {
                     array_add(*system.run_before, other.func);
                 }
             }
@@ -233,7 +235,7 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
     wait_count.allocator = temp;
     array_copy(*wait_count, scheduler.wait_count_template);
 
-    world.should_defer = true;
+    world.is_deferring = true;
     while systems_to_run.count > 0 {
         found_one = false;
 
@@ -261,7 +263,7 @@ execute_ :: (world: *World, scheduler: *System_Scheduler) {
         }
     }
 
-    world.should_defer = false;
+    world.is_deferring = false;
     process_deferred_operations(world);
 }
 
@@ -277,12 +279,12 @@ execute_system :: (sys: System, world: *World) {
 
         sys.def.func(query);
     } else {
-        archtype_ids := find_or_create_cached_archetypes_for_ctids(*world.stage, sys.archetype);
+        archtype_ids := archetype_cache_find_or_create(*world.stage, sys.archetype);
 
         for archtype_ids {
             archetype := *world.stage.archetypes[it];
             #if CLIENT {
-                if g_only_simulate_local_player && archetype_contains_types(archetype, .[#run component_type_id(Networking_ID)]) && !archetype_contains_types(archetype, .[#run component_type_id(Local_Player)]) {
+                if g_only_simulate_local_player && archetype_types_match(archetype, .[cid_get(world, Networking_ID)]) && !archetype_types_match(archetype, .[cid_get(world, Local_Player)]) {
                     continue;
                 }
             }
@@ -303,30 +305,54 @@ g_only_simulate_local_player := false;
 
 ECS_Iter :: struct {
     world: *World;
-    archetype: [] Component_Type_ID;
-    archetype_ids: [] s64;
+    archetype: [] s64; // component_types
+    archetype_ids: [] s64; // archetype indices
 }
 
-make_iter_raw :: (world: *World, ctid: [] Component_Type_ID) -> ECS_Iter {
+iter_make_raw :: (world: *World, cids: [] s64) -> ECS_Iter {
     iter: ECS_Iter;
     iter.world = world;
-    iter.archetype = ctid;
-    iter.archetype_ids = find_or_create_cached_archetypes_for_ctids(*world.stage, iter.archetype);
+    iter.archetype = cids;
+    iter.archetype_ids = archetype_cache_find_or_create(*world.stage, iter.archetype);
     return iter;
 }
 
-make_iter :: (world: *World, $component_types: ..Type) -> ECS_Iter {
-    #insert -> string {
-        sb: String_Builder;
-        sbprint(*sb, "archetype :: Component_Type_ID.[");
-        for component_types {
-            sbprint(*sb, "#run component_type_id(%),", it);
-        }
-        sbprint(*sb, "];");
-        return builder_to_string(*sb);
-    }
+iter_make :: (world: *World, types: ..Type) -> ECS_Iter {
+    cids := cids_from_types(world, types);
+    return iter_make_raw(world, cids);
+}
 
-    return make_iter_raw(world, archetype);
+iter_make :: (world: *World, cids: ..s64) -> ECS_Iter {
+    return iter_make_raw(world, cids);
+}
+
+iter_make_uncached :: (world: *World, cids: ..s64) -> ECS_Iter {
+    iter: ECS_Iter;
+    iter.world = world;
+    iter.archetype = cids;
+
+    archetypes: [..] s64;
+    archetypes.allocator = temp;
+    for * world.stage.archetypes {
+        if archetype_types_match(it, cids) && it.entities.count > 0 {
+            array_add(*archetypes, it_index);
+        }
+    }
+    iter.archetype_ids = archetypes;
+    return iter;
+}
+
+iter_make_pair :: (world: *World, type: Type, entity: Entity, types: ..Type) -> ECS_Iter {
+    cids := cids_from_types(world, types);
+    array_add(*cids, cid_pair(world, type, entity));
+    quick_sort(cids, (x) => x);
+
+    iter: ECS_Iter;
+    iter.world = world;
+    iter.archetype = cids;
+    iter.archetype_ids = archetype_cache_find_or_create(*world.stage, iter.archetype);
+
+    return iter;
 }
 
 for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {
@@ -336,8 +362,8 @@ for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {
     query.world = iter.world;
 
     #if flags & .POINTER == 0 {
-        old_defer_value := query.world.should_defer;
-        query.world.should_defer = true;
+        old_defer_value := query.world.is_deferring;
+        query.world.is_deferring = true;
     }
 
     for arch_id, arch_index : iter.archetype_ids {
@@ -353,8 +379,8 @@ for_expansion :: (iter: ECS_Iter, body: Code, flags: For_Flags) #expand {
     }
 
     #if flags & .POINTER == 0 {
-        query.world.should_defer = old_defer_value;
-        if !query.world.should_defer {
+        query.world.is_deferring = old_defer_value;
+        if !query.world.is_deferring {
             process_deferred_operations(query.world);
         }
     }

@@ -14,7 +14,7 @@ Power_Change_Queue :: struct @Component {
 }
 
 gather_power :: (world: *World, parent: Entity, power: float) {
-    stored_power := get_component(world, parent, Stored_Power);
+    stored_power := ecs_get(world, parent, Stored_Power);
     if stored_power {
         stored_power.value = power; 
     }
@@ -36,7 +36,7 @@ modify_power :: (q: Query) {
         power_change_queues[it].changes.count = 0;
 
         if power_components[it].total < 0 {
-            destroy_entity(q.world, q.entities[it]);
+            entity_destroy(q.world, q.entities[it]);
         }
     }
 } @System(OnValidate) @Write(Power) @Read(Power_Change_Queue)

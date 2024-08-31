@@ -1,109 +1,86 @@
 Archetype :: struct {
-    storage: [..] Component_Container;
+    storage: [..] Component_Storage;
 
-    /* list of the type ids in this archetype. Additionally, the index of a type in this list is also the index that maps to the container for the type */
-    type_ids: [..] Component_Type_ID;
+    type_ids: [..] s64;
 
     entities: [..] Entity;
 
     id: s64;
 }
 
-init :: (archetype: *Archetype, ctids: [] Component_Type_ID, archetype_id: s64) {
-    for ctid : ctids {
+archetype_init :: (using archetype: *Archetype, world: *World, cids: [] s64, arch_id: s64) {
+    for cid : cids {
+        ci := ecs_get(world, entity_from_cid(cid), EcsComponent);
+        assert(ci != null);
+
+        cti := cid_to_type_info(world, cid);
+
         storage := array_add(*archetype.storage);
-        storage.component_size = ctid.runtime_size;
-        storage.initializer = ctid.initializer;
-        array_add(*archetype.type_ids, ctid);
+        storage.component_size = ci.runtime_size;
+        storage.initializer = ifx cti.ti then cti.ti.initializer else null;
+
+        array_add(*type_ids, cid);
     }
+
     array_reset(*archetype.entities);
-    archetype.id = archetype_id;
+    archetype.id = arch_id;
 }
 
-archetype_matches_types :: (archetype: *Archetype, ctids: [] Component_Type_ID) -> bool {
-    if archetype.type_ids.count != ctids.count then return false;
-    // type arrays are always sorted, so we can simply check each element with it's pair
-    for 0..archetype.type_ids.count-1 {
-        if archetype.type_ids[it] != ctids[it] then return false;
+archetype_entity_add :: (using archetype: *Archetype, entity: Entity) -> s64 {
+    for * storage {
+        assert(entities.count == it.count);
+
+        ecs_storage_row_add(it);
     }
-    return true;
+    array_add(*entities, entity);
+    return entities.count-1;
 }
 
-/** Returns true of the archetype contains all of the types (it may also have others, but it at least has the subset) */
-archetype_contains_types :: (archetype: *Archetype, ctids: [] Component_Type_ID) -> bool {
-    for ctid : ctids {
-        if !has_component_type(archetype, ctid) then return false;
+archetype_component_get :: (using archetype: *Archetype, row: s64, cid: s64) -> *void, s64 {
+    for type_ids {
+        if cid_match(it, cid) {
+            return ecs_storage_row_get(storage[it_index], row), storage[it_index].component_size;
+        }
     }
-    return true;
+
+    return null, 0;
 }
 
-has_component_type :: (archetype: *Archetype, ctid: Component_Type_ID) -> bool {
-    for archetype.type_ids {
-        if it == ctid then return true;
-    }
-    return false;
-}
-
-get_iter :: (archetype: *Archetype, ctid: Component_Type_ID) -> *void {
-    for archetype.type_ids {
-        if it == ctid {
-            return archetype.storage[it_index].data;
+archetype_iter_get :: (using archetype: *Archetype, cid: s64) -> *void {
+    for type_ids {
+        if it == cid {
+            return storage[it_index].data;
         }
     }
     return null;
 }
 
-get_component :: (archetype: *Archetype, row: s64, ctid: Component_Type_ID) -> *void, s64 {
+archetype_types_equal :: (using archetype: *Archetype, cids: [] s64) -> bool {
+    if type_ids.count != cids.count then return false;
+    for 0..type_ids.count-1 {
+        if type_ids[it] != cids[it] then return false;
+    }
+    return true;
+}
+
+archetype_types_match :: (using archetype: *Archetype, cids: [] s64) -> bool {
+    for cid : cids {
+        if !archetype_type_match(archetype, cid) then return false;
+    }
+    return true;
+}
+
+archetype_type_match :: (using archetype: *Archetype, cid: s64) -> bool {
     for archetype.type_ids {
-        if it == ctid {
-            return get_component(*archetype.storage[it_index], row), archetype.storage[it_index].component_size;
-        }
+        if cid_match(it, cid) then return true;
     }
-    return null, 0;
+    return false;
 }
 
-add_entity :: (archetype: *Archetype, entity: Entity) -> s64 {
-    for * archetype.storage {
-        add_row(it);
+archetype_type_has :: (using archetype: *Archetype, cid: s64) -> bool {
+    for archetype.type_ids {
+        if it == cid then return true;
+        if it > cid then return false;
     }
-    array_add(*archetype.entities, entity);
-
-    return archetype.entities.count-1;
-}
-
-remove_entity :: (archetype: *Archetype, row: s64, entity_records: *Table(s64, Entity_Record)) {
-    if archetype.entities.count > 1 {
-        // the record for the element that got swapped into the removed entities place needs to be updated to reflect the new row:
-        entity_to_swap := archetype.entities[archetype.entities.count-1];
-        record := table_find_pointer(entity_records, entity_to_swap.raw);
-        assert(record != null && record.row == archetype.entities.count - 1);
-        record.row = row;
-    }
-
-    array_unordered_remove_by_index(*archetype.entities, row);
-
-    for * archetype.storage {
-        remove_row(it, row);
-        assert(it.count == archetype.entities.count);
-    }
-
-    swapped_row := archetype.entities.count;
-
-}
-
-move_entity :: (dest: *Archetype, source: *Archetype, source_row: s64, entity: Entity, entity_records: *Table(s64, Entity_Record)) -> (dest_row: s64) {
-    dest_row := add_entity(dest, entity);
-
-    ctids_to_copy := ifx source.type_ids.count > dest.type_ids.count then dest.type_ids else source.type_ids;
-    for ctid : ctids_to_copy {
-        src_component, src_size := get_component(source, source_row, ctid);
-        dst_component, dst_size := get_component(dest, dest_row, ctid);
-        assert(src_size == dst_size);
-
-        memcpy(dst_component, src_component, src_size);
-    }
-
-    remove_entity(source, source_row, entity_records);
-
-    return dest_row;
+    return false;
 }

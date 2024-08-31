@@ -37,18 +37,15 @@ main :: () {
     }
 
     log_initialize();
-    register_events();
     execute_unit_tests();
+
+    ecs_world_init(*g_world);
 
     // set the working direction to be the root of the project (should always two directories up from the executable)
     working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
     set_working_directory(working_dir);
 
-    register_system_functions();
-
-    for ALL_COMPONENT_TYPES {
-        log("Registered component type % with unique ID %", it_index + 1, (cast(*Type_Info_Struct)it).name);
-    }
+    register_system_functions(*g_world);
 
     networking_init();
 

@@ -16,6 +16,8 @@ entity_index_operators :: (ctx: *TestContext) {
 entity_index_unique :: (ctx: *TestContext) {
     w: World;
 
+    ecs_world_init(*w);
+
     ENTITY_COUNT :: 10000;
 
     entities: [..] Entity;
@@ -24,7 +26,7 @@ entity_index_unique :: (ctx: *TestContext) {
     array_reserve(*entities, ENTITY_COUNT);
 
     for 0..ENTITY_COUNT-1 {
-        array_add(*entities, spawn_entity(*w));
+        array_add(*entities, entity_spawn(*w));
     }
 
     // indices are distributed incrementally, and we should only be in the first gen.
@@ -38,6 +40,8 @@ entity_index_unique :: (ctx: *TestContext) {
 entity_index_reuse :: (ctx: *TestContext) {
     w: World;
 
+    ecs_world_init(*w);
+
     ENTITY_COUNT :: 10000;
 
     entities: [..] Entity;
@@ -45,12 +49,12 @@ entity_index_reuse :: (ctx: *TestContext) {
     array_reserve(*entities, ENTITY_COUNT);
 
     for 0..ENTITY_COUNT-1 {
-        array_add(*entities, spawn_entity(*w));
+        array_add(*entities, entity_spawn(*w));
     }
 
     for 0..ENTITY_COUNT-1 {
-        destroy_entity(*w, entities[it]);
-        test_expect_false(is_valid(*w, entities[it]));
+        entity_destroy(*w, entities[it]);
+        test_expect_false(entity_is_valid(w, entities[it]));
     }
 
     new_entities: [..] Entity;
@@ -58,7 +62,7 @@ entity_index_reuse :: (ctx: *TestContext) {
     array_reserve(*new_entities, ENTITY_COUNT);
 
     for 0..ENTITY_COUNT-1 {
-        array_add(*new_entities, spawn_entity(*w));
+        array_add(*new_entities, entity_spawn(*w));
     }
     
     for 0..ENTITY_COUNT-1 {

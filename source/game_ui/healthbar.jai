@@ -3,9 +3,9 @@ draw_enemy_health_bar :: (q: Query) {
     positions := query_get(q, Position);
     colliders := query_get_opt(q, Collider_AABB); // we can use the bounds of the entity to position the healthbar above them
 
-    viewport := get_singleton(q.world, Game_Viewport);
-    camera := get_component(q.world, viewport.main_camera, Camera);
-    camera_pos := get_component(q.world, viewport.main_camera, Position);
+    viewport := ecs_singleton_get(q.world, Game_Viewport);
+    camera := ecs_get(q.world, viewport.main_camera, Camera);
+    camera_pos := ecs_get(q.world, viewport.main_camera, Position);
 
     HEALTHBAR_SIZE := ui_size(Vector2.{50, 5});
 
@@ -36,9 +36,9 @@ draw_local_player_health_bar :: (q: Query) {
     positions := query_get(q, Position);
     colliders := query_get_opt(q, Collider_AABB); // we can use the bounds of the entity to position the healthbar above them
 
-    viewport := get_singleton(q.world, Game_Viewport);
-    camera := get_component(q.world, viewport.main_camera, Camera);
-    camera_pos := get_component(q.world, viewport.main_camera, Position);
+    viewport := ecs_singleton_get(q.world, Game_Viewport);
+    camera := ecs_get(q.world, viewport.main_camera, Camera);
+    camera_pos := ecs_get(q.world, viewport.main_camera, Position);
 
     HEALTHBAR_SIZE := ui_size(Vector2.{50, 6});
 
@@ -73,9 +73,9 @@ draw_remote_player_health_bar :: (q: Query) {
     positions := query_get(q, Position);
     colliders := query_get_opt(q, Collider_AABB); // we can use the bounds of the entity to position the healthbar above them
 
-    viewport := get_singleton(q.world, Game_Viewport);
-    camera := get_component(q.world, viewport.main_camera, Camera);
-    camera_pos := get_component(q.world, viewport.main_camera, Position);
+    viewport := ecs_singleton_get(q.world, Game_Viewport);
+    camera := ecs_get(q.world, viewport.main_camera, Camera);
+    camera_pos := ecs_get(q.world, viewport.main_camera, Position);
 
     HEALTHBAR_SIZE :: #run ui_size(Vector2.{50, 5});
 

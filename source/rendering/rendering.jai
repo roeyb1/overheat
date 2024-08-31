@@ -49,9 +49,9 @@ rendering_shutdown :: () {
 
 #if CLIENT {
 render_scene :: (q: Query) {
-    viewport := get_singleton(q.world, Game_Viewport);
-    pos := get_component(q.world, viewport.main_camera, Position);
-    cam := get_component(q.world, viewport.main_camera, Camera);
+    viewport := ecs_singleton_get(q.world, Game_Viewport);
+    pos := ecs_get(q.world, viewport.main_camera, Position);
+    cam := ecs_get(q.world, viewport.main_camera, Camera);
 
     render_scene(cam.projection, pos);
 } @System(OnRender) @Write() @Read(Game_Viewport) @OptionalRead(Position,Camera)
@@ -290,7 +290,7 @@ render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, color_text
 
     add_clear_image_pass(rg, lightmap_texture_view, clear_color);
 
-    for q : make_iter(*g_world, Position, Point_Light) {
+    for q : iter_make(*g_world, Position, Point_Light) {
         positions := query_get(q, Position);
         point_lights := query_get(q, Point_Light);
 

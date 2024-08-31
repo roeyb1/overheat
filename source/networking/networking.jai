@@ -42,22 +42,24 @@ operator== :: inline (a: Node_ID, b: Node_ID) -> bool {
 }
 
 on_entity_begin_networking :: (world: *World, entity: Entity) {
-    networking_id := get_component(world, entity, Networking_ID);
+    networking_id := ecs_get(world, entity, Networking_ID);
     assert(!table_contains(*entity_node_id_table, networking_id.id), "Entity already exists in the networking lookup table, this should not happen");
     table_add(*entity_node_id_table, networking_id.id, entity);
 
     #if SERVER {
         array_add(*added_nodes, networking_id.id);
     }
+    log("Networking registered for entity {%, %} (node_id = %)", entity.index, entity.generation, networking_id.id);
 } @Event(EcsOnAdd,Networking_ID)
 
 on_entity_end_networking :: (world: *World, entity: Entity) {
-    networking_id := get_component(world, entity, Networking_ID);
+    networking_id := ecs_get(world, entity, Networking_ID);
     table_remove(*entity_node_id_table, networking_id.id);
 
     #if SERVER {
         array_add(*removed_nodes, networking_id.id);
     }
+    log("Networking terminated for entity {%, %} (node_id = %)", entity.index, entity.generation, networking_id.id);
 } @Event(EcsOnRemove,Networking_ID)
 
 PacketType :: enum u8 #specified {
@@ -156,6 +158,7 @@ gns_debug_callback :: (level: DebugOutputLevel, msg: *s8) -> void #c_call {
 
 #import "gns";
 #import "Command_Line";
+#import "Hash";
 
 #if SERVER then #load "server.jai";
 #if CLIENT then #load "client.jai";

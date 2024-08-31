@@ -1,9 +1,9 @@
 #assert SERVER;
 
 server_main :: () {
-    level := spawn_entity(*g_world);
-    add_component(*g_world, level, Level, .{"assets/levels/prison/prison.ldtk"});
-    add_component(*g_world, level, Networking_ID, .{get_unique_node_id()});
+    level := entity_spawn(*g_world);
+    ecs_add(*g_world, level, Level.{"assets/levels/prison/prison.ldtk"});
+    ecs_add(*g_world, level, Networking_ID.{get_unique_node_id()});
 
     last_time = seconds_since_init();
 

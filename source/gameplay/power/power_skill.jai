@@ -4,12 +4,13 @@ power_skill_per_tick :: (q: Query) {
 
     for 0..q.count-1 {
 
-        iter := make_children_iter(q.world, q.entities[it], Skill);
+        iter := iter_make_pair(q.world, Child_Of, q.entities[it], Skill);
         children: [..] Entity;
         children.allocator = temp;
-        for * iter : make_children_iter(q.world, q.entities[it]) {
+
+        for * iter : iter_make_pair(q.world, Child_Of, q.entities[it]) {
             for iter.entities {
-                if get_component(q.world, it, Skill) {
+                if ecs_get(q.world, it, Skill) {
                     array_add(*children, it);
                 }  
             }
@@ -20,7 +21,7 @@ power_skill_per_tick :: (q: Query) {
             stored_powers[it].value = 0;
 
             for children {
-                power_change_queue := get_component(q.world, it, Power_Change_Queue);
+                power_change_queue := ecs_get(q.world, it, Power_Change_Queue);
                 power_skill(power_change_queue, distributed_power);
             }
         }

@@ -3,7 +3,7 @@ Level :: struct @Component {
 }
 
 on_level_load :: (world: *World, entity: Entity) {
-    level := get_component(world, entity, Level);
+    level := ecs_get(world, entity, Level);
 
     import_ldtk_level(world, level.path);
 } @Event(EcsOnAdd,Level)

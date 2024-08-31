@@ -2,26 +2,26 @@ Query :: struct {
     world: *World;
 
     entities: [] Entity;
-    types: [] Component_Type_ID;
+    types: [] s64;
     
     current_archetype: *Archetype;
 
     count: s64;
 }
 
-query_get :: (query: Query, $type: Type) -> [] type {
+query_get :: (using query: Query, $type: Type) -> [] type {
     result: [] type;
-    result.data = get_iter(query.current_archetype, #run component_type_id(type));
-    result.count = query.entities.count;
+    result.data = archetype_iter_get(current_archetype, cid_get(world, type));
+    result.count = entities.count;
     assert(result.data != null);
     return result;
 }
 
-query_get_opt :: (query: Query, $type: Type) -> [] type {
-    data := get_iter(query.current_archetype, #run component_type_id(type));
+query_get_opt :: (using query: Query, $type: Type) -> [] type {
+    data := archetype_iter_get(current_archetype, cid_get(world, type));
 
     result: [] type;
     result.data = data;
-    result.count = ifx data != null then query.entities.count else 0;
+    result.count = ifx data != null then entities.count else 0;
     return result;
 }

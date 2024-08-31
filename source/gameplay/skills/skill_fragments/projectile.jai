@@ -3,28 +3,28 @@ Projectile :: struct @Component {
 }
 
 add_projectile :: (world: *World, skill: Entity){
-    parent := get_parent(world, skill);
-    if is_valid(world,parent){
+    parent := ecs_get_target(world, skill, Child_Of);
+    if entity_is_valid(world, parent){
         spritesheet := "assets/skills/blue_orb.png";
         PLAYER_SIZE :: Vector2.{2.3, 2.3};    
 
         sprite := load_spritesheet("assets/particles/blue_orb.png",48, 0, 0,23,6);
         SPRITE_SIZE :: Vector2.{1., 1.};
-        add_component(world, skill, Sprite, .{spritesheet, null, PLAYER_SIZE, 0, 4, 0});
+        ecs_add(world, skill, Sprite.{spritesheet, null, PLAYER_SIZE, 0, 4, 0});
 
-        spawn_location := get_component(world, parent, Position).value;
+        spawn_location := ecs_get(world, parent, Position).value;
         log("%",spawn_location);
-        add_component(world, skill, Position, .{spawn_location});
+        ecs_add(world, skill, Position.{spawn_location});
 
 
-        targeting := get_component(world, parent, Player_Commands).cursor_position;
+        targeting := ecs_get(world, parent, Player_Commands).cursor_position;
         direction := unit_vector(targeting-spawn_location);
 
     
-        add_component(world, skill, Projectile, .{direction});
-        add_component(world, skill, Velocity);
+        ecs_add(world, skill, Projectile.{direction});
+        ecs_add(world, skill, Velocity);
 
-        add_component(world, skill, Move_Speed, .{speed = 1});
+        ecs_add(world, skill, Move_Speed.{speed = 1});
     }
 }
 

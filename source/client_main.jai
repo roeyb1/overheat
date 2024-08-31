@@ -24,8 +24,8 @@ client_main :: () {
     last_time = seconds_since_init();
 
     // The following few lines should probably be moved elsewhere. They initialize some specific things which could maybe tied into a global world init function?
-    viewport := get_singleton(*g_world, Game_Viewport);
-    viewport.main_camera = spawn_entity(*g_world, Position, Camera);
+    viewport := ecs_singleton_get(*g_world, Game_Viewport);
+    viewport.main_camera = entity_spawn(*g_world, Position, Camera);
 
     while true {
         //FrameMark();

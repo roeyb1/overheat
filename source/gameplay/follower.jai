@@ -8,7 +8,7 @@ Follow :: struct @Component {
 
     union {
         entity: Entity;
-        tag: Component_Type_ID;
+        tag: s64;
     };
 
     max_distance: float;
@@ -29,16 +29,16 @@ follow_entity :: (q: Query) {
         target_pos := Vector2.{0, 0};
 
         if followers[it].mode == .ENTITY {
-            if !is_valid(q.world, followers[it].entity) then continue;
+            if !entity_is_valid(q.world, followers[it].entity) then continue;
 
-            target_pos_component := get_component(q.world, followers[it].entity, Position);
+            target_pos_component := ecs_get(q.world, followers[it].entity, Position);
             assert(target_pos_component != null, "Attempting to follow an entity that doesn't have a position component!");
             target_pos = target_pos_component.value;
         } else {
             entity, found := find_nearest_with_tag(q.world, positions[it], q.entities[it], followers[it].tag);
 
             if found {
-                target_pos_component := get_component(q.world, entity, Position);
+                target_pos_component := ecs_get(q.world, entity, Position);
                 assert(target_pos_component != null, "Attempting to follow an entity that doesn't have a position component!");
                 target_pos = target_pos_component.value;
             }
@@ -55,7 +55,7 @@ follow_entity :: (q: Query) {
 
 #scope_file
 
-find_nearest_with_tag :: (world: *World, point: Vector2, self: Entity, ctid: Component_Type_ID) -> Entity, bool {
+find_nearest_with_tag :: (world: *World, point: Vector2, self: Entity, cid: s64) -> Entity, bool {
     // @Speed accelerate with AABB tree
     candidates: [..] Entity;
     candidates.allocator = temp;
@@ -63,7 +63,7 @@ find_nearest_with_tag :: (world: *World, point: Vector2, self: Entity, ctid: Com
     distances.allocator = temp;
 
 
-    for q : make_iter_raw(world, Component_Type_ID.[#run component_type_id(Position), ctid]) {
+    for q : iter_make_raw(world, s64.[cid_get(world, Position), cid]) {
         positions := query_get(q, Position);
 
         array_append(*candidates, q.entities);

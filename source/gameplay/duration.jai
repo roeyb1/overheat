@@ -9,12 +9,12 @@ update_duration :: (q: Query) {
         durations[it].value -= FIXED_TIMESTEP;
         
         if durations[it].value < 0 {
-            destroy_entity(q.world, q.entities[it]);
+            entity_destroy(q.world, q.entities[it]);
         }
     }
 } @System(OnValidate) @Write(Duration) @Read() 
 
 set_base_duration :: (world: *World, entity: Entity) {
-    duration := get_component(world, entity, Duration);
+    duration := ecs_get(world, entity, Duration);
     duration.base_value = duration.value;
 } @Event(EcsOnAdd,Duration)
