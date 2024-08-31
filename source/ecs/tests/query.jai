@@ -97,3 +97,131 @@ pair_query :: (ctx: *TestContext) {
     test_expect_equals(arch_count, 2);
     test_expect_equals(iter_count, 2);
 } @UnitTest
+
+term_query_and :: (ctx: *TestContext) {
+    w: World;
+
+    ecs_world_init(*w);
+
+    entity_spawn(*w, Component_A, Component_B);
+    entity_spawn(*w, Component_A);
+    entity_spawn(*w, Component_B);
+
+    iter_count := 0;
+    arch_count := 0;
+    for q : iter_make(*w, ecs_iter_term(*w, Component_A, .AND), ecs_iter_term(*w, Component_B, .AND)) {
+        arch_count += 1;
+        for 0..q.count-1 {
+            iter_count += 1;
+        }
+    }
+
+    test_expect_equals(arch_count, 1);
+    test_expect_equals(iter_count, 1);
+} @UnitTest
+
+term_query_or :: (ctx: *TestContext) {
+    w: World;
+
+    ecs_world_init(*w);
+
+    entity_spawn(*w, Component_A, Component_B);
+    entity_spawn(*w, Component_A);
+    entity_spawn(*w, Component_B);
+
+    iter_count := 0;
+    arch_count := 0;
+    for q : iter_make(*w, ecs_iter_term(*w, Component_A, .OR), ecs_iter_term(*w, Component_B, .OR)) {
+        arch_count += 1;
+        for 0..q.count-1 {
+            iter_count += 1;
+        }
+    }
+
+    test_expect_equals(arch_count, 3);
+    test_expect_equals(iter_count, 3);
+} @UnitTest
+
+term_query_not :: (ctx: *TestContext) {
+    w: World;
+
+    ecs_world_init(*w);
+
+    entity_spawn(*w, Component_A, Component_B);
+    entity_spawn(*w, Component_A);
+    entity_spawn(*w, Component_B);
+
+    iter_count := 0;
+    arch_count := 0;
+    for q : iter_make(*w,
+                        ecs_iter_term(*w, Component_A),
+                        ecs_iter_term(*w, Component_B, .NOT)) {
+        arch_count += 1;
+        for 0..q.count-1 {
+            iter_count += 1;
+        }
+    }
+
+    test_expect_equals(arch_count, 1);
+    test_expect_equals(iter_count, 1);
+} @UnitTest
+
+term_query_and_plus_or :: (ctx: *TestContext) {
+    w: World;
+
+    ecs_world_init(*w);
+
+    entity_spawn(*w, Component_A, Component_B);
+    entity_spawn(*w, Component_A, Component_C);
+    entity_spawn(*w, Component_A);
+    entity_spawn(*w, Component_B);
+    entity_spawn(*w, Component_C);
+
+    iter_count := 0;
+    arch_count := 0;
+    // A && (B || C)
+    for q : iter_make(*w,
+                        ecs_iter_term(*w, Component_A), 
+                        ecs_iter_term(*w, Component_B, .OR),
+                        ecs_iter_term(*w, Component_C, .OR)) {
+        arch_count += 1;
+        for 0..q.count-1 {
+            iter_count += 1;
+        }
+    }
+
+    test_expect_equals(arch_count, 2);
+    test_expect_equals(iter_count, 2);
+
+    iter_count = 0;
+    arch_count = 0;
+    // (A || B) && C
+    for q : iter_make(*w,
+                        ecs_iter_term(*w, Component_A, .OR),
+                        ecs_iter_term(*w, Component_B, .OR),
+                        ecs_iter_term(*w, Component_C)) {
+        arch_count += 1;
+        for 0..q.count-1 {
+            iter_count += 1;
+        }
+    }
+
+    test_expect_equals(arch_count, 1);
+    test_expect_equals(iter_count, 1);
+
+    iter_count = 0;
+    arch_count = 0;
+    // (A || B || C)
+    for q : iter_make(*w,
+                        ecs_iter_term(*w, Component_A, .OR),
+                        ecs_iter_term(*w, Component_B, .OR),
+                        ecs_iter_term(*w, Component_C, .OR)) {
+        arch_count += 1;
+        for 0..q.count-1 {
+            iter_count += 1;
+        }
+    }
+
+    test_expect_equals(arch_count, 5);
+    test_expect_equals(iter_count, 5);
+} @UnitTest

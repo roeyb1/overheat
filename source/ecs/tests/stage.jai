@@ -6,6 +6,10 @@ Component_B :: struct @Component {
     b: u32;
 }
 
+Component_C :: struct @Component {
+    b: u32;
+}
+
 /** Test that adding a component to an entity moves it to a new archetype. Removing it moves it back to the same one. */
 moving_archetypes :: (ctx: *TestContext) {
     w: World;
