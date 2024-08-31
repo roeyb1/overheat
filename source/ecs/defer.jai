@@ -46,7 +46,6 @@ ecs_defer_add :: (using world: *World, entity: Entity, cid: s64) -> *void {
 ecs_defer_remove :: (using world: *World, entity: Entity, cid: s64) -> bool {
     exists := ecs_has(world, entity, cid);
     array_add(*deferred_ops, .{ type = .REMOVE, entity = entity, cid = cid });
-    log("Queued a defered remove. entity % for comp % ", entity.index, cid);
     return exists;
 }
 

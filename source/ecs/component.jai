@@ -87,11 +87,10 @@ cid_register :: (using world: *World, type: Type) {
     cti.cid = cid;
     table_add(*type_info_map, cid, cti);
 
-    log("Registered CID %: %", ti.name, cid);
+    log_verbose("Registered CID %: %", ti.name, cid);
 
     if cti.is_singleton {
         ecs_add(world, cent, cid);
-        log("Initialized singleton %", ti.name);
     }
 }
 
