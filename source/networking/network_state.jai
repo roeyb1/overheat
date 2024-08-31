@@ -4,17 +4,17 @@ Node_State :: struct {
 }
 
 State_Snapshot :: struct {
-    state: Table(s64, Node_State);
+    state: Table(Node_ID, Node_State);
 
     // a list of all newly created entities and their component types
     // any synchronized state for those components is included in the state table
-    new_nodes: Table(s64, [..] s64);
+    new_nodes: Table(Node_ID, [..] s64);
 
     // for any nodes that
-    removed_fields: Table(s64, [..] s64);
-    added_fields: Table(s64, [..] s64);
+    removed_fields: Table(Node_ID, [..] s64);
+    added_fields: Table(Node_ID, [..] s64);
 
-    removed_nodes: [..] s64;
+    removed_nodes: [..] Node_ID;
 
     time: float;
     tick: u32;
