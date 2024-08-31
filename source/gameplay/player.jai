@@ -52,24 +52,39 @@ Player_Bundle :: struct @Bundle {
     stored_power: Stored_Power;
 }
 
-init_player :: (node_id: Node_ID, position: Vector2) -> Entity {
+init_player :: (position: Vector2) -> Entity {
     spritesheet := "assets/players/player_character1.png";
 
     PLAYER_SIZE :: Vector2.{2.3, 2.3};
     PLAYER_COLLIDER_SIZE :: Vector2.{1., 1.};
 
-    entity := entity_spawn_bundle(*g_world, Player_Bundle.{
-        name = .{ sprint("Player_%", node_id.id) },
+    entity := entity_spawn(*g_world);
+
+    ecs_add_bundle(*g_world, entity, Player_Bundle.{
+        name = .{ sprint("Player_%", entity.index) },
         position = .{ position },
-        invoker = .{ id = node_id.id },
+        invoker = .{ id = cast(u64) entity.raw },
         move_speed =  .{ 6 },
         point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 20. },
         sprite = .{ spritesheet, null, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
         health = .{90., 100.},
-        networking_id = .{node_id},
+        networking_id = .{.{ cast(u64) entity.raw }},
         cooldown = .{base_value=1.},
     });
+
+    // set up a test inventory
+    inventory := entity_spawn(*g_world, Networking_ID);
+    ecs_add_pair(*g_world, entity, Inventory, inventory);
+
+    sword := entity_spawn(*g_world, Item, Sword, Networking_ID);
+    ecs_add(*g_world, sword, Name.{"Sword"});
+
+    helmet := entity_spawn(*g_world, Item, Helmet, Networking_ID);
+    ecs_add(*g_world, helmet, Name.{"Helmet"});
+
+    ecs_add_pair(*g_world, sword, ContainedBy, inventory);
+    ecs_add_pair(*g_world, helmet, ContainedBy, inventory);
 
     return entity;
 }
@@ -147,18 +162,21 @@ broadcast_local_player_commands :: (q: Query) {
 
 on_player_component_added :: (world: *World, entity: Entity) {
     log("Player % (%) has joined the game", ecs_get(world, entity, Name).name, entity.index);
-#if CLIENT {
-    networking_id := ecs_get(world, entity, Networking_ID);
-    assert(networking_id != null);
-    if networking_id.id == g_client.local_client_id {
-        ecs_remove(*g_world, entity, Remote_Player);
-        ecs_add(*g_world, entity, Local_Player);
 
-        sprite := ecs_get(world, entity, Sprite);
-        sprite.sheet = null;
-        sprite.sheet_path = "assets/players/player_character1.png";
+    #if CLIENT {
+        networking_id := ecs_get(world, entity, Networking_ID);
+        assert(networking_id != null);
+        if networking_id.id == g_client.local_client_id {
+            ecs_remove(*g_world, entity, Remote_Player);
+            ecs_add(*g_world, entity, Local_Player);
+
+            sprite := ecs_get(world, entity, Sprite);
+            sprite.sheet = null;
+            sprite.sheet_path = "assets/players/player_character1.png";
+        }
+
+        print_inventory(*g_world, entity);
     }
-}
 } @Event(EcsOnAdd,Player)
 
 #if CLIENT {

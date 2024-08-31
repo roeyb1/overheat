@@ -73,4 +73,15 @@ entity_index_reuse :: (ctx: *TestContext) {
     }
 } @UnitTest
 
+entity_index_range :: (ctx: *TestContext) {
+    w: World;
+
+    ecs_world_init(*w);
+    entity_set_range(*w, 10000, 0);
+
+    e := entity_spawn(*w);
+    test_expect_true(e.index >= 10000);
+
+} @UnitTest
+
 #import "Basic";

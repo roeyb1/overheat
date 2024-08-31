@@ -39,21 +39,37 @@ entity_init :: (using stage: *Stage, entity: Entity, components: [] s64) {
     }
 }
 
-entity_create :: (using stage: *Stage, components: [] s64) -> Entity {
-    new_entity: *Entity;
+entity_new_index :: (using stage: *Stage) -> s32 {
+    index: s32 = INVALID_ENTITY_INDEX;
+
     if free_indices.count > 0 {
-        index := pop(*free_indices);
-        new_entity = *entities[index];
+        index = pop(*free_indices);
+        new_entity := *entities[index];
         
         // dead entities are marked with a -1 index, we should not be reusing the index unless it's -1
         assert(new_entity.index == -1);
         new_entity.index = index;
         // generation count is already incremented on deletion, so we dont increment it here.
     } else {
-        new_entity = array_add(*entities);
+        new_entity := array_add(*entities);
         new_entity.generation = 0;
-        new_entity.index = cast(s32) entities.count-1;
+
+        new_index := cast(s32)entities.count-1;
+
+        new_entity.index = new_index;
+
+        index = new_index;
     }
+
+    assert(entity_index_within_range(stage.world, index));
+
+    return index;
+}
+
+entity_create :: (using stage: *Stage, components: [] s64) -> Entity {
+    new_index := entity_new_index(stage);
+
+    new_entity: *Entity = *entities[new_index];
 
     entity_init(stage, new_entity, components);
 
@@ -73,12 +89,17 @@ entity_make :: (using stage: *Stage, entity: Entity, components: [] s64) -> Enti
             if it == entity.index then continue;
 
             entities[it].index = -1;
-            array_add(*free_indices, cast(s32) it);
+            if entity_index_within_range(world, cast(s32) it) {
+                array_add(*free_indices, cast(s32) it);
+            }
         }
     } else {
         assert(entities[entity.index].index == -1);
-        removed := array_unordered_remove_by_value(*free_indices, entity.index, stop_after_first=true);
-        assert(removed == 1);
+        // if the index is within the local allocation range, then we should remove it from the free list:
+        if entity_index_within_range(world, entity.index) then {
+            removed := array_unordered_remove_by_value(*free_indices, entity.index, stop_after_first=true);
+            assert(removed == 1);
+        }
     }
 
     entities[entity.index].index = entity.index;

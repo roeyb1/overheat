@@ -115,15 +115,15 @@ cids_from_types :: (using world: *World, types: [] Type) -> [..] s64 {
 }
 
 cid_pair :: inline (using world: *World, type: Type, cid: s64) -> s64 {
-    return cid_pair(world, cast(s32) cid_get(world, type), cid);
+    return cid_pair(world, cast(s32) cid_get(world, type), cid_low(cid));
 } 
 cid_pair :: inline (using world: *World, source: s32, target: Entity) -> s64 {
-    return cid_pair(world, source, target.raw);
+    return cid_pair(world, source, target.index);
 }
 
-cid_pair :: (using world: *World, source: s32, target: s64) -> s64 {
+cid_pair :: (using world: *World, source: s32, target: s32) -> s64 {
     cid_low := source;
-    cid_high := cast(s32)target;
+    cid_high := target;
 
     result: Entity;
     result.index = cast(s32) cid_low;

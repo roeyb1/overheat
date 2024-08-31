@@ -90,10 +90,11 @@ process_deferred_operations :: (using world: *World) {
                     assert(ci != null);
                     memcpy(ptr, it.component_data, ci.runtime_size);
                     // ptr was allocated from temp storage, don't need to free it
+
+                    event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low(it.cid)), it.entity);
                 }
         }
     }
-    assert(world.deferred_stage.entities.count == world.deferred_stage.free_indices.count);
     world.deferred_ops.count = 0;
 }
 

@@ -14,8 +14,6 @@ Server :: struct {
     }
     clients: [..] ClientConnection;
 
-    next_valid_networking_id: u64 = 1;
-
     should_shutdown: bool = false;
 }
 
@@ -43,12 +41,17 @@ operator== :: inline (a: Node_ID, b: Node_ID) -> bool {
 
 on_entity_begin_networking :: (world: *World, entity: Entity) {
     networking_id := ecs_get(world, entity, Networking_ID);
+    #if SERVER {
+        if networking_id.id == INVALID_NODE_ID then networking_id.id = .{ cast(u64) entity.raw };
+    }
+
     assert(!table_contains(*entity_node_id_table, networking_id.id), "Entity already exists in the networking lookup table, this should not happen");
     table_add(*entity_node_id_table, networking_id.id, entity);
 
     #if SERVER {
         array_add(*added_nodes, networking_id.id);
     }
+
     log("Networking registered for entity {%, %} (node_id = %)", entity.index, entity.generation, networking_id.id);
 } @Event(EcsOnAdd,Networking_ID)
 

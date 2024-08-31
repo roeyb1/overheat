@@ -131,6 +131,8 @@ generate_full_snapshot :: (world: *World, allocator: Allocator) -> State_Snapsho
             networking_ids := query_get(q, Networking_ID);
 
             for 0..q.count-1 {
+                assert(networking_ids[it].id != INVALID_NODE_ID);
+
                 state, newly_added := find_or_add(*result.state, networking_ids[it].id);
                 if newly_added then state.fields.allocator = allocator;
 

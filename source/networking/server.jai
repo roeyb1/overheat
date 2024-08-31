@@ -194,11 +194,6 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
     }
 }
 
-get_unique_node_id :: () -> Node_ID {
-    g_server.next_valid_networking_id += 1;
-    return .{g_server.next_valid_networking_id-1};
-}
-
 /**
  * Server -> Clients 
  * Sends a packet of data from the server to all clients.
@@ -408,25 +403,22 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 return;
             }
 
-            new_networking_id := get_unique_node_id();
-            assert(new_networking_id != INVALID_NODE_ID);
+            player := init_player(g_player_start);
 
             new_client: Server.ClientConnection;
             new_client.connection = info.m_conn;
-            new_client.node_id = new_networking_id;
+            new_client.node_id = .{ cast(u64) player.raw };
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
 
             player_input_ring: [..] Player_Commands;
             array_resize(*player_input_ring, TICK_RATE * 2);
-            table_add(*per_player_input_rings, new_networking_id, player_input_ring);
-
-            init_player(new_networking_id, g_player_start);
+            table_add(*per_player_input_rings, .{cast(u64) player.raw}, player_input_ring);
 
             // Indicate to the newly joined player what it's ID is
             {
                 conn_established: ConnectionEstablished_Packet;
-                conn_established.node_id = new_networking_id;
+                conn_established.node_id = .{cast(u64) player.raw};
 
                 snapshot := generate_full_snapshot(*g_world, temp);
                 conn_established.initial_snapshot.data = to_packet(snapshot);

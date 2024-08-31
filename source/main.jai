@@ -40,6 +40,11 @@ main :: () {
     execute_unit_tests();
 
     ecs_world_init(*g_world);
+    #if SERVER {
+        entity_set_range(*g_world, 50000, 0);
+    } else {
+        entity_set_range(*g_world, 1000, 50000);
+    }
 
     // set the working direction to be the root of the project (should always two directories up from the executable)
     working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
@@ -90,6 +95,7 @@ using Random :: #import "Random";
 #load "assets.jai";
 #load "ecs/ecs.jai";
 #load "gameplay/gameplay.jai";
+#load "items/items.jai";
 #load "physics/collision.jai";
 #load "levels/level.jai";
 #load "animation/sprite_animation.jai";

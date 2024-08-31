@@ -9,33 +9,10 @@ World :: struct {
 
     type_info_map: Table(s64, Component_Type_Info);
 
+    min_id: s32 = 0;
+    max_id: s32 = S32_MAX;
+
     is_deferring: bool = false;
-}
-
-
-bootstrap_component_id :: (using world: *World, type: Type, id: s64) {
-    entity := Entity.{ raw = id };
-    entity_make(*world.stage, entity, .[]);
-    assert((cast(*Type_Info)type).type == .STRUCT);
-    table_add(*cid_map, (cast(*Type_Info_Struct)type).name, entity.raw);
-
-    cti := get_component_type_info(type);
-    cti.cid = entity.raw;
-    table_add(*type_info_map, entity.raw, cti);
-}
-
-bootstrap_component :: (using world: *World, type: Type, id: s64) {
-    entity := Entity.{ raw = id };
-    entity_make(*world.stage, entity, .[]);
-
-    assert((cast(*Type_Info)type).type == .STRUCT);
-    table_add(*cid_map, (cast(*Type_Info_Struct)type).name, entity.raw);
-
-    cti := get_component_type_info(type);
-    cti.cid = entity.raw;
-    table_add(*type_info_map, entity.raw, cti);
-
-    ecs_add(world, entity, EcsComponent.{runtime_size = cti.ti.runtime_size}, broadcast=false);
 }
 
 
@@ -79,6 +56,32 @@ ecs_world_init :: (using world: *World) {
 
 entity_is_valid :: (using world: World, entity: Entity) -> bool {
     return entity_is_alive(stage, entity);
+}
+
+entity_index_within_range :: (using world: *World, index: s32) -> bool {
+    return index >= min_id && index < max_id;
+}
+
+entity_set_range :: (using world: *World, low: s32, high: s32) {
+    world.min_id = low;
+
+    if high == 0 {
+        world.max_id = S32_MAX;
+    } else {
+        world.max_id = high;
+    }
+
+    if stage.entities.count < min_id {
+        array_resize(*stage.entities, min_id);
+    }
+
+    // rebuild the free indices list now matching the new low and high ranges:
+    array_reset_keeping_memory(*stage.free_indices);
+    for stage.entities {
+        if it.index == -1 && entity_index_within_range(world, cast(s32) it_index) {
+            array_add(*stage.free_indices, cast(s32) it_index);
+        }
+    }
 }
 
 entity_spawn :: inline (using world: *World, components: ..Type, parent: Entity = INVALID_ENTITY, broadcast: bool = true) -> Entity {
@@ -212,6 +215,9 @@ ecs_add :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = tru
 
     if entity_is_alive(deferred_stage, entity) {
         result := stage_component_add(*deferred_stage, entity, cid);
+        if broadcast {
+            event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low(cid)), entity);
+        }
         return result;
     }
 
@@ -288,6 +294,30 @@ ecs_singleton_get :: (using world: *World, $type: Type) -> *type {
 
 #scope_file
 
+bootstrap_component_id :: (using world: *World, type: Type, id: s64) {
+    entity := Entity.{ raw = id };
+    entity_make(*world.stage, entity, .[]);
+    assert((cast(*Type_Info)type).type == .STRUCT);
+    table_add(*cid_map, (cast(*Type_Info_Struct)type).name, entity.raw);
+
+    cti := get_component_type_info(type);
+    cti.cid = entity.raw;
+    table_add(*type_info_map, entity.raw, cti);
+}
+
+bootstrap_component :: (using world: *World, type: Type, id: s64) {
+    entity := Entity.{ raw = id };
+    entity_make(*world.stage, entity, .[]);
+
+    assert((cast(*Type_Info)type).type == .STRUCT);
+    table_add(*cid_map, (cast(*Type_Info_Struct)type).name, entity.raw);
+
+    cti := get_component_type_info(type);
+    cti.cid = entity.raw;
+    table_add(*type_info_map, entity.raw, cti);
+
+    ecs_add(world, entity, EcsComponent.{runtime_size = cti.ti.runtime_size}, broadcast=false);
+}
 
 entity_destroy_children :: (using world: *World, parent: Entity) {
     children: [..] Entity;

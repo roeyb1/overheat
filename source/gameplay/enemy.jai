@@ -21,11 +21,10 @@ Enemy_Bundle :: struct @Bundle {
     duration: Duration;
 }
 
-spawn_enemy :: (world: *World, position: Vector2, node_id: Node_ID, type: Enemy_Type) {
+spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
     entity := entity_spawn_bundle(world, Enemy_Bundle.{
         position = .{ position },
         enemy.type = type,
-        networking_id.id = node_id,
         health = .{100., 100.},
     });
 
@@ -68,7 +67,7 @@ spawn_enemy_pack :: (world: *World, center: Vector2, radius: float, type: Enemy_
             distance := radius * random_get_zero_to_one();
 
             position := center + Vector2.{distance * cos(angle), distance * sin(angle)};
-            spawn_enemy(world, position, get_unique_node_id(), .BAT);
+            spawn_enemy(world, position, .BAT);
         }
     }
 }

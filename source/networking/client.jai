@@ -372,17 +372,9 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
         if found then continue;
         array_add(*new_nodes, it_index);
 
-        cid_list: [..] s64;
-        cid_list.allocator = temp;
-        for it {
-            for q : iter_make(world, EcsComponent) {
-                for cent : q.entities {
-                    if cid_from_entity(cent) == it then array_add(*cid_list, it);
-                }
-            }
-        }
+        cid_list: [..] s64 = it;
 
-        entity := entity_spawn(world);
+        entity := entity_make(*world.stage, Entity.{raw = cast(s64) it_index.id}, .[]);
 
         ecs_add(world, entity, Networking_ID.{it_index});
 
@@ -398,16 +390,7 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
             fields, success := table_find(*snapshot.new_nodes, node_id);
             assert(success);
 
-            cid_list: [..] s64;
-            cid_list.allocator = temp;
-
-            for fields {
-                for q : iter_make(world, EcsComponent) {
-                    for cent : q.entities {
-                        if cid_from_entity(cent) == it then array_add(*cid_list, it);
-                    }
-                }
-            }
+            cid_list: [..] s64 = fields;
 
             entity, found := table_find(*entity_node_id_table, node_id);
             assert(found);
@@ -471,15 +454,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         entity, found := table_find(*entity_node_id_table, it_index);
         assert(found);
 
-        cid_list: [..] s64;
-        cid_list.allocator = temp;
-        for field_id : it {
-            for q : iter_make(world, EcsComponent) {
-                for cent : q.entities {
-                    if cid_from_entity(cent) == field_id then array_add(*cid_list, field_id);
-                }
-            }
-        }
+        cid_list: [..] s64 = it;
 
         for cid_list {
             ecs_add(world, entity, it, broadcast=false);
@@ -533,15 +508,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
         entity, found := table_find(*entity_node_id_table, it_index);
         assert(found);
 
-        cid_list: [..] s64;
-        cid_list.allocator = temp;
-        for field_id : it {
-            for q : iter_make(world, EcsComponent) {
-                for cent : q.entities {
-                    if cid_from_entity(cent) == field_id then array_add(*cid_list, field_id);
-                }
-            }
-        }
+        cid_list: [..] s64 = it;
 
         for cid_list {
             event_broadcast(world, cid_pair(world, EcsOnAdd, it), entity);
