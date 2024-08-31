@@ -208,6 +208,10 @@ entity_storage_move :: (from_stage: *Stage, to_stage: *Stage, to_arch: *Archetyp
     entity_storage_copy(from_stage, to_stage, to_arch, from_arch, entity);
 
     array_unordered_remove_by_index(*from_arch.entities, source_row);
+
+    if from_arch.entities.count == 0 {
+        archetype_cache_remove(from_stage, from_arch.id);
+    }
 }
 
 entity_storage_copy :: (from_stage: *Stage, to_stage: *Stage, to_arch: *Archetype, from_arch: *Archetype, entity: Entity) {
@@ -227,6 +231,10 @@ entity_storage_copy :: (from_stage: *Stage, to_stage: *Stage, to_arch: *Archetyp
         assert(src_size == dst_size);
 
         memcpy(dst_component, src_component, src_size);
+    }
+
+    if to_arch.entities.count == 1 {
+        archetype_cache_add(to_stage, to_arch);
     }
 
     to_record := entity_record_get_ptr(to_stage, entity);
@@ -288,7 +296,15 @@ archetype_cache_remove :: (using stage: *Stage, arch_id: s64) {
 
 archetype_cache_find_or_create :: (using stage: *Stage, cids: [] s64) -> [] s64 {
     result := table_find_pointer(*archetype_cache, cids);
-    if result != null then return result.*;
+    if result != null {
+        #if DEBUG {
+            for arch_id : (result.*) {
+                assert(stage.archetypes[arch_id].entities.count > 0);
+            }
+        }
+
+        return result.*;
+    }
 
     _archetypes: [..] s64;
     result = table_add(*archetype_cache, array_copy(cids), _archetypes);
