@@ -179,6 +179,9 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             byte_buffer_read(buffer, *player_commands_packet);
 
             entity := entity_from_raw(player_commands_packet.node_id);
+
+            if !entity_is_valid(*g_world, entity) then return;
+
             assert(ecs_has(*g_world, entity, Networked), "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
 
             player_commands := ecs_get(*g_world, entity, Player_Commands);
