@@ -173,7 +173,7 @@ get_mouse_worldspace :: () -> Vector2 {
 }
 
 on_player_component_removed :: (world: *World, entity: Entity) {
-    log("Player % has left the game", ecs_get(world, entity, Name).name);
+    log("Player % (%) has left the game", ecs_get(world, entity, Name).name, entity.index);
 } @Event(EcsOnRemove,Player)
 
 #import "Math";

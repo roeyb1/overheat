@@ -19,16 +19,14 @@ entity_defer_spawn :: (using world: *World, entity: Entity, components: [] s64) 
     array_add(*deferred_ops, .{type = .SPAWN, entity = entity });
 }
 
-entity_defer_destroy :: (using world: *World, entity: Entity) -> bool {
-    if !is_deferring then return false;
+entity_defer_destroy :: (using world: *World, entity: Entity) {
+    assert(is_deferring);
 
     array_add(*deferred_ops, .{ type = .DESTROY, entity = entity });
 
     if entity_is_alive(deferred_stage, entity) {
         stage_entity_delete(*deferred_stage, entity);
     }
-
-    return true;
 }
 
 ecs_defer_add :: (using world: *World, entity: Entity, cid: s64) -> *void {
@@ -43,10 +41,23 @@ ecs_defer_add :: (using world: *World, entity: Entity, cid: s64) -> *void {
 }
 
 
-ecs_defer_remove :: (using world: *World, entity: Entity, cid: s64) -> bool {
-    exists := ecs_has(world, entity, cid);
+ecs_defer_remove :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = true) {
+    assert(is_deferring);
+
+    if entity_is_alive(deferred_stage, entity) {
+        if broadcast {
+            // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
+            // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnRemove,Target(*));
+            cid_lo := cid_low(cid);
+
+            event_broadcast(world, cid_pair(world, EcsOnRemove, cid_lo), entity);
+        }
+
+        stage_component_remove(*deferred_stage, entity, cid);
+        return;
+    }
+
     array_add(*deferred_ops, .{ type = .REMOVE, entity = entity, cid = cid });
-    return exists;
 }
 
 process_deferred_operations :: (using world: *World) {
@@ -58,7 +69,7 @@ process_deferred_operations :: (using world: *World) {
         if #complete it.type == {
             case .DESTROY;
                 assert(!entity_is_alive(*deferred_stage, it.entity), "Deferred entities should be deleted immediately and not enter the deferred queue");
-                if ensure(entity_is_valid(world, it.entity), "Destroyed entity is not valid") {
+                if entity_is_valid(world, it.entity) {
                     entity_destroy(world, it.entity);
                 }
             case .SPAWN;

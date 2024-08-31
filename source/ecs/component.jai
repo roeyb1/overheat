@@ -90,6 +90,7 @@ cid_register :: (using world: *World, type: Type) {
     log_verbose("Registered CID %: %", ti.name, cid);
 
     if cti.is_singleton {
+        // singletons are entities which have theirselves as a component:
         ecs_add(world, cent, cid);
     }
 }

@@ -82,6 +82,7 @@ entity_make :: (using stage: *Stage, entity: Entity, components: [] s64) -> Enti
     }
 
     entities[entity.index].index = entity.index;
+    entities[entity.index].generation = entity.generation;
 
     entity_init(stage, entity, components);
 
@@ -222,7 +223,19 @@ entity_storage_move :: (from_stage: *Stage, to_stage: *Stage, to_arch: *Archetyp
 
     entity_storage_copy(from_stage, to_stage, to_arch, from_arch, entity);
 
+    if from_arch.entities.count > 1 && (source_row != from_arch.entities.count-1) {
+        entity_to_swap := from_arch.entities[from_arch.entities.count-1];
+        swap_record := entity_record_get_ptr(from_stage, entity_to_swap);
+        assert(swap_record != null && swap_record.row == from_arch.entities.count-1);
+        swap_record.row = source_row;
+    }
+
     array_unordered_remove_by_index(*from_arch.entities, source_row);
+
+    for * from_arch.storage {
+        ecs_storage_row_remove(it, source_row);
+        assert(it.count == from_arch.entities.count);
+    }
 
     if from_arch.entities.count == 0 {
         archetype_cache_remove(from_stage, from_arch.id);

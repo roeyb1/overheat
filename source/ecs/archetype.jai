@@ -28,6 +28,8 @@ archetype_init :: (using archetype: *Archetype, world: *World, cids: [] s64, arc
 
 archetype_entity_add :: (using archetype: *Archetype, entity: Entity) -> s64 {
     for * storage {
+        assert(entities.count == it.count);
+
         ecs_storage_row_add(it);
     }
     array_add(*entities, entity);
@@ -63,13 +65,21 @@ archetype_types_equal :: (using archetype: *Archetype, cids: [] s64) -> bool {
 
 archetype_types_match :: (using archetype: *Archetype, cids: [] s64) -> bool {
     for cid : cids {
-        if !archetype_types_contains(archetype, cid) then return false;
+        if !archetype_type_match(archetype, cid) then return false;
     }
     return true;
 }
-archetype_types_contains :: (using archetype: *Archetype, cid: s64) -> bool {
+
+archetype_type_match :: (using archetype: *Archetype, cid: s64) -> bool {
     for archetype.type_ids {
         if cid_match(it, cid) then return true;
+    }
+    return false;
+}
+
+archetype_type_has :: (using archetype: *Archetype, cid: s64) -> bool {
+    for archetype.type_ids {
+        if it == cid then return true;
         if it > cid then return false;
     }
     return false;

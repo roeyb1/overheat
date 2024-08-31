@@ -27,6 +27,7 @@ bootstrap_component_id :: (using world: *World, type: Type, id: s64) {
 bootstrap_component :: (using world: *World, type: Type, id: s64) {
     entity := Entity.{ raw = id };
     entity_make(*world.stage, entity, .[]);
+
     assert((cast(*Type_Info)type).type == .STRUCT);
     table_add(*cid_map, (cast(*Type_Info_Struct)type).name, entity.raw);
 
@@ -60,6 +61,9 @@ ecs_world_init :: (using world: *World) {
     }
 
     // set up builtin components
+    
+    // we need to bootstrap EcsOnAdd and Event so they are available when the rest of the components are registered
+    // component registration will fire off some (EcsOnAdd,EcsComponent) events
     bootstrap_component(world, EcsOnAdd, 1);
     bootstrap_component(world, Event, 2);
 
@@ -122,7 +126,8 @@ ecs_entity_from_index :: (using world: *World, index: s32) -> Entity {
 entity_destroy :: (using world: *World, entity: Entity, broadcast: bool = true) {
     assert(entity_is_valid(world, entity));
 
-    if entity_defer_destroy(world, entity) {
+    if is_deferring {
+        entity_defer_destroy(world, entity);
         return;
     }
 
@@ -154,7 +159,7 @@ ecs_has :: (using world: *World, entity: Entity, cid: s64) -> bool {
     } else {
         arch = entity_archetype_get(stage, entity);
     }
-    return archetype_types_contains(arch, cid);
+    return archetype_type_has(arch, cid);
 }
 
 ecs_get :: (using world: *World, entity: Entity, $type: Type) -> *type {
@@ -239,28 +244,17 @@ ecs_add_pair :: (using world: *World, entity: Entity, type: Type, target: s64, b
     return ecs_add(world, entity, pair_cid, broadcast);
 }
 
-ecs_remove :: (using world: *World, entity: Entity, type: Type, broadcast: bool = true) -> bool {
-    return ecs_remove(world, entity, cid_get(world, type));
+ecs_remove :: (using world: *World, entity: Entity, type: Type, broadcast: bool = true) {
+    ecs_remove(world, entity, cid_get(world, type));
 }
 
-ecs_remove :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = true) -> bool {
+ecs_remove :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = true) {
     assert(entity_is_valid(world, entity));
     assert(ecs_has(world, entity, cid));
 
-    if entity_is_alive(deferred_stage, entity) {
-        if broadcast {
-            // truncate the cid here. If it the high bits are not empty, it's a pair and we can't represent Pair(Pair) with just 64 bits.
-            // cid_low represents the source of the relationship so the consequences are that we will broadcast the event for any (EcsOnRemove,Target(*));
-            cid_lo := cid_low(cid);
-
-            event_broadcast(world, cid_pair(world, EcsOnRemove, cid_lo), entity);
-        }
-
-        return stage_component_remove(*deferred_stage, entity, cid);
-    }
-
     if is_deferring {
-        return ecs_defer_remove(world, entity, cid);
+        ecs_defer_remove(world, entity, cid, broadcast);
+        return;
     }
 
     if broadcast {
@@ -271,7 +265,7 @@ ecs_remove :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = 
         event_broadcast(world, cid_pair(world, EcsOnRemove, cid_lo), entity);
     }
 
-    return stage_component_remove(*stage, entity, cid);
+    stage_component_remove(*stage, entity, cid);
 }
 
 entity_types_get :: (using world: *World, entity: Entity) -> [] s64 {
@@ -327,3 +321,4 @@ entity_destroy_children :: (using world: *World, parent: Entity) {
 #load "tests/entity.jai";
 #load "tests/stage.jai";
 #load "tests/event.jai";
+#load "tests/query.jai";

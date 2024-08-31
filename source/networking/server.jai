@@ -378,10 +378,9 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 if input_ring then array_reset(input_ring);
 
                 entity, found := table_find(*entity_node_id_table, node_id);
-                assert(found, "A client disconnected but we couldn't find their player entity. How did this happen!?");
-
-                entity_destroy(*g_world, entity);
-
+                if found {
+                    entity_destroy(*g_world, entity);
+                }
             } else {
                 assert(info.m_eOldState == .Connecting);
             }
