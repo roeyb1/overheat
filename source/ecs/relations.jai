@@ -1,1 +1,1 @@
-Child_Of :: struct @Component { }
+Child_Of :: struct @Pair { }

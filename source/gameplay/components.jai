@@ -53,7 +53,7 @@ Shadow_Caster :: struct @Component {
 }
 
 /** Entities with the Transient component will be destroyed automatically before the next frame */
-Transient :: struct @Component {}
+Transient :: struct @Tag {}
 
 destroy_transients :: (q: Query) {
     for 0..q.count-1 {

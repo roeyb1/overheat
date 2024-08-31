@@ -1,17 +1,16 @@
 #scope_export 
 
-Player :: struct @Component {}
+Player :: struct @Tag {}
 
-Local_Player :: struct @Component {}
-Remote_Player :: struct @Component {}
+Local_Player :: struct @Tag {}
+Remote_Player :: struct @Tag {}
 
 Player_Controller :: struct @Component {
     // Keep track of the velocity added due to user input
     velocity_from_input: Vector2;
 }
 
-Networked :: struct @Component {
-}
+Networked :: struct @Tag {}
 
 /** Player commands are not directly synced through the replication framwork, they are instead manually sent to the server. */
 Player_Commands :: struct @Component {

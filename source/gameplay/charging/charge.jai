@@ -1,4 +1,4 @@
-Charging :: struct @Component {}
+Charging :: struct @Tag {}
 
 Charging_Bundle :: struct @Bundle {
     anim_list_index: Anim_List_Index; //animation that will run during the charge 

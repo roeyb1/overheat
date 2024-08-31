@@ -1,5 +1,5 @@
 
-Skill :: struct @Component {
+Skill :: struct @Tag {
 }
 
 //@TODO this should be generated code or something
