@@ -113,7 +113,7 @@ generate_full_snapshot :: (world: *World, allocator: Allocator) -> State_Snapsho
     result.removed_nodes.allocator = allocator;
 
     // always send over component id list for every networked entity in the world if it's a full snapshot
-    for q : iter_make(world, Networking_ID) {
+    for q : iter_make(world, Networked) {
         types: [..] s64;
         types.allocator = allocator;
         array_copy(*types, q.current_archetype.type_ids);
@@ -124,9 +124,8 @@ generate_full_snapshot :: (world: *World, allocator: Allocator) -> State_Snapsho
     }
 
     INSERT_STRING :: #string DONE 
-        for q : iter_make(world, Networking_ID, %1) {
+        for q : iter_make(world, Networked, %1) {
             datas := query_get(q, %1);
-            networking_ids := query_get(q, Networking_ID);
 
             for 0..q.count-1 {
                 state, newly_added := find_or_add(*result.state, q.entities[it].raw);

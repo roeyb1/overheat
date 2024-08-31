@@ -284,7 +284,7 @@ execute_system :: (sys: System, world: *World) {
         for archtype_ids {
             archetype := *world.stage.archetypes[it];
             #if CLIENT {
-                if g_only_simulate_local_player && archetype_types_match(archetype, .[cid_get(world, Networking_ID)]) && !archetype_types_match(archetype, .[cid_get(world, Local_Player)]) {
+                if g_only_simulate_local_player && archetype_types_match(archetype, .[cid_get(world, Networked)]) && !archetype_types_match(archetype, .[cid_get(world, Local_Player)]) {
                     continue;
                 }
             }

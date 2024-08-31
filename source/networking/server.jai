@@ -48,7 +48,7 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
 
     for added_nodes {
         entity := entity_from_raw(it);
-        assert(ecs_has(world, entity, Networking_ID), "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
+        assert(ecs_has(world, entity, Networked), "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
 
         component_types_view := entity_types_get(world, entity);
 
@@ -99,9 +99,8 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
     removed_nodes.count = 0;
 
     INSERT_STRING :: #string DONE 
-        for q : iter_make(world, Networking_ID, %1) {
+        for q : iter_make(world, Networked, %1) {
             datas := query_get(q, %1);
-            networking_ids := query_get(q, Networking_ID);
 
             for 0..q.count-1 {
                 // if the node is new, it must be sent
@@ -180,7 +179,7 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             byte_buffer_read(buffer, *player_commands_packet);
 
             entity := entity_from_raw(player_commands_packet.node_id);
-            assert(ecs_has(*g_world, entity, Networking_ID), "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
+            assert(ecs_has(*g_world, entity, Networked), "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
 
             player_commands := ecs_get(*g_world, entity, Player_Commands);
             assert(player_commands != null);
@@ -372,7 +371,7 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 if input_ring then array_reset(input_ring);
 
                 entity := entity_from_raw(node_id);
-                if ecs_has(*g_world, entity, Networking_ID) {
+                if ecs_has(*g_world, entity, Networked) {
                     entity_destroy(*g_world, entity);
                 }
             } else {

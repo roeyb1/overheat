@@ -16,7 +16,7 @@ Enemy_Bundle :: struct @Bundle {
     direction: Direction;
     invoker: Collision_Invoker;
     collider: Collider_AABB;
-    networking_id: Networking_ID;
+    networking_id: Networked;
     health: Health;
     duration: Duration;
 }

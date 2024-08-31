@@ -10,7 +10,7 @@ Player_Controller :: struct @Component {
     velocity_from_input: Vector2;
 }
 
-Networking_ID :: struct @Component {
+Networked :: struct @Component {
 }
 
 /** Player commands are not directly synced through the replication framwork, they are instead manually sent to the server. */
@@ -44,7 +44,7 @@ Player_Bundle :: struct @Bundle {
     collider: Collider_AABB;
     health: Health;
     health_change_queue: Health_Change_Queue;
-    networking_id: Networking_ID;
+    networking_id: Networked;
     remote: Remote_Player;
     cooldown: Cooldown;
     anim_info: Interuptor_Anim_Slot;
@@ -72,13 +72,13 @@ init_player :: (position: Vector2) -> Entity {
     });
 
     // set up a test inventory
-    inventory := entity_spawn(*g_world, Networking_ID);
+    inventory := entity_spawn(*g_world, Networked);
     ecs_add_pair(*g_world, entity, Inventory, inventory);
 
-    sword := entity_spawn(*g_world, Item, Sword, Networking_ID);
+    sword := entity_spawn(*g_world, Item, Sword, Networked);
     ecs_add(*g_world, sword, Name.{"Sword"});
 
-    helmet := entity_spawn(*g_world, Item, Helmet, Networking_ID);
+    helmet := entity_spawn(*g_world, Item, Helmet, Networked);
     ecs_add(*g_world, helmet, Name.{"Helmet"});
 
     ecs_add_pair(*g_world, sword, ContainedBy, inventory);
@@ -144,7 +144,6 @@ update_player_controllers :: (q: Query) {
 #if CLIENT {
 broadcast_local_player_commands :: (q: Query) {
     player_commands := query_get(q, Player_Commands);
-    networking_ids := query_get(q, Networking_ID);
 
     for 0..q.count-1 {
         player_command_packet: Player_Commands_Packet;
@@ -155,14 +154,14 @@ broadcast_local_player_commands :: (q: Query) {
         // we should only have one local player, so this should only happen once
         input_ring[g_current_tick % input_ring.count] = player_commands[it];
     }
-} @System(PostLoad) @Write() @Read(Local_Player,Player_Commands,Networking_ID)
+} @System(PostLoad) @Write() @Read(Local_Player,Player_Commands,Networked)
 }
 
 on_player_component_added :: (world: *World, entity: Entity) {
     log("Player % (%) has joined the game", ecs_get(world, entity, Name).name, entity.index);
 
     #if CLIENT {
-        networking_id := ecs_get(world, entity, Networking_ID);
+        networking_id := ecs_get(world, entity, Networked);
         assert(networking_id != null);
         if entity.raw == g_client.local_client_id {
             ecs_remove(*g_world, entity, Remote_Player);

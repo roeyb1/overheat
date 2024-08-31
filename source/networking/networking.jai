@@ -27,14 +27,14 @@ on_entity_begin_networking :: (world: *World, entity: Entity) {
     }
 
     log("Networking registered for entity {%, %}", entity.index, entity.generation);
-} @Event(EcsOnAdd,Networking_ID)
+} @Event(EcsOnAdd,Networked)
 
 on_entity_end_networking :: (world: *World, entity: Entity) {
     #if SERVER {
         array_add(*removed_nodes, entity.raw);
     }
     log("Networking terminated for entity {%, %}", entity.index, entity.generation);
-} @Event(EcsOnRemove,Networking_ID)
+} @Event(EcsOnRemove,Networked)
 
 PacketType :: enum u8 #specified {
     INVALID                 :: 0;

@@ -126,7 +126,7 @@ client_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
                 "The player should never receive a move packet for itself. We are allowing clients to be authoritative over their positions so this shouldn't happen.");
 
             entity := entity_from_raw(player_commands_packet.node_id);
-            assert(ecs_has(*g_world, entity, Networking_ID), "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
+            assert(ecs_has(*g_world, entity, Networked), "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
 
             player_commands := ecs_get(*g_world, entity, Player_Commands);
             assert(player_commands != null);
@@ -169,7 +169,7 @@ generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_S
     result.removed_fields.allocator = allocator;
     result.removed_nodes.allocator = allocator;
 
-    for q : iter_make(world, Networking_ID) {
+    for q : iter_make(world, Networked) {
         types: [..] s64;
         types.allocator = allocator;
         array_copy(*types, q.current_archetype.type_ids);
@@ -181,9 +181,8 @@ generate_prediction_snapshot :: (world: *World, allocator: Allocator) -> State_S
 
     #insert -> string {
         INSERT_STRING :: #string DONE 
-            for q : iter_make(world, Networking_ID, %1) {
+            for q : iter_make(world, Networked, %1) {
                 datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
 
                 for 0..q.count-1 {
                     if q.entities[it].raw != g_client.local_client_id then continue;
@@ -229,9 +228,8 @@ interpolate_server_states :: (world: *World, a: State_Snapshot, b: State_Snapsho
     assert(a.tick != 0 && b.tick != 0);
     #insert -> string {
         INSERT_STRING :: #string DONE 
-            for q : iter_make(world, Networking_ID, %1) {
+            for q : iter_make(world, Networked, %1) {
                 datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
 
                 for 0..q.count-1 {
                     state_a, success_a := table_find(*a.state, q.entities[it].raw);
@@ -297,9 +295,8 @@ interpolate_prediction_state :: (world: *World, a: State_Snapshot, b: State_Snap
     assert(a.tick != 0 && b.tick != 0);
     #insert -> string {
         INSERT_STRING :: #string DONE 
-            for q : iter_make(world, Networking_ID, %1) {
+            for q : iter_make(world, Networked, %1) {
                 datas := query_get(q, %1);
-                networking_ids := query_get(q, Networking_ID);
 
                 for 0..q.count-1 {
                     if q.entities[it].raw != g_client.local_client_id then continue;
@@ -367,7 +364,7 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
     for snapshot.new_nodes {
         {
             entity := entity_from_raw(it_index);
-            if entity_is_valid(world, entity) && ecs_has(world, entity, Networking_ID) then continue;
+            if entity_is_valid(world, entity) && ecs_has(world, entity, Networked) then continue;
         }
         array_add(*new_nodes, it_index);
 
@@ -375,7 +372,7 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
 
         entity := entity_make(*world.stage, entity_from_raw(it_index), .[]);
 
-        ecs_add(world, entity, Networking_ID);
+        ecs_add(world, entity, Networked);
 
         log("Spawning new networked entity: {%, %}", entity.index, entity.generation);
 
@@ -392,11 +389,11 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
             cid_list: [..] s64 = fields;
 
             entity := entity_from_raw(node_id);
-            assert(ecs_has(world, entity, Networking_ID));
+            assert(ecs_has(world, entity, Networked));
 
             for cid_list {
                 // we already broadcasted networking id before, don't do it again
-                if it == cid_get(world, Networking_ID) then continue;
+                if it == cid_get(world, Networked) then continue;
 
                 event_broadcast(world, cid_pair(world, EcsOnAdd, it), entity);
             }
@@ -407,7 +404,7 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
 destroy_entities_removed_in_snapshot :: (world: *World, snapshot: State_Snapshot) {
     for snapshot.removed_nodes {
         entity := entity_from_raw(it);
-        assert(ecs_has(world, entity, Networking_ID), "A node was removed on the server but we couldn't find the corresponding entity on the client");
+        assert(ecs_has(world, entity, Networked), "A node was removed on the server but we couldn't find the corresponding entity on the client");
         entity_destroy(world, entity);
     }
 }
@@ -418,9 +415,8 @@ apply_full_snapshot :: (world: *World, snapshot: State_Snapshot) {
     spawn_new_entities_from_snapshot(world, snapshot);
 
     INSERT_STRING :: #string DONE 
-        for q : iter_make(world, Networking_ID, %1) {
+        for q : iter_make(world, Networked, %1) {
             datas := query_get(q, %1);
-            networking_ids := query_get(q, Networking_ID);
 
             for 0..q.count-1 {
                 state, success := table_find(*snapshot.state, q.entities[it].raw);
@@ -451,7 +447,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
 
     for snapshot.added_fields {
         entity := entity_from_raw(it_index);
-        assert(ecs_has(world, entity, Networking_ID));
+        assert(ecs_has(world, entity, Networked));
 
         cid_list: [..] s64 = it;
 
@@ -462,7 +458,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
 
     for snapshot.removed_fields {
         entity := entity_from_raw(it_index);
-        assert(ecs_has(world, entity, Networking_ID));
+        assert(ecs_has(world, entity, Networked));
 
         for field_id : it {
             for q : iter_make(world, EcsComponent) {
@@ -474,9 +470,8 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
     }
 
     INSERT_STRING :: #string DONE 
-        for q : iter_make(world, Networking_ID, %1) {
+        for q : iter_make(world, Networked, %1) {
             datas := query_get(q, %1);
-            networking_ids := query_get(q, Networking_ID);
 
             for 0..q.count-1 {
                 state, success := table_find(*snapshot.state, q.entities[it].raw);
@@ -505,7 +500,7 @@ apply_delta_snapshot :: (world: *World, snapshot: State_Snapshot) {
 
     for snapshot.added_fields {
         entity := entity_from_raw(it_index);
-        assert(ecs_has(world, entity, Networking_ID));
+        assert(ecs_has(world, entity, Networked));
 
         cid_list: [..] s64 = it;
 
@@ -520,9 +515,8 @@ apply_prediction_state :: (world: *World, snapshot: State_Snapshot) {
     assert(snapshot.tick != 0);
 
     INSERT_STRING :: #string DONE 
-        for q : iter_make(world, Networking_ID, %1) {
+        for q : iter_make(world, Networked, %1) {
             datas := query_get(q, %1);
-            networking_ids := query_get(q, Networking_ID);
 
             for 0..q.count-1 {
                 if q.entities[it].raw != g_client.local_client_id then continue;

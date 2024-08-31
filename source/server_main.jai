@@ -3,7 +3,7 @@
 server_main :: () {
     level := entity_spawn(*g_world);
     ecs_add(*g_world, level, Level.{"assets/levels/prison/prison.ldtk"});
-    ecs_add(*g_world, level, Networking_ID);
+    ecs_add(*g_world, level, Networked);
 
     last_time = seconds_since_init();
 
