@@ -162,19 +162,20 @@ visualize_system_execution :: () {
                         ImGui.TableNextColumn();
                         ImGui.Text("WRITES");
 
-                    for ctid_index : 0..max(it.def.component_reads.count, it.def.component_writes.count)-1 {
+                    for ct_index : 0..max(it.def.component_reads.count, it.def.component_writes.count)-1 {
                         ImGui.TableNextRow();
                         ImGui.TableNextColumn();
-                        if ctid_index < it.def.component_reads.count {
+                        if ct_index < it.def.component_reads.count {
                             // @todo: find component name from a type info struct somewhere
-                            //ImGui.Text("%", it.def.component_reads[ctid_index].debug_name);
+                            cti := cid_to_type_info(*g_world, cid_get(*g_world, it.def.component_reads[ct_index]));
+                            ImGui.Text("%", cti.ti.name);
                         } else {
                             ImGui.Text("");
                         }
                         ImGui.TableNextColumn();
-                        if ctid_index < it.def.component_writes.count {
-                            // @todo: find component name from a type info struct somewhere
-                            //ImGui.Text("%", it.def.component_writes[ctid_index].debug_name);
+                        if ct_index < it.def.component_writes.count {
+                            cti := cid_to_type_info(*g_world, cid_get(*g_world, it.def.component_writes[ct_index]));
+                            ImGui.Text("%", cti.ti.name);
                         } else {
                             ImGui.Text("");
                         }

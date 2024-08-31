@@ -21,11 +21,12 @@ entity_defer_spawn :: (using world: *World, entity: Entity, components: [] s64) 
 
 entity_defer_destroy :: (using world: *World, entity: Entity) -> bool {
     if !is_deferring then return false;
-    if !entity_is_alive(deferred_stage, entity) then return false;
-
-    stage_entity_delete(*deferred_stage, entity);
 
     array_add(*deferred_ops, .{ type = .DESTROY, entity = entity });
+
+    if entity_is_alive(deferred_stage, entity) {
+        stage_entity_delete(*deferred_stage, entity);
+    }
 
     return true;
 }

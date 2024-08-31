@@ -36,7 +36,7 @@ archetype_entity_add :: (using archetype: *Archetype, entity: Entity) -> s64 {
 
 archetype_component_get :: (using archetype: *Archetype, row: s64, cid: s64) -> *void, s64 {
     for type_ids {
-        if it == cid {
+        if cid_match(it, cid) {
             return ecs_storage_row_get(storage[it_index], row), storage[it_index].component_size;
         }
     }
@@ -69,7 +69,7 @@ archetype_types_match :: (using archetype: *Archetype, cids: [] s64) -> bool {
 }
 archetype_types_contains :: (using archetype: *Archetype, cid: s64) -> bool {
     for archetype.type_ids {
-        if it == cid then return true;
+        if cid_match(it, cid) then return true;
         if it > cid then return false;
     }
     return false;

@@ -181,8 +181,7 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
 
             entity, found := table_find(*entity_node_id_table, player_commands_packet.node_id);
             if !found then return;
-            // @todo: is this still valid
-            //assert(found, "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
+            assert(found, "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
 
             player_commands := ecs_get(*g_world, entity, Player_Commands);
             assert(player_commands != null);

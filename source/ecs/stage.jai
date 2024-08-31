@@ -154,6 +154,21 @@ stage_component_get :: (using stage: Stage, entity: Entity, cid: s64) -> *void {
     return archetype_component_get(archetype, record.row, cid);
 }
 
+stage_component_get_target :: (using stage: *Stage, entity: Entity, type: Type, index: s64 = 0) -> Entity {
+    // use a wildcard to search for any potential targets of this relation:
+    wildcard_cid := cid_pair(world, type, Ecs_Wildcard);
+
+    types := stage_entity_get_types(stage, entity);
+    for type : types {
+        if cid_match(type, wildcard_cid) {
+            // high bits of the cid correspond to the target entity index:
+            entity_index := cid_high(type);
+            return ecs_entity_from_index(stage.world, entity_index);
+        }
+    }
+    return INVALID_ENTITY;
+}
+
 stage_component_add :: (using stage: *Stage, entity: Entity, cid: s64) -> *void {
     assert(entity_is_alive(stage, entity));
 

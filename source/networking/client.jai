@@ -384,7 +384,7 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
 
         entity := entity_spawn(world);
 
-        ecs_add(world, entity, Networking_ID, .{it_index});
+        ecs_add(world, entity, Networking_ID.{it_index});
 
         log("Spawning new networked entity: % nid: %", entity.index, it_index);
 

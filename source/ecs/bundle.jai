@@ -1,5 +1,36 @@
 ecs_add_bundle :: (using world: *World, entity: Entity, bundle: $T) {
-    assert(false);
+    #insert -> string {
+        sb: String_Builder;
+
+        ti :: cast(*Type_Info_Struct) type_info(T);
+
+        for ti.members {
+            // components can only be structs
+            if it.type.type == .STRUCT {
+                member_type_info := cast(*Type_Info_Struct) it.type;
+                if has_note(member_type_info, "Component") {
+                    sbprint(*sb, "ecs_add(world, entity, bundle.%, broadcast=false);\n", it.name);
+                }
+            }
+        }
+
+        return builder_to_string(*sb);
+    }
+
+    ti :: cast(*Type_Info_Struct) type_info(T);
+    assert(ti.type == .STRUCT);
+
+    for ti.members {
+        // components can only be structs
+        if it.type.type == .STRUCT {
+            member_type_info := cast(*Type_Info_Struct) it.type;
+            if has_note(member_type_info, "Component") {
+                event_broadcast(world, cid_pair(world, EcsOnAdd, cid_get(world, (cast(*Type)(*it.type)).*)), entity);
+            } else {
+                log_warning("Member (%) of bundle (%) does not have a @Component tag? It will not be added to the entity, was this intentional?", member_type_info.name, ti.name);
+            }
+        }
+    }
 }
 
 ecs_add_bundle :: (using world: *World, entity: Entity, type: Type) {

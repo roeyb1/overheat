@@ -55,7 +55,7 @@ spawn_enemy :: (world: *World, position: Vector2, node_id: Node_ID, type: Enemy_
             ecs_add(world, entity, Bat_Animation);
     }
 
-    sprite := ecs_add(world, entity, Sprite, .{spritesheet_path, null, size, 0, 4, 0});
+    sprite := ecs_add(world, entity, Sprite.{spritesheet_path, null, size, 0, 4, 0});
     << ecs_get(world, entity, Collider_AABB) = .{aabb = make_aabb(.{0, 0}, collider_size), blocking = false};
 }
 

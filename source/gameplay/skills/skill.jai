@@ -29,7 +29,7 @@ new_skill :: (world: *World, entity: Entity, fragments: [..] Fragment_List_Indec
     }
 
     //run at the end once the skill is initialized
-    ecs_add(world, child, Networking_ID, .{get_unique_node_id()});
+    ecs_add(world, child, Networking_ID.{get_unique_node_id()});
 }
 }
 

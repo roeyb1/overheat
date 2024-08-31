@@ -14,6 +14,8 @@ Component_Type_Info :: struct {
 
 NULL_COMPONENT_ID :: -1;
 
+Ecs_Wildcard : s32 : S32_MAX;
+
 cid_from_entity :: inline (entity: Entity) -> s64 {
     return entity.raw;
 }
@@ -27,6 +29,33 @@ cid_get :: (using world: *World, type: Type) -> s64 {
     assert(success, "Failed to find CID for type: %", ti.name);
 
     return cid;
+}
+
+cid_low :: inline (cid: s64) -> s32 {
+    return cast,no_check(s32) cid;
+}
+
+cid_high :: inline (cid: s64) -> s32 {
+    return cast,no_check(s32) (cid >> 32);
+}
+
+cid_match :: (a: s64, b: s64) -> bool {
+    match :: inline (a: s32, b: s32) -> bool {
+        if a == Ecs_Wildcard || b == Ecs_Wildcard {
+            return true;
+        }
+
+        return (a == b);
+    }
+
+    // compare the low and high bits separately. if either matches a wildcard, we consider it matching:
+    a_lo: s32 = cid_low(a);
+    a_hi: s32 = cid_high(a);
+
+    b_lo: s32 = cid_low(b);
+    b_hi: s32 = cid_high(b);
+
+    return match(a_lo, b_lo) && match(a_hi, b_hi);
 }
 
 get_component_type_info :: (type: Type) -> Component_Type_Info {

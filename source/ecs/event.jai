@@ -44,7 +44,7 @@ register_static_events :: (using world: *World) {
         } else {
             ecs_add(world, event, cid_get(world, desc.source));
         }
-        ecs_add(world, event, Event, .{desc});
+        ecs_add(world, event, Event.{desc});
     }
 }
 

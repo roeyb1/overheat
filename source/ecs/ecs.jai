@@ -34,7 +34,7 @@ bootstrap_component :: (using world: *World, type: Type, id: s64) {
     cti.cid = entity.raw;
     table_add(*type_info_map, entity.raw, cti);
 
-    ecs_add(world, entity, EcsComponent, .{runtime_size = cti.ti.runtime_size}, broadcast=false);
+    ecs_add(world, entity, EcsComponent.{runtime_size = cti.ti.runtime_size}, broadcast=false);
 }
 
 
@@ -56,7 +56,7 @@ ecs_world_init :: (using world: *World) {
         
         array_add(*arch.type_ids, cid_get(world, EcsComponent));
 
-        ecs_add(world, entity_from_cid(0), EcsComponent, .{runtime_size = type_info(EcsComponent).runtime_size}, broadcast=false);
+        ecs_add(world, entity_from_cid(0), EcsComponent.{runtime_size = type_info(EcsComponent).runtime_size}, broadcast=false);
     }
 
     // set up builtin components
@@ -113,6 +113,12 @@ entity_spawn :: (using world: *World, components: [] s64, parent: Entity = INVAL
     return entity;
 }
 
+ecs_entity_from_index :: (using world: *World, index: s32) -> Entity {
+    entity := world.stage.entities[index];
+    assert(entity_is_valid(world, entity));
+    return entity;
+}
+
 entity_destroy :: (using world: *World, entity: Entity) {
     assert(entity_is_valid(world, entity));
 
@@ -157,13 +163,17 @@ ecs_get :: (using world: *World, entity: Entity, cid: s64) -> *void {
     return stage_component_get(stage, entity, cid);
 }
 
-ecs_get_target :: (using world: *World, entity: Entity, type: Type) -> Entity {
-    // #todo: implement
-    assert(false);
-    return INVALID_ENTITY;
+ecs_get_target :: (using world: *World, entity: Entity, type: Type, index: s64 = 0) -> Entity {
+    assert(entity_is_valid(world, entity));
+
+    if entity_is_alive(*deferred_stage, entity) {
+        return stage_component_get_target(*deferred_stage, entity, type, index);
+    }
+
+    return stage_component_get_target(*stage, entity, type, index);
 }
 
-ecs_add :: (using world: *World, entity: Entity, $type: Type, val: type, broadcast: bool = true) -> *type {
+ecs_add :: (using world: *World, entity: Entity, val: $type, broadcast: bool = true) -> *type {
     ptr := cast(*type) ecs_add(world, entity, type, broadcast = false);
     ptr.* = val;
     if broadcast {
@@ -215,7 +225,7 @@ ecs_add_pair :: (using world: *World, entity: Entity, type: Type, target: Type, 
 }
 
 ecs_add_pair :: (using world: *World, entity: Entity, type: Type, target: Entity, broadcast: bool = true) {
-    ecs_add_pair(world, entity, type, cast(s64) entity.index, broadcast);
+    ecs_add_pair(world, entity, type, cast(s64) target.index, broadcast);
 }
 
 ecs_add_pair :: (using world: *World, entity: Entity, type: Type, target: s64, broadcast: bool = true) -> *void {

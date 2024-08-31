@@ -146,7 +146,7 @@ broadcast_local_player_commands :: (q: Query) {
 }
 
 on_player_component_added :: (world: *World, entity: Entity) {
-    log("Player % has joined the game", ecs_get(world, entity, Name).name);
+    log("Player % (%) has joined the game", ecs_get(world, entity, Name).name, entity.index);
 #if CLIENT {
     networking_id := ecs_get(world, entity, Networking_ID);
     assert(networking_id != null);
