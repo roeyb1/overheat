@@ -4,17 +4,17 @@ Node_State :: struct {
 }
 
 State_Snapshot :: struct {
-    state: Table(Node_ID, Node_State, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    state: Table(s64, Node_State);
 
     // a list of all newly created entities and their component types
     // any synchronized state for those components is included in the state table
-    new_nodes: Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    new_nodes: Table(s64, [..] s64);
 
     // for any nodes that
-    removed_fields: Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
-    added_fields: Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    removed_fields: Table(s64, [..] s64);
+    added_fields: Table(s64, [..] s64);
 
-    removed_nodes: [..] Node_ID;
+    removed_nodes: [..] s64;
 
     time: float;
     tick: u32;
@@ -71,9 +71,9 @@ Player_State_Snapshot_Packet :: struct {
 }
 
 // any nodes that were newly created in the last simulation iter
-added_nodes: [..] Node_ID;
+added_nodes: [..] s64;
 // any nodes that were destroyed in the last simulation iter
-removed_nodes: [..] Node_ID;
+removed_nodes: [..] s64;
 
 for_each_component_type_with_notes :: (notes: [] string, insert: string) -> string {
     sb: String_Builder;
@@ -112,17 +112,15 @@ generate_full_snapshot :: (world: *World, allocator: Allocator) -> State_Snapsho
     result.removed_fields.allocator = allocator;
     result.removed_nodes.allocator = allocator;
 
-    // always send over component id list for every entity in the world if it's a full snapshot
-    for entity_node_id_table {
-        component_types_view := entity_types_get(world, it);
-
+    // always send over component id list for every networked entity in the world if it's a full snapshot
+    for q : iter_make(world, Networking_ID) {
         types: [..] s64;
         types.allocator = allocator;
-        for component_types_view {
-            array_add(*types, it);
-        }
+        array_copy(*types, q.current_archetype.type_ids);
 
-        entry := table_add(*result.new_nodes, it_index, types);
+        for 0..q.count-1 {
+            entry := table_add(*result.new_nodes, q.entities[it].raw, types);
+        }
     }
 
     INSERT_STRING :: #string DONE 
@@ -131,9 +129,7 @@ generate_full_snapshot :: (world: *World, allocator: Allocator) -> State_Snapsho
             networking_ids := query_get(q, Networking_ID);
 
             for 0..q.count-1 {
-                assert(networking_ids[it].id != INVALID_NODE_ID);
-
-                state, newly_added := find_or_add(*result.state, networking_ids[it].id);
+                state, newly_added := find_or_add(*result.state, q.entities[it].raw);
                 if newly_added then state.fields.allocator = allocator;
 
                 assert(!table_contains(*state.fields, cid_get(world, %1)));

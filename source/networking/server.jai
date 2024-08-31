@@ -1,7 +1,7 @@
 snapshot_ring: [TICK_RATE * 2] State_Snapshot;
 snapshot_allocators: [TICK_RATE * 2] Pool;
 
-per_player_input_rings: Table(Node_ID, [..] Player_Commands, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+per_player_input_rings: Table(Node_ID, [..] Player_Commands);
 
 push_new_snapshot :: () {
     pool := *snapshot_allocators[snapshot_index(0)];
@@ -47,8 +47,8 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
     array_append(*result.removed_nodes, removed_nodes);
 
     for added_nodes {
-        entity, found := table_find(*entity_node_id_table, it);
-        assert(found, "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
+        entity := entity_from_raw(it);
+        assert(ecs_has(world, entity, Networking_ID), "The newly added node (%) doesn't exist in our entity_node_id_table. This is a bug!", it);
 
         component_types_view := entity_types_get(world, entity);
 
@@ -62,8 +62,8 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
     }
 
     /** Find fields that are in snapshot a but not in b. Any nodes in the expected_missing list will not assert if they are missing from the second state */
-    find_missing_fields :: (a: State_Snapshot, b: State_Snapshot, expected_missing: [] Node_ID, allocator: Allocator) -> Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id) {
-        result: Table(Node_ID, [..] s64, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
+    find_missing_fields :: (a: State_Snapshot, b: State_Snapshot, expected_missing: [] Node_ID, allocator: Allocator) -> Table(Node_ID, [..] s64) {
+        result: Table(Node_ID, [..] s64);
         result.allocator = allocator;
 
         // find any removed components in this delta
@@ -73,7 +73,7 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
 
             state_b := table_find_pointer(*b.state, node_id);
             if state_b == null {
-                assert(array_find(expected_missing, node_id, compare_node_id));
+                assert(array_find(expected_missing, node_id));
                 continue;
             }
 
@@ -105,11 +105,11 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
 
             for 0..q.count-1 {
                 // if the node is new, it must be sent
-                changed := array_find(added_nodes, networking_ids[it].id, compare_node_id);
+                changed := array_find(added_nodes, q.entities[it].raw);
 
                 if !changed {
-                    state_a := table_find_pointer(*a.state, networking_ids[it].id);
-                    state_b := table_find_pointer(*b.state, networking_ids[it].id);
+                    state_a := table_find_pointer(*a.state, q.entities[it].raw);
+                    state_b := table_find_pointer(*b.state, q.entities[it].raw);
 
                     // node must be in state b, otherwise how is it appearing in the query
                     assert(state_b != null);
@@ -153,7 +153,7 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
                 }
 
                 if changed {
-                    state, newly_added := find_or_add(*result.state, networking_ids[it].id);
+                    state, newly_added := find_or_add(*result.state, q.entities[it].raw);
                     if newly_added then state.fields.allocator = allocator;
 
                     assert(!table_contains(*state.fields, cid_get(world, %1)));
@@ -179,9 +179,8 @@ server_packet_handler :: (packet_type: PacketType, buffer: *ByteBuffer) {
             player_commands_packet: Player_Commands_Packet;
             byte_buffer_read(buffer, *player_commands_packet);
 
-            entity, found := table_find(*entity_node_id_table, player_commands_packet.node_id);
-            if !found then return;
-            assert(found, "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
+            entity := entity_from_raw(player_commands_packet.node_id);
+            assert(ecs_has(*g_world, entity, Networking_ID), "Received a player commands packet for an entity which is not registered in the networking system. How did this happen!?");
 
             player_commands := ecs_get(*g_world, entity, Player_Commands);
             assert(player_commands != null);
@@ -372,8 +371,8 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
                 input_ring := table_find_pointer(*per_player_input_rings, node_id);
                 if input_ring then array_reset(input_ring);
 
-                entity, found := table_find(*entity_node_id_table, node_id);
-                if found {
+                entity := entity_from_raw(node_id);
+                if ecs_has(*g_world, entity, Networking_ID) {
                     entity_destroy(*g_world, entity);
                 }
             } else {
@@ -407,18 +406,18 @@ handle_server_net_connection_status_changed :: (server: *Server, info: *Connecti
 
             new_client: Server.ClientConnection;
             new_client.connection = info.m_conn;
-            new_client.node_id = .{ cast(u64) player.raw };
+            new_client.node_id = player.raw;
             // defer the addition to the array so we can do some work to notify existing clients of the new player connection:
             defer array_add(*server.clients, new_client);
 
             player_input_ring: [..] Player_Commands;
             array_resize(*player_input_ring, TICK_RATE * 2);
-            table_add(*per_player_input_rings, .{cast(u64) player.raw}, player_input_ring);
+            table_add(*per_player_input_rings, player.raw, player_input_ring);
 
             // Indicate to the newly joined player what it's ID is
             {
                 conn_established: ConnectionEstablished_Packet;
-                conn_established.node_id = .{cast(u64) player.raw};
+                conn_established.node_id = player.raw;
 
                 snapshot := generate_full_snapshot(*g_world, temp);
                 conn_established.initial_snapshot.data = to_packet(snapshot);

@@ -11,7 +11,6 @@ Player_Controller :: struct @Component {
 }
 
 Networking_ID :: struct @Component {
-    id: Node_ID;
 }
 
 /** Player commands are not directly synced through the replication framwork, they are instead manually sent to the server. */
@@ -69,7 +68,6 @@ init_player :: (position: Vector2) -> Entity {
         sprite = .{ spritesheet, null, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
         health = .{90., 100.},
-        networking_id = .{.{ cast(u64) entity.raw }},
         cooldown = .{base_value=1.},
     });
 
@@ -150,7 +148,7 @@ broadcast_local_player_commands :: (q: Query) {
 
     for 0..q.count-1 {
         player_command_packet: Player_Commands_Packet;
-        player_command_packet.node_id = networking_ids[it].id;
+        player_command_packet.node_id = q.entities[it].raw;
         player_command_packet.commands = player_commands[it];
         player_command_packet.tick = g_current_tick;
         networking_send_packet(*player_command_packet);
@@ -166,7 +164,7 @@ on_player_component_added :: (world: *World, entity: Entity) {
     #if CLIENT {
         networking_id := ecs_get(world, entity, Networking_ID);
         assert(networking_id != null);
-        if networking_id.id == g_client.local_client_id {
+        if entity.raw == g_client.local_client_id {
             ecs_remove(*g_world, entity, Remote_Player);
             ecs_add(*g_world, entity, Local_Player);
 

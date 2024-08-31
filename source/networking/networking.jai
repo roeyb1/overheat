@@ -1,6 +1,6 @@
 #scope_export
 
-INVALID_NODE_ID :: Node_ID.{0};
+INVALID_NODE_ID :: INVALID_ENTITY_INDEX;
 
 Server :: struct {
     listen_port: u16;
@@ -17,52 +17,23 @@ Server :: struct {
     should_shutdown: bool = false;
 }
 
+Node_ID :: s64;
+
 g_server: Server;
 
-// @note: node ids are not per-world, therefore we don't need to keep a table per-world.
-// two different node ids may point to the same entity id from different worlds
-entity_node_id_table: Table(Node_ID, Entity, given_hash_function=node_id_hash, given_compare_function=compare_node_id);
-
-Node_ID :: struct {
-    id: u64;
-}
-
-node_id_hash :: inline (id: Node_ID) -> u32 {
-    return get_hash(id.id);
-}
-
-compare_node_id :: inline (a: Node_ID, b: Node_ID) -> bool {
-    return a == b;
-}
-
-operator== :: inline (a: Node_ID, b: Node_ID) -> bool {
-    return a.id == b.id;
-}
-
 on_entity_begin_networking :: (world: *World, entity: Entity) {
-    networking_id := ecs_get(world, entity, Networking_ID);
     #if SERVER {
-        if networking_id.id == INVALID_NODE_ID then networking_id.id = .{ cast(u64) entity.raw };
+        array_add(*added_nodes, entity.raw);
     }
 
-    assert(!table_contains(*entity_node_id_table, networking_id.id), "Entity already exists in the networking lookup table, this should not happen");
-    table_add(*entity_node_id_table, networking_id.id, entity);
-
-    #if SERVER {
-        array_add(*added_nodes, networking_id.id);
-    }
-
-    log("Networking registered for entity {%, %} (node_id = %)", entity.index, entity.generation, networking_id.id);
+    log("Networking registered for entity {%, %}", entity.index, entity.generation);
 } @Event(EcsOnAdd,Networking_ID)
 
 on_entity_end_networking :: (world: *World, entity: Entity) {
-    networking_id := ecs_get(world, entity, Networking_ID);
-    table_remove(*entity_node_id_table, networking_id.id);
-
     #if SERVER {
-        array_add(*removed_nodes, networking_id.id);
+        array_add(*removed_nodes, entity.raw);
     }
-    log("Networking terminated for entity {%, %} (node_id = %)", entity.index, entity.generation, networking_id.id);
+    log("Networking terminated for entity {%, %}", entity.index, entity.generation);
 } @Event(EcsOnRemove,Networking_ID)
 
 PacketType :: enum u8 #specified {

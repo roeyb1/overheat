@@ -153,6 +153,10 @@ entity_delete :: (using world: *World, entity: Entity) {
     stage_entity_delete(*stage, entity);
 }
 
+ecs_has :: inline (using world: *World, entity: Entity, type: Type) -> bool {
+    return ecs_has(world, entity, cid_get(world, type));
+}
+
 ecs_has :: (using world: *World, entity: Entity, cid: s64) -> bool {
     assert(entity_is_valid(world, entity));
 
@@ -295,7 +299,7 @@ ecs_singleton_get :: (using world: *World, $type: Type) -> *type {
 #scope_file
 
 bootstrap_component_id :: (using world: *World, type: Type, id: s64) {
-    entity := Entity.{ raw = id };
+    entity := entity_from_raw(id);
     entity_make(*world.stage, entity, .[]);
     assert((cast(*Type_Info)type).type == .STRUCT);
     table_add(*cid_map, (cast(*Type_Info_Struct)type).name, entity.raw);
@@ -306,7 +310,7 @@ bootstrap_component_id :: (using world: *World, type: Type, id: s64) {
 }
 
 bootstrap_component :: (using world: *World, type: Type, id: s64) {
-    entity := Entity.{ raw = id };
+    entity := entity_from_raw(id);
     entity_make(*world.stage, entity, .[]);
 
     assert((cast(*Type_Info)type).type == .STRUCT);
