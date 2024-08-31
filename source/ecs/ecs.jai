@@ -317,6 +317,7 @@ entity_destroy_children :: (using world: *World, parent: Entity) {
 #load "relations.jai";
 #load "bundle.jai";
 #load "query.jai";
+#load "iter.jai";
 
 #load "tests/entity.jai";
 #load "tests/stage.jai";
