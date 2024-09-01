@@ -18,7 +18,6 @@ Enemy_Bundle :: struct @Bundle {
     collider: Collider_AABB;
     networking_id: Networked;
     health: Health;
-    duration: Duration;
 }
 
 spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
