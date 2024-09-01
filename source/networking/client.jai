@@ -404,8 +404,9 @@ spawn_new_entities_from_snapshot :: (world: *World, snapshot: State_Snapshot) #e
 destroy_entities_removed_in_snapshot :: (world: *World, snapshot: State_Snapshot) {
     for snapshot.removed_nodes {
         entity := entity_from_raw(it);
-        assert(ecs_has(world, entity, Networked), "A node was removed on the server but we couldn't find the corresponding entity on the client");
-        entity_destroy(world, entity);
+        if ecs_has(world, entity, Networked) {
+            entity_destroy(world, entity);
+        }
     }
 }
 

@@ -129,6 +129,8 @@ ecs_entity_from_index :: (using world: *World, index: s32) -> Entity {
 entity_destroy :: (using world: *World, entity: Entity, broadcast: bool = true) {
     assert(entity_is_valid(world, entity));
 
+    entity_destroy_children(world, entity, broadcast);
+
     if is_deferring {
         entity_defer_destroy(world, entity);
         return;
@@ -147,8 +149,6 @@ entity_destroy :: (using world: *World, entity: Entity, broadcast: bool = true) 
 
 entity_delete :: (using world: *World, entity: Entity) {
     assert(!is_deferring);
-
-    entity_destroy_children(world, entity);
 
     stage_entity_delete(*stage, entity);
 }
@@ -323,7 +323,7 @@ bootstrap_component :: (using world: *World, type: Type, id: s64) {
     ecs_add(world, entity, EcsComponent.{runtime_size = cti.ti.runtime_size}, broadcast=false);
 }
 
-entity_destroy_children :: (using world: *World, parent: Entity) {
+entity_destroy_children :: (using world: *World, parent: Entity, broadcast: bool = true) {
     children: [..] Entity;
     children.allocator = temp;
 
@@ -334,7 +334,7 @@ entity_destroy_children :: (using world: *World, parent: Entity) {
     }
 
     for children {
-        entity_delete(world, it);
+        entity_destroy(world, it, broadcast);
     }
 }
 
