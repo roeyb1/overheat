@@ -10,7 +10,10 @@ power_skill_per_tick :: (q: Query) {
         for * iter : make_children_iter(q.world, q.entities[it]) {
             for iter.entities {
                 if get_component(q.world, it, Skill) {
-                    array_add(*children, it);
+                    //only skills that are currently being channeled should receive the power
+                    if (get_component(q.world, it, Powering_Up)) {
+                        array_add(*children, it);
+                    }
                 }  
             }
         }   

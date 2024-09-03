@@ -5,13 +5,13 @@ Charge :: struct {
 } 
 
 sword :: Charge .{
-    energy_cost = 30,
+    energy_cost = 10,
     duration = 0.5,
     anim_list_index = .BOW_WIND_UP
 };
 
 bow :: Charge .{
-    energy_cost = 30,
+    energy_cost = 10,
     duration = 0.5,
     anim_list_index = .BOW_ATTACK
 };

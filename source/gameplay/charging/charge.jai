@@ -1,3 +1,4 @@
+
 Charging :: struct @Component {}
 
 Charging_Bundle :: struct @Bundle {
@@ -7,6 +8,7 @@ Charging_Bundle :: struct @Bundle {
     charging: Charging; //tag must be put at end so the event fires when there is data
 }
 
+#if SERVER {
 new_charge :: (world: *World, parent: Entity, charge_info: Charge) {
     child := spawn_child_entity(world, parent);
     add_components_from_bundle(world, child, Charging_Bundle.{
@@ -22,6 +24,13 @@ start_charging :: (world: *World, entity: Entity) {
             modify_interuptor_anim_slot_from_charge(world, parent, entity);
         }
 } @Event(EcsOnAdd,Charging)
+
+finish_charging :: (world: *World, entity: Entity) {
+        parent := get_parent(world, entity);
+        if is_valid(world,parent){
+            activate_skills(world,parent);
+        }
+} @Event(EcsOnRemove,Charging)
 
 //while a charge exists, it will send power to it's parent player in exchange for his mana
 update_charging :: (q: Query) {
@@ -43,7 +52,7 @@ update_charging :: (q: Query) {
 
 
 //temporary way of translating user input into an ability cast on the server, should be fleshed out when proper support is available
-#if SERVER {
+
 test_attack :: (q: Query) {
     player_commands := query_get(q, Player_Commands);
     positions := query_get(q, Position);
@@ -57,9 +66,10 @@ test_attack :: (q: Query) {
                 
                 new_charge(q.world,q.entities[it],sword);
 
-                //tmp
+                //temporary way of creating skills, should live in the player's inventory 
                 fragments: [..] Fragment_List_Indecies;
                 array_add(*fragments, Fragment_List_Indecies.PROJECTILE);
+                array_add(*fragments, Fragment_List_Indecies.TOUCH);
                 new_skill(q.world,q.entities[it], fragments);
             }
         }

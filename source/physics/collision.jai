@@ -101,7 +101,8 @@ emit_overlap_events :: (q: Query) {
 resolve_overlap :: (q: Query) {
     collision_list := get_singleton(q.world, Collision_List);
     for pair : collision_list.blocking_pairs {
-
+        if (!is_valid(q.world, pair.a) || !is_valid(q.world, pair.b)) then continue;
+        
         a_pos := get_component(q.world, pair.a, Position);
         a_collider := get_component(q.world, pair.a, Collider_AABB);
         a_bounds := translate(a_collider, a_pos);

@@ -14,6 +14,7 @@ update_duration :: (q: Query) {
     }
 } @System(OnValidate) @Write(Duration) @Read() 
 
+//TODO why is the base duration set from the value, why not do the oposite????
 set_base_duration :: (world: *World, entity: Entity) {
     duration := get_component(world, entity, Duration);
     duration.base_value = duration.value;
