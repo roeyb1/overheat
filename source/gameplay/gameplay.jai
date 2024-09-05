@@ -12,7 +12,7 @@
 #load "duration.jai";
 #load "cooldown.jai";
 #load "systems.jai";
-
+#load "gameplay_ability/gameplay_ability.jai";
 
 #if CLIENT {
     #load "input.jai";

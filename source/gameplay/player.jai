@@ -19,6 +19,10 @@ Player_Commands :: struct @Component {
     main_attack: bool;
     secondary_attack: bool;
 
+    ability_1: bool;
+    ability_2: bool;
+    ability_3: bool;
+
     cursor_position: Vector2;
 }
 
@@ -70,6 +74,14 @@ init_player :: (position: Vector2) -> Entity {
         cooldown = .{base_value=1.},
     });
 
+    gameplay_ability := entity_spawn(*g_world,Networked);
+    ecs_add_bundle(*g_world, gameplay_ability, Gameplay_Ability_Bundle.{
+        cooldown = .{0.5,0.5},
+    });
+    ecs_add(*g_world, gameplay_ability, Bound_To_1);
+    ecs_add_pair(*g_world, gameplay_ability, OwnedBy, entity);
+    
+
     // set up a test inventory
     inventory := entity_spawn(*g_world, Networked);
     ecs_add_pair(*g_world, entity, Inventory, inventory);
@@ -119,6 +131,18 @@ update_local_player_commands_from_input :: (q: Query) {
 
         if is_button_down(input_states, .SECONDARY_ATTACK) {
             player_commands[it].secondary_attack = true;
+        }
+
+        if is_button_down(input_states, .ABILITY_1) {
+            player_commands[it].ability_1 = true;
+        }
+
+        if is_button_down(input_states, .ABILITY_2) {
+            player_commands[it].ability_2 = true;
+        }
+
+        if is_button_down(input_states, .ABILITY_3) {
+            player_commands[it].ability_3 = true;
         }
 
         player_commands[it].cursor_position = get_mouse_worldspace();

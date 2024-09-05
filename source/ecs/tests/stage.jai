@@ -83,7 +83,7 @@ deferred_component_add :: (ctx: *TestContext) {
 
     w.is_deferring = true;
 
-    c := ecs_add(*w, e, Component_A);
+    c := ecs_add_typed(*w, e, Component_A);
     c.a = 10;
 
     test_expect_true(entity_is_alive(s, e));
