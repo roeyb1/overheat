@@ -13,6 +13,7 @@
 #load "cooldown.jai";
 #load "systems.jai";
 #load "gameplay_ability/gameplay_ability.jai";
+#load "spell/spell.jai";
 
 #if CLIENT {
     #load "input.jai";

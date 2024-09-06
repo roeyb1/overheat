@@ -8,7 +8,7 @@ Gameplay_Ability_Bundle :: struct @Bundle {
 
 OwnedBy :: struct @Pair { }
 
-//the ready component gets added to a gameplay ability when it ready to fire.
+//the GA_State_Ready tag gets added to a gameplay ability when it ready to fire.
 //it will then be switched to triggered once it is clicked and the associated gameplay logic will be executed. 
 GA_State_Dormant :: struct @Tag {}
 
@@ -56,7 +56,12 @@ activate_gameplay_ability :: (q: Query) {
     cooldowns := query_get(q, Cooldown);
     for 0..q.count-1 {
         cooldowns[it].current_value = cooldowns[it].base_value;
-        log("penis");
+        
+        //find all spells that are to be triggered by this gameplay_ability
+        for query: iter_make_pair(q.world, TriggeredBy, q.entities[it], Spell) {
+            test_spell(q.world, query.entities[it_index]);
+        }
+
         ecs_remove(q.world, q.entities[it], GA_State_Triggered);
     }
 } @System(OnUpdate) @Write() @Read(Gameplay_Ability,GA_State_Triggered,Cooldown) 
