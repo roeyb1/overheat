@@ -78,12 +78,16 @@ init_player :: (position: Vector2) -> Entity {
         gameplay_ability := entity_spawn(*g_world,Networked);
         ecs_add_bundle(*g_world, gameplay_ability, Gameplay_Ability_Bundle.{
             cooldown = .{0.5,0.5},
+            gameplay_ability = .{owner = entity},
         });
         ecs_add(*g_world, gameplay_ability, Bound_To_1);
         ecs_add_pair(*g_world, gameplay_ability, OwnedBy, entity);
 
         spell := entity_spawn(*g_world,Networked);
         ecs_add_bundle(*g_world, spell, Spell_Bundle.{
+            spell = .{triggeredby=gameplay_ability},
+            charge_info = sword_anim,
+            name = .{"banana"},
         });
         spell_component := ecs_get(*g_world, spell, Spell);
         array_add(*spell_component.components, Projectile);

@@ -1,10 +1,10 @@
-Charge :: struct {
+Charge :: struct @Component {
     energy_cost: float;
     duration: float;
     anim_list_index: Anim_List_Indecies;
 } 
 
-sword :: Charge .{
+sword_anim :: Charge .{
     energy_cost = 30,
     duration = 0.5,
     anim_list_index = .BOW_WIND_UP

@@ -1,4 +1,5 @@
 Gameplay_Ability :: struct @Component {
+        owner: Entity;
 }
 
 Gameplay_Ability_Bundle :: struct @Bundle {

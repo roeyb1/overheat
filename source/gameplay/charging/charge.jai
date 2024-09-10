@@ -15,13 +15,13 @@ new_charge :: (world: *World, parent: Entity, charge_info: Charge) {
         energy_cost.total = charge_info.energy_cost
     });   
 }
-
+/*
 start_charging :: (world: *World, entity: Entity) {
         parent := ecs_get_target(world, entity, Child_Of);
         if entity_is_valid(world, parent){
             modify_interuptor_anim_slot_from_charge(world, parent, entity);
         }
-} @Event(EcsOnAdd,Charging)
+} @Event(EcsOnAdd,Charging)*/
 
 //while a charge exists, it will send power to it's parent player in exchange for his mana
 update_charging :: (q: Query) {
@@ -55,7 +55,7 @@ test_attack :: (q: Query) {
             if cooldowns[it].current_value <= 0 {
                 cooldowns[it].current_value = cooldowns[it].base_value;
                 
-                new_charge(q.world,q.entities[it],sword);
+                new_charge(q.world,q.entities[it],sword_anim);
 
                 //tmp
                 fragments: [..] Fragment_List_Indecies;
