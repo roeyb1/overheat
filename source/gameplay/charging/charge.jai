@@ -6,7 +6,7 @@ Charging_Bundle :: struct @Bundle {
     energy_cost: Energy_Cost; // needs to be put after the duration componenent @TODO we need a way of executing events in a specific order other then in the bundle this is error prone and cringe to debug
     charging: Charging; //tag must be put at end so the event fires when there is data
 }
-
+/*
 new_charge :: (world: *World, parent: Entity, charge_info: Charge) {
     child := entity_spawn(world, parent = parent);
     ecs_add_bundle(world, child, Charging_Bundle.{
@@ -14,7 +14,7 @@ new_charge :: (world: *World, parent: Entity, charge_info: Charge) {
         duration.value = charge_info.duration,
         energy_cost.total = charge_info.energy_cost
     });   
-}
+}*/
 /*
 start_charging :: (world: *World, entity: Entity) {
         parent := ecs_get_target(world, entity, Child_Of);
@@ -22,7 +22,7 @@ start_charging :: (world: *World, entity: Entity) {
             modify_interuptor_anim_slot_from_charge(world, parent, entity);
         }
 } @Event(EcsOnAdd,Charging)*/
-
+/*
 //while a charge exists, it will send power to it's parent player in exchange for his mana
 update_charging :: (q: Query) {
     energy_costs := query_get(q, Energy_Cost);
@@ -40,8 +40,8 @@ update_charging :: (q: Query) {
         }
     }
 } @System(OnUpdate) @Write() @Read(Charging,Energy_Cost) 
-
-
+*/
+/*
 //temporary way of translating user input into an ability cast on the server, should be fleshed out when proper support is available
 #if SERVER {
 test_attack :: (q: Query) {
@@ -55,7 +55,7 @@ test_attack :: (q: Query) {
             if cooldowns[it].current_value <= 0 {
                 cooldowns[it].current_value = cooldowns[it].base_value;
                 
-                new_charge(q.world,q.entities[it],sword_anim);
+                //new_charge(q.world,q.entities[it],sword_anim);
 
                 //tmp
                 fragments: [..] Fragment_List_Indecies;
@@ -79,13 +79,13 @@ test_attack2 :: (q: Query) {
             if cooldowns[it].current_value <= 0 {
                 cooldowns[it].current_value = cooldowns[it].base_value;
                 
-                new_charge(q.world,q.entities[it],bow);
+                //new_charge(q.world,q.entities[it],bow);
             }
         }
     }
 } @System(OnUpdate) @Write() @Read(Player,Player_Commands,Position,Cooldown) 
 }
-
+*/
 #load "charges.jai";
 #load "energy_cost.jai";
 

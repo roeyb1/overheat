@@ -1,12 +1,13 @@
+//spells live in the players spell inventory and contain the information required to cast spell_instances
 Spell :: struct @Component {
-    components: [..] Type;
-    triggeredby: Entity;
+    casting_entity: Entity;
 }
 
 Spell_Bundle :: struct @Bundle {
     spell: Spell;
     charge_info: Charge;
     name: Name;
+    fragments: Fragments;
 }
 
 TriggeredBy :: struct @Pair { }
@@ -18,11 +19,20 @@ Spell_Charging :: struct @Component {}
 Spell_Active :: struct @Component {}
 
 test_spell :: (world: *World, spell: Entity) {
-    log("spell cast");
+    
+
+    spell_instance := entity_spawn(world);
+    ecs_add_bundle(world, spell_instance, Spell_Instance_Bundle.{
+        duration.base_value = 6.,
+    });
+    ecs_add_pair(*g_world, spell_instance, CastBy, ecs_get(world, spell, Spell).casting_entity);   
+
     ecs_add(world, spell, Spell_Charging);
 }
 
+//TODO@[ZAK] attatch the charge to the player
 
+//this goes elsewhere
 initiate_charging :: (world: *World, entity: Entity) {
     charge_info := ecs_get(world, entity, Charge);
     
@@ -33,17 +43,31 @@ initiate_charging :: (world: *World, entity: Entity) {
         energy_cost.total = charge_info.energy_cost
     });   
 
-    //TODO@[zak] rekon this could be done better
-    gameplay_ability := ecs_get(world, entity, Spell).triggeredby;
-    if (entity_is_valid(world, gameplay_ability)){
-        caster := ecs_get(world, gameplay_ability, Gameplay_Ability).owner;
-        if entity_is_valid(world, caster){
-            modify_interuptor_anim_slot_from_charge(world, caster, charge);
+    
+    caster := ecs_get(world, entity, Spell).casting_entity;
+    if entity_is_valid(world, caster){
+        modify_interuptor_anim_slot_from_charge(world, caster, charge);
+    }
+} @Event(EcsOnAdd,Spell_Charging)
+
+update_charging :: (q: Query) {
+    energy_costs := query_get(q, Energy_Cost);
+
+    for 0..q.count-1 {
+        parent := ecs_get_target(q.world, q.entities[it], Child_Of);
+        if entity_is_valid(q.world, parent){
+            spell := ecs_get(q.world, parent, Spell);
+            casting_entity := spell.casting_entity;
+            health_queue := ecs_get(q.world, casting_entity, Health_Change_Queue);
+            if health_queue {
+                drain_energy_per_tick(health_queue,energy_costs[it]);
+                
+                //for now this lives here but eventually each charge could update it's power in a system
+                gather_power(q.world,casting_entity,5.);
+            }
         }
     }
-
-   //ecs_remove(q.world, query.entities[it_index], Spell_Charging);       
-} @Event(EcsOnAdd,Spell_Charging)
+} @System(OnUpdate) @Write() @Read(Charging,Energy_Cost) 
 
 end_charging :: (world: *World, entity: Entity) {
     parent := ecs_get_target(world, entity, Child_Of);
@@ -56,5 +80,7 @@ end_charging :: (world: *World, entity: Entity) {
     }          
 } @Event(EcsOnRemove,Charging)
 
+#load "fragments.jai";
+#load "spell_instance.jai";
 
 
