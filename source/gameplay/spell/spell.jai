@@ -1,6 +1,7 @@
 //spells live in the players spell inventory and contain the information required to cast spell_instances
 Spell :: struct @Component {
     casting_entity: Entity;
+    debug_allow_activation: bool;
 }
 
 Spell_Bundle :: struct @Bundle {
@@ -18,8 +19,10 @@ Spell_Charging :: struct @Component {}
 
 Spell_Active :: struct @Component {}
 
+#if SERVER{
 test_spell :: (world: *World, spell: Entity) {
     
+    caster := ecs_get(world, spell, Spell).casting_entity;
 
     spell_instance := entity_spawn(world);
     ecs_add_bundle(world, spell_instance, Spell_Instance_Bundle.{
@@ -30,44 +33,50 @@ test_spell :: (world: *World, spell: Entity) {
     ecs_add(world, spell, Spell_Charging);
 }
 
-//TODO@[ZAK] attatch the charge to the player
-
+//TODO[@ROEY] bugged, this event triggeres twice
 //this goes elsewhere
 initiate_charging :: (world: *World, entity: Entity) {
-    charge_info := ecs_get(world, entity, Charge);
     
-    charge := entity_spawn(world, parent = entity);
-    ecs_add_bundle(world, charge, Charging_Bundle.{
-        anim_list_index.value = charge_info.anim_list_index,
-        duration.value = charge_info.duration,
-        energy_cost.total = charge_info.energy_cost
-    });   
-
-    
+    //workaround caus of the event dupe bug
+    spell := ecs_get(world, entity, Spell);
     caster := ecs_get(world, entity, Spell).casting_entity;
     if entity_is_valid(world, caster){
-        modify_interuptor_anim_slot_from_charge(world, caster, charge);
+
+        if (spell.debug_allow_activation){
+            charge_info := ecs_get(world, entity, Charge);
+        
+            charge := entity_spawn(world, parent = entity);
+            ecs_add_bundle(world, charge, Charging_Bundle.{
+                anim_list_index.value = charge_info.anim_list_index,
+                duration.value = charge_info.duration,
+                energy_cost.total = charge_info.energy_cost,
+                target = .{caster}
+            });   
+
+            modify_interuptor_anim_slot_from_charge(world, caster, charge);
+        }
     }
+    //workaround
+    spell.debug_allow_activation = false;
 } @Event(EcsOnAdd,Spell_Charging)
 
 update_charging :: (q: Query) {
     energy_costs := query_get(q, Energy_Cost);
+    targets := query_get(q, Target);
 
     for 0..q.count-1 {
-        parent := ecs_get_target(q.world, q.entities[it], Child_Of);
-        if entity_is_valid(q.world, parent){
-            spell := ecs_get(q.world, parent, Spell);
-            casting_entity := spell.casting_entity;
-            health_queue := ecs_get(q.world, casting_entity, Health_Change_Queue);
+        if entity_is_valid(q.world, targets[it].target){
+
+            health_queue := ecs_get(q.world, targets[it].target, Health_Change_Queue);
             if health_queue {
                 drain_energy_per_tick(health_queue,energy_costs[it]);
                 
                 //for now this lives here but eventually each charge could update it's power in a system
-                gather_power(q.world,casting_entity,5.);
+                gather_power(q.world,targets[it].target,5.);
             }
         }
     }
-} @System(OnUpdate) @Write() @Read(Charging,Energy_Cost) 
+} @System(OnUpdate) @Write() @Read(Charging,Energy_Cost,Target) 
 
 end_charging :: (world: *World, entity: Entity) {
     parent := ecs_get_target(world, entity, Child_Of);
@@ -79,6 +88,7 @@ end_charging :: (world: *World, entity: Entity) {
         }
     }          
 } @Event(EcsOnRemove,Charging)
+}
 
 #load "fragments.jai";
 #load "spell_instance.jai";

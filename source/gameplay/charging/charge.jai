@@ -1,10 +1,12 @@
-Charging :: struct @Tag {}
+Charging :: struct @Tag {
+}
 
 Charging_Bundle :: struct @Bundle {
     anim_list_index: Anim_List_Index; //animation that will run during the charge 
     duration: Duration; //duration component, will make the charge kill itself after a duration
     energy_cost: Energy_Cost; // needs to be put after the duration componenent @TODO we need a way of executing events in a specific order other then in the bundle this is error prone and cringe to debug
     charging: Charging; //tag must be put at end so the event fires when there is data
+    target: Target;
 }
 /*
 new_charge :: (world: *World, parent: Entity, charge_info: Charge) {

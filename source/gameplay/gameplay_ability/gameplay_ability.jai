@@ -71,21 +71,16 @@ activate_gameplay_ability :: (q: Query) {
     for 0..q.count-1 {
         cooldowns[it].current_value = cooldowns[it].base_value;
         
-        log("%",q.entities[it].index);
-
-
-        
-       // log("before loop");
-        
         //find all spells that are to be triggered by this gameplay_ability
         for query: iter_make_pair(q.world, TriggeredBy, q.entities[it], Spell) {
-            //log("we loopin");
-            log( ecs_get(q.world, query.entities[it_index], Name).name);
             ecs_get(q.world, query.entities[it_index], Spell).casting_entity = ecs_get_target(q.world, q.entities[it], OwnedBy);
+            //workaround
+            ecs_get(q.world, query.entities[it_index], Spell).debug_allow_activation = true;
+
             test_spell(q.world, query.entities[it_index]);
         }
 
         ecs_remove(q.world, q.entities[it], GA_State_Triggered);
     }
-} @System(OnUpdate) @Write() @Read(Gameplay_Ability,GA_State_Triggered,Cooldown) 
+} @System(OnValidate) @Write() @Read(Gameplay_Ability,GA_State_Triggered,Cooldown) 
 }

@@ -14,6 +14,7 @@
 #load "systems.jai";
 #load "gameplay_ability/gameplay_ability.jai";
 #load "spell/spell.jai";
+#load "target.jai";
 
 #if CLIENT {
     #load "input.jai";
