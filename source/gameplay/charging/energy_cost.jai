@@ -3,7 +3,7 @@ Energy_Cost :: struct @Component {
     per_tick: float; 
 }
 
-//if there is no duration componenet the base cost of an ability will be considered as the cost per second
+//if there is no duration component the base cost of an ability will be considered as the cost per second
 calculate_energy_cost_per_tick :: (world: *World, entity: Entity) {
         energy_cost := ecs_get(world, entity, Energy_Cost);
         duration := ecs_get(world, entity, Duration);

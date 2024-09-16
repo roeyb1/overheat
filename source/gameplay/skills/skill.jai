@@ -9,7 +9,7 @@ Fragment_List_Indecies :: enum {
 
 Skill_Bundle :: struct @Bundle {
     power: Power; 
-    power_change_queue: Power_Change_Queue; 
+    energy_change_queue: energy_change_queue; 
     skill: Skill;
     duration: Duration;
 }

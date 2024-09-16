@@ -1,5 +1,5 @@
 Gameplay_Ability :: struct @Component {
-        owner: Entity;
+    owner: Entity;
 }
 
 Gameplay_Ability_Bundle :: struct @Bundle {
