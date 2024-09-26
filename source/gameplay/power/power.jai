@@ -49,7 +49,7 @@ power_skill_per_tick :: (q: Query) {
     }
 } @System(OnValidate) @Write(Gathered_Energy) @Read()
 
-power_skill :: (change_queue: energy_change_queue, power: float) {
+power_skill :: (change_queue: Energy_Change_Queue, power: float) {
     array_add(*change_queue.changes, power);
 }
 
