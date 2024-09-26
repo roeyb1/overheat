@@ -7,32 +7,22 @@ Projectile_Bundle :: struct @Bundle {
     size: Size; 
     position: Position;
     move_speed: Move_Speed;
-    projectile: Projectile;
     invoker: Collision_Invoker;
 }
 
 add_projectile :: (world: *World, entity: Entity) {
     parent := ecs_get_target(world, entity, CastBy);
-    if entity_is_valid(world, parent){
+    if entity_is_valid(world,parent){
         spritesheet := "assets/skills/blue_orb.png";
-        PLAYER_SIZE :: Vector2.{2.3, 2.3};    
+        PROJECTILE_BASE_SIZE :: 10;
+        PROJECTILE_BASE_SPEED :: 10.0;
 
-        sprite := load_spritesheet("assets/particles/blue_orb.png",48, 0, 0,23,6);
-        SPRITE_SIZE :: Vector2.{1., 1.};
-        ecs_add(world, entity, Sprite.{spritesheet, null, PLAYER_SIZE, 0, 4, 0});
-
-        spawn_location := ecs_get(world, parent, Position).value;
-        log("%",spawn_location);
-        ecs_add(world, entity, Position.{spawn_location});
-
-
-        targeting := ecs_get(world, parent, Player_Commands).cursor_position;
-        direction := unit_vector(targeting-spawn_location);
-
-        ecs_get(world, entity, Projectile).direction = direction;
-        ecs_add(world, entity, Velocity);
-
-        ecs_add(world, entity, Move_Speed.{speed = 1});
+        ecs_add_bundle(world, entity, Projectile_Bundle.{
+            sprite = .{spritesheet, null, .{0,0}, 0, 4, 0},
+            size = .{multiplier = PROJECTILE_BASE_SIZE},
+            move_speed = .{PROJECTILE_BASE_SPEED},
+            invoker = .{ id = cast(u64) entity.raw },
+        }); 
     }
 } @Event(EcsOnAdd,Projectile)
 
@@ -44,3 +34,16 @@ projectile_movement :: (q: Query) {
         velocities[it].value = projectiles[it].direction * movement_speeds[it].speed;
     }
 } @System(OnUpdate) @Write(Velocity) @Read(Projectile,Move_Speed)
+
+//@TODO if possible we should add some kind of socket on the casting entity so the skill can follow his hands or something
+update_projectile_position_while_charging :: (q: Query) {
+    positions := query_get(q, Position);
+    skills := query_get(q, Skill);
+    for 0..q.count-1 {
+        parent := skills[it].parent;
+        if is_valid(q.world,parent){
+            parent_position := get_component(q.world, parent, Position).value;
+            positions[it].value = parent_position;
+        }
+    }
+} @System(OnUpdate) @Write(Position) @Read(Projectile,Powering_Up,Skill)

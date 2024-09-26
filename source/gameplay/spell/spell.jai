@@ -52,5 +52,5 @@ test_power :: (q: Query) {
 
 #load "spell_fragments/fragments.jai";
 #load "spell_instance.jai";
-
+#load "size.jai";
 
