@@ -33,5 +33,5 @@ new_skill :: (world: *World, entity: Entity, fragments: [..] Fragment_List_Indec
 }
 }
 
-#load "current_target.jai";
+//#load "current_target.jai";
 #load "skill_fragment.jai";

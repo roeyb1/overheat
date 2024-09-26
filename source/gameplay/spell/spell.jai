@@ -28,7 +28,13 @@ test_spell :: (world: *World, spell: Entity) {
     ecs_add_bundle(world, spell_instance, Spell_Instance_Bundle.{
         duration.base_value = 6.,
     });
-    ecs_add_pair(*g_world, spell_instance, CastBy, ecs_get(world, spell, Spell).casting_entity);   
+    ecs_add_pair(*g_world, spell_instance, CastBy, ecs_get(world, spell, Spell).casting_entity); 
+
+    fragments := ecs_get(world, spell, Fragments).components;  
+
+    for fragments {
+        ecs_add(world, spell_instance, it);
+    }
 
     ecs_add(world, spell, Spell_Charging);
 }
