@@ -45,10 +45,12 @@ test_power :: (q: Query) {
     for 0..q.count-1 {
        log("%", powers[it].total);
     }
+
+    
 } @System(OnUpdate) @Write() @Read(Spell_Instance,Power)  
 }
 
-#load "fragments.jai";
+#load "spell_fragments/fragments.jai";
 #load "spell_instance.jai";
 
 
