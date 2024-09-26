@@ -2,6 +2,15 @@ Projectile :: struct @Component {
     direction: Vector2;
 }
 
+Projectile_Bundle :: struct @Bundle {
+    sprite: Sprite; 
+    size: Size; 
+    position: Position;
+    move_speed: Move_Speed;
+    projectile: Projectile;
+    invoker: Collision_Invoker;
+}
+
 add_projectile :: (world: *World, entity: Entity) {
     parent := ecs_get_target(world, entity, CastBy);
     if entity_is_valid(world, parent){
