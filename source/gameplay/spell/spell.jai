@@ -13,11 +13,11 @@ Spell_Bundle :: struct @Bundle {
 
 TriggeredBy :: struct @Pair { }
 
-//when a spell is spawned into the world it will be in a state where it gathers power known as Spell_Charging, no interaction with the world.
-//once a spell is fully charged or sent out for whatever reason it becomes Spell_Active and can interact with the world. 
+//the spell charging tag is added to a spell to indicate that the player has casted and it is now draining energy 
+//and sending it as power to the instance it created
 Spell_Charging :: struct @Component {}
 
-Spell_Active :: struct @Component {}
+
 
 #if SERVER{
 test_spell :: (world: *World, spell: Entity) {
@@ -26,7 +26,7 @@ test_spell :: (world: *World, spell: Entity) {
 
     spell_instance := entity_spawn(world, parent = spell);
     ecs_add_bundle(world, spell_instance, Spell_Instance_Bundle.{
-        duration.base_value = 6.,
+        duration.value = 10.,
     });
     ecs_add_pair(*g_world, spell_instance, CastBy, ecs_get(world, spell, Spell).casting_entity); 
 
@@ -37,17 +37,28 @@ test_spell :: (world: *World, spell: Entity) {
     }
 
     ecs_add(world, spell, Spell_Charging);
+
+    log("hello there");
 }
 
 test_power :: (q: Query) {
     powers := query_get(q, Power);
 
     for 0..q.count-1 {
-       log("%", powers[it].total);
+       //log("%", powers[it].total);
     }
 
     
 } @System(OnUpdate) @Write() @Read(Spell_Instance,Power)  
+
+activate_spell_instance :: (world: *World, entity: Entity) {
+    for * iter : iter_make_pair(world, Child_Of, entity, Spell_Instance,Powering_Up) {
+        for iter.entities {
+            ecs_remove(world, it, Powering_Up);
+            ecs_add(world, it, Active);
+        }
+    }   
+} @Event(EcsOnRemove,Spell_Charging)
 }
 
 #load "spell_fragments/fragments.jai";

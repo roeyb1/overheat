@@ -36,7 +36,7 @@ power_skill_per_tick :: (q: Query) {
     gathered_energies := query_get(q, Gathered_Energy);
 
     for 0..q.count-1 {
-        for * iter : iter_make_pair(q.world, PoweredBy, q.entities[it]) {
+        for * iter : iter_make_pair(q.world, PoweredBy, q.entities[it],Powering_Up) {
            
             distributed_power := gathered_energies[it].value/iter.count;
 

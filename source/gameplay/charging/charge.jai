@@ -14,6 +14,7 @@ Charging_Bundle :: struct @Bundle {
     target: Target;
 }
 
+#if SERVER{
 //TODO[@ROEY] bugged, this event triggeres twice
 initiate_charging :: (world: *World, entity: Entity) {
     
@@ -35,11 +36,9 @@ initiate_charging :: (world: *World, entity: Entity) {
             });   
 
             //indicate to the charge what spell_instances it will power
-            for * iter : iter_make_pair(world, Child_Of, entity) {
+            for * iter : iter_make_pair(world, Child_Of, entity, Spell_Instance) {
                 for iter.entities {
-                    if ecs_get(world, it, Spell_Instance) {
-                        ecs_add_pair(world, it, PoweredBy, charge);
-                    }  
+                    ecs_add_pair(world, it, PoweredBy, charge);
                 }
             }   
 
@@ -79,7 +78,7 @@ end_charging :: (world: *World, entity: Entity) {
         }
     }          
 } @Event(EcsOnRemove,Charging)
-
+}
 #load "charges.jai";
 #load "energy_cost.jai";
 
