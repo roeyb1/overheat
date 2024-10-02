@@ -3,3 +3,4 @@ Fragments :: struct @Component {
 }
 
 #load "projectile.jai";
+#load "touch.jai";

@@ -23,7 +23,6 @@ add_projectile :: (world: *World, entity: Entity) {
             size = .{PROJECTILE_BASE_SIZE,0},
             position = ecs_get(world, parent, Position),
             move_speed = .{PROJECTILE_BASE_SPEED},
-            invoker = .{ id = cast(u64) entity.raw },
         }); 
     }
 } @Event(EcsOnAdd,Projectile)
@@ -51,7 +50,6 @@ update_projectile_position_while_charging :: (q: Query) {
 
 //if events could implicit check for additional components that would be pog
 finalise_projectile_casting :: (world: *World, entity: Entity) {
-        PROJECTILE_COLLIDER_SIZE :: Vector2.{1., 1.};
 
         if ecs_get(world, entity, Projectile){
             parent := ecs_get_target(world, entity, CastBy);

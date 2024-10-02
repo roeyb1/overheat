@@ -91,6 +91,7 @@ init_player :: (position: Vector2) -> Entity {
         fragments := ecs_get(*g_world, spell, Fragments);
         array_add(*fragments.components, Projectile);
         array_add(*fragments.components, Cooldown);
+        array_add(*fragments.components, Touch);
         ecs_add_pair(*g_world, spell, TriggeredBy, gameplay_ability);
     }
 
