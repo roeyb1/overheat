@@ -6,7 +6,7 @@
 #load "enemy.jai";
 #load "follower.jai";
 #load "singletons.jai";
-#load "charging/charge.jai";
+#load "charging/focus.jai";
 #load "power/power.jai";
 #load "skills/skill.jai";
 #load "duration.jai";

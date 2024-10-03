@@ -5,13 +5,14 @@ Gameplay_Ability :: struct @Component {
 Gameplay_Ability_Bundle :: struct @Bundle {
     gameplay_ability: Gameplay_Ability;
     cooldown: Cooldown;
+    base_state: GA_State_Cooldown;
 }
 
 OwnedBy :: struct @Pair { }
 
 //the GA_State_Ready tag gets added to a gameplay ability when it ready to fire.
 //it will then be switched to triggered once it is clicked and the associated gameplay logic will be executed. 
-GA_State_Dormant :: struct @Tag {}
+GA_State_Cooldown :: struct @Tag {}
 
 GA_State_Ready :: struct @Tag {}
 
@@ -59,10 +60,10 @@ ready_gameplay_ability :: (q: Query) {
     
     for 0..q.count-1 {
         if cooldowns[it].current_value <= 0 {
-            ecs_add(*g_world, q.entities[it], GA_State_Ready);
+            transition_ga_state(q.world, q.entities[it], GA_State_Cooldown, GA_State_Ready);
         }
     }
-} @System(OnUpdate) @Write() @Read(Gameplay_Ability,Cooldown) 
+} @System(OnUpdate) @Write() @Read(GA_State_Cooldown,Cooldown) 
 
 
 //activation logic for the gameplay ability goes here, could be anything but the GA_State_Triggered Tag must be removed or it will loop
@@ -77,10 +78,10 @@ activate_gameplay_ability :: (q: Query) {
             //workaround
             ecs_get(q.world, query.entities[it_index], Spell).debug_allow_activation = true;
 
-            test_spell(q.world, query.entities[it_index]);
+            cast_spell(q.world, query.entities[it_index]);
         }
 
-        ecs_remove(q.world, q.entities[it], GA_State_Triggered);
+        transition_ga_state(q.world, q.entities[it], GA_State_Triggered, GA_State_Cooldown);
     }
 } @System(OnValidate) @Write() @Read(Gameplay_Ability,GA_State_Triggered,Cooldown) 
 }

@@ -6,21 +6,21 @@ Spell :: struct @Component {
 
 Spell_Bundle :: struct @Bundle {
     spell: Spell;
-    charge_info: Charge;
+    focus_info: Focus;
     name: Name;
     fragments: Fragments;
 }
 
 TriggeredBy :: struct @Pair { }
 
-//when a spell is spawned into the world it will be in a state where it gathers power known as Spell_Charging, no interaction with the world.
-//once a spell is fully charged or sent out for whatever reason it becomes Spell_Active and can interact with the world. 
-Spell_Charging :: struct @Component {}
+//when a spell is spawned into the world it will be in a state where it gathers power known as Spell_Focusing, no interaction with the world.
+//once a spell is fully focused or sent out for whatever reason it becomes Spell_Active and can interact with the world. 
+Spell_Focusing :: struct @Component {}
 
 Spell_Active :: struct @Component {}
 
-#if SERVER{
-test_spell :: (world: *World, spell: Entity) {
+#if SERVER {
+cast_spell :: (world: *World, spell: Entity) {
     
     caster := ecs_get(world, spell, Spell).casting_entity;
 
@@ -30,7 +30,7 @@ test_spell :: (world: *World, spell: Entity) {
     });
     ecs_add_pair(*g_world, spell_instance, CastBy, ecs_get(world, spell, Spell).casting_entity);   
 
-    ecs_add(world, spell, Spell_Charging);
+    ecs_add(world, spell, Spell_Focusing);
 }
 
 test_power :: (q: Query) {

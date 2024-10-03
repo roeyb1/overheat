@@ -85,7 +85,7 @@ init_player :: (position: Vector2) -> Entity {
 
         spell := entity_spawn(*g_world,Networked);
         ecs_add_bundle(*g_world, spell, Spell_Bundle.{
-            charge_info = sword_anim,
+            focus_info = sword_anim,
             name = .{"banana"},
         });
         fragments := ecs_get(*g_world, spell, Fragments);

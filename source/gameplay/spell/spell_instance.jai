@@ -6,6 +6,7 @@ Spell_Instance_Bundle :: struct @Bundle {
     energy_change_queue: Energy_Change_Queue; 
     spell_instance: Spell_Instance;
     duration: Duration;
+    networking_id: Networked;
 }
 
 CastBy :: struct @Pair { }

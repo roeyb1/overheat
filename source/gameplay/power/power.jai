@@ -1,15 +1,16 @@
 //the power that will live on skills and define their potency
 Power :: struct @Component {
-    total: float;
-    incoming: float;
+    total: float; @Sync
+    incoming: float; 
 }
 
 Energy_Change_Queue :: struct @Component {
-    changes: [..] float;
+    changes: [..] float; 
 }
 
 PoweredBy :: struct @Pair { }
 
+#if SERVER {
 //this is for the power on skills this is where the math will happen to translate the incoming energy from the energy change queue into power output
 modify_power :: (q: Query) {
     power_components := query_get(q, Power);
@@ -52,4 +53,4 @@ power_skill_per_tick :: (q: Query) {
 power_skill :: (change_queue: Energy_Change_Queue, power: float) {
     array_add(*change_queue.changes, power);
 }
-
+}
