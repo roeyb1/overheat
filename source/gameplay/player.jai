@@ -51,7 +51,6 @@ Player_Bundle :: struct @Bundle {
     remote: Remote_Player;
     cooldown: Cooldown;
     anim_info: Interuptor_Anim_Slot;
-
 }
 
 init_player :: (position: Vector2) -> Entity {

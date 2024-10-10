@@ -26,7 +26,7 @@ test_spell :: (world: *World, spell: Entity) {
 
     spell_instance := entity_spawn(world, parent = spell);
     ecs_add_bundle(world, spell_instance, Spell_Instance_Bundle.{
-        duration.value = 10.,
+        duration.value = 2.,
     });
     ecs_add_pair(*g_world, spell_instance, CastBy, ecs_get(world, spell, Spell).casting_entity); 
 

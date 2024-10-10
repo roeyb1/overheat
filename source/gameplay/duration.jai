@@ -1,5 +1,7 @@
+Placeholder :: struct @Component {}
+
 Duration :: struct @Component {
-    value: float = 0.5;
+    value: float = 0.5; @Sync
     base_value: float;
 }
 
@@ -12,7 +14,7 @@ update_duration :: (q: Query) {
             entity_destroy(q.world, q.entities[it]);
         }
     }
-} @System(OnValidate) @Write(Duration) @Read() 
+}  @System(PostUpdate) @Write(Duration) @Read() @OptionalRead(Placeholder)
 
 set_base_duration :: (world: *World, entity: Entity) {
     duration := ecs_get(world, entity, Duration);
