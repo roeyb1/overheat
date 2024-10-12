@@ -13,6 +13,7 @@ Projectile_Bundle :: struct @Bundle {
 
 add_projectile :: (world: *World, entity: Entity) {
     parent := ecs_get_target(world, entity, CastBy);
+    
     if entity_is_valid(world,parent){
         spritesheet := "assets/skills/blue_orb.png";
         PROJECTILE_BASE_SIZE :: 1;
@@ -60,8 +61,7 @@ finalise_projectile_casting :: (world: *World, entity: Entity) {
                 targeting := ecs_get(world, parent, Player_Commands).cursor_position;
                 projectile.direction = unit_vector(targeting-position);
 
-                //TODO add a collider 
-                //add_component(world, entity, Collider_AABB, .{ aabb = make_aabb(.{ 0, 0 }, PROJECTILE_COLLIDER_SIZE)});
+               
             }
         }
 } @Event(EcsOnAdd,Active)

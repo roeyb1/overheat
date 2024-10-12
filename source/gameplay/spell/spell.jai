@@ -25,16 +25,13 @@ test_spell :: (world: *World, spell: Entity) {
     caster := ecs_get(world, spell, Spell).casting_entity;
 
     spell_instance := entity_spawn(world, parent = spell);
-    ecs_add_bundle(world, spell_instance, Spell_Instance_Bundle.{
-        duration.value = 2.,
-    });
+
     ecs_add_pair(*g_world, spell_instance, CastBy, ecs_get(world, spell, Spell).casting_entity); 
 
-    fragments := ecs_get(world, spell, Fragments).components;  
-
-    for fragments {
-        ecs_add(world, spell_instance, it);
-    }
+    ecs_add_bundle(world, spell_instance, Spell_Instance_Bundle.{
+        duration.value = 2.,
+       fragments.components = ecs_get(world, spell, Fragments).components,
+    });
 
     ecs_add(world, spell, Spell_Charging);
 
@@ -64,4 +61,5 @@ activate_spell_instance :: (world: *World, entity: Entity) {
 #load "spell_fragments/fragments.jai";
 #load "spell_instance.jai";
 #load "size.jai";
+#load "effect.jai";
 

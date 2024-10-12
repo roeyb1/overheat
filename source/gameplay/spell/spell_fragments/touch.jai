@@ -15,21 +15,23 @@ add_touch :: (world: *World, entity: Entity) {
 
 projectile_collide :: (world: *World, entity: Entity) {
         overlap := ecs_get(world, entity, Overlap_Pair);
+        if overlap{
+            skill,target,found := get_skill_from_overlap_pair(world, overlap.a, overlap.b);
+            if found {
+                effect := entity_spawn(world, parent = entity);
+                ecs_add_pair(*g_world, effect, AttachedTo, target); 
+            }
 
-        aabb_a := ecs_get(world, overlap.a, Collider_AABB);
-        position_a := ecs_get(world, overlap.a, Position);
-        aabb_b := ecs_get(world, overlap.b, Collider_AABB);
-        position_b := ecs_get(world, overlap.b, Position);
-
-        aabb_a_min := ecs_get(world, overlap.a, Collider_AABB).aabb.min;
-        aabb_a_max := ecs_get(world, overlap.a, Collider_AABB).aabb.max;
-
-        translation_a := translate(aabb_a, position_a);
-        translation_b := translate(aabb_b, position_b);
-        
-        log("entity a translated value is: %",translation_a);
-        //log("entity a max is: %",position_a_max);
-        log("aabb a bounding box is : % , %",aabb_a_min,aabb_a_max);
-        log("entity b translated value is: %",translation_b);
-        //log("entity b max is: %",position_b_max);
+        }
 } @Event(EcsOnAdd,Overlap_Pair)
+
+get_skill_from_overlap_pair :: (world: *World, a: Entity, b: Entity) -> skill: Entity, target: Entity, found: bool {
+    if ecs_get(world, a, Spell) {
+        return a,b,true;
+    } 
+    if ecs_get(world, b, Spell) {
+        return b,a,true;
+    } 
+
+    return a,b,false;
+}
