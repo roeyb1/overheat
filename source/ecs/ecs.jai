@@ -206,8 +206,12 @@ ecs_add :: (using world: *World, entity: Entity, val: $type, broadcast: bool = t
     return ptr;
 }
 
-ecs_add :: inline (using world: *World, entity: Entity, $type: Type, broadcast: bool = true) -> *type {
+ecs_add_typed :: inline (using world: *World, entity: Entity, $type: Type, broadcast: bool = true) -> *type {
     return cast(*type) ecs_add(world, entity, cid_get(world, type), broadcast);
+}
+
+ecs_add :: inline (using world: *World, entity: Entity, type: Type, broadcast: bool = true) -> *void {
+    return ecs_add(world, entity, cid_get(world, type), broadcast);
 }
 
 ecs_add :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = true) -> *void {

@@ -1,6 +1,6 @@
-Duration :: struct @Component {
-    value: float = 0.5;
-    base_value: float;
+Duration :: struct @Component { 
+    value: float; @Sync
+    base_value: float; @Sync
 }
 
 update_duration :: (q: Query) {
@@ -14,7 +14,8 @@ update_duration :: (q: Query) {
     }
 } @System(OnValidate) @Write(Duration) @Read() 
 
-set_base_duration :: (world: *World, entity: Entity) {
+reset_duration :: (world: *World, entity: Entity) {
     duration := ecs_get(world, entity, Duration);
-    duration.base_value = duration.value;
+    duration.value = duration.base_value;
 } @Event(EcsOnAdd,Duration)
+

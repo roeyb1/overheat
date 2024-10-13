@@ -9,7 +9,7 @@ Fragment_List_Indecies :: enum {
 
 Skill_Bundle :: struct @Bundle {
     power: Power; 
-    power_change_queue: Power_Change_Queue; 
+    energy_change_queue: Energy_Change_Queue; 
     skill: Skill;
     duration: Duration;
 }
@@ -33,5 +33,4 @@ new_skill :: (world: *World, entity: Entity, fragments: [..] Fragment_List_Indec
 }
 }
 
-#load "current_target.jai";
 #load "skill_fragment.jai";

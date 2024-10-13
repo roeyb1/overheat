@@ -30,12 +30,12 @@ Interuptor_Anim_Slot :: struct @Component {
     runtime: float; @Sync 
 }
 
-modify_interuptor_anim_slot_from_charge :: (world: *World, parent: Entity, charge: Entity) {
-    assert(ecs_get(world, charge , Charging) != null);
+modify_interuptor_anim_slot_from_focus :: (world: *World, parent: Entity, focus: Entity) {
+    assert(ecs_get(world, focus , Focusing) != null);
     assert(ecs_get(world, parent, Interuptor_Anim_Slot) != null);
     
-    anim_index := ecs_get(world, charge, Anim_List_Index).value;
-    runtime := ecs_get(world, charge, Duration).value;
+    anim_index := ecs_get(world, focus, Anim_List_Index).value;
+    runtime := ecs_get(world, focus, Duration).value;
     interuptor_anim_slot := ecs_get(world,parent,Interuptor_Anim_Slot);
 
     interuptor_anim_slot.anim_list_index = anim_index;

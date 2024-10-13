@@ -19,6 +19,10 @@ Player_Commands :: struct @Component {
     main_attack: bool;
     secondary_attack: bool;
 
+    ability_1: bool;
+    ability_2: bool;
+    ability_3: bool;
+
     cursor_position: Vector2;
 }
 
@@ -47,7 +51,7 @@ Player_Bundle :: struct @Bundle {
     remote: Remote_Player;
     cooldown: Cooldown;
     anim_info: Interuptor_Anim_Slot;
-    stored_power: Stored_Power;
+
 }
 
 init_player :: (position: Vector2) -> Entity {
@@ -69,6 +73,26 @@ init_player :: (position: Vector2) -> Entity {
         health = .{90., 100.},
         cooldown = .{base_value=1.},
     });
+
+    {
+        gameplay_ability := entity_spawn(*g_world,Networked);
+        ecs_add_bundle(*g_world, gameplay_ability, Gameplay_Ability_Bundle.{
+            cooldown = .{0.5,0.5},
+            gameplay_ability = .{owner = entity},
+        });
+        ecs_add(*g_world, gameplay_ability, Bound_To_1);
+        ecs_add_pair(*g_world, gameplay_ability, OwnedBy, entity);
+
+        spell := entity_spawn(*g_world,Networked);
+        ecs_add_bundle(*g_world, spell, Spell_Bundle.{
+            focus_info = sword_anim,
+            name = .{"banana"},
+        });
+        fragments := ecs_get(*g_world, spell, Fragments);
+        array_add(*fragments.components, Projectile);
+        array_add(*fragments.components, Cooldown);
+        ecs_add_pair(*g_world, spell, TriggeredBy, gameplay_ability);
+    }
 
     // set up a test inventory
     inventory := entity_spawn(*g_world, Networked);
@@ -119,6 +143,18 @@ update_local_player_commands_from_input :: (q: Query) {
 
         if is_button_down(input_states, .SECONDARY_ATTACK) {
             player_commands[it].secondary_attack = true;
+        }
+
+        if is_button_down(input_states, .ABILITY_1) {
+            player_commands[it].ability_1 = true;
+        }
+
+        if is_button_down(input_states, .ABILITY_2) {
+            player_commands[it].ability_2 = true;
+        }
+
+        if is_button_down(input_states, .ABILITY_3) {
+            player_commands[it].ability_3 = true;
         }
 
         player_commands[it].cursor_position = get_mouse_worldspace();

@@ -6,6 +6,10 @@ Gameplay_Inputs :: enum {
     
     MAIN_ATTACK;
     SECONDARY_ATTACK;
+    
+    ABILITY_1;
+    ABILITY_2;
+    ABILITY_3;
 }
 
 is_button_down :: (input_states: *Input_States, gameplay_input: Gameplay_Inputs) -> bool {
@@ -27,6 +31,12 @@ get_button_state :: (input_states: *Input_States, gameplay_input: Gameplay_Input
             key_code = Key_Code.MOUSE_BUTTON_LEFT;
         case .SECONDARY_ATTACK;
             key_code = Key_Code.MOUSE_BUTTON_RIGHT;
+        case .ABILITY_1;
+            key_code = #char "1";
+        case .ABILITY_2;
+            key_code = #char "2";
+        case .ABILITY_3;
+            key_code = #char "3";
     }
     return input_states.states[key_code];
 }

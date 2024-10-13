@@ -74,7 +74,7 @@ cid_register :: (using world: *World, type: Type) {
 
     cid := cid_from_entity(cent);
 
-    ci := ecs_add(world, cent, EcsComponent);
+    ci := ecs_add_typed(world, cent, EcsComponent);
 
     assert((cast(*Type_Info)type).type == .STRUCT);
     ti := cast(*Type_Info_Struct)type;
