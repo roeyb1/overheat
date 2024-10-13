@@ -21,9 +21,12 @@ Enemy_Bundle :: struct @Bundle {
 }
 
 spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
-    entity := entity_spawn_bundle(world, Enemy_Bundle.{
+    entity := entity_spawn(*g_world);
+
+    ecs_add_bundle(world, entity, Enemy_Bundle.{
         position = .{ position },
         enemy.type = type,
+        //invoker = .{id = cast(u64) entity.raw , generate_overlap_events = true},
         health = .{100., 100.},
     });
 

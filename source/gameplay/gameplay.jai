@@ -15,7 +15,7 @@
 #load "gameplay_ability/gameplay_ability.jai";
 #load "spell/spell.jai";
 #load "target.jai";
-#load "effect.jai";
+
 
 #if CLIENT {
     #load "input.jai";

@@ -13,15 +13,17 @@ add_touch :: (world: *World, entity: Entity) {
     }
 } @Event(EcsOnAdd,Touch)
 
-projectile_collide :: (world: *World, entity: Entity) {
+touch_overlap :: (world: *World, entity: Entity) {
+        log("hi there");
         overlap := ecs_get(world, entity, Overlap_Pair);
         if overlap{
             skill,target,found := get_skill_from_overlap_pair(world, overlap.a, overlap.b);
             if found {
                 effect := entity_spawn(world, parent = entity);
                 ecs_add_pair(*g_world, effect, AttachedTo, target); 
-            }
 
+                log("i hit %",target);
+            }
         }
 } @Event(EcsOnAdd,Overlap_Pair)
 
