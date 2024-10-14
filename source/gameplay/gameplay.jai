@@ -8,13 +8,13 @@
 #load "singletons.jai";
 #load "focus/focus.jai";
 #load "power/power.jai";
-#load "skills/skill.jai";
 #load "duration.jai";
 #load "cooldown.jai";
 #load "systems.jai";
 #load "gameplay_ability/gameplay_ability.jai";
 #load "spell/spell.jai";
 #load "target.jai";
+#load "attach.jai";
 
 #if CLIENT {
     #load "input.jai";

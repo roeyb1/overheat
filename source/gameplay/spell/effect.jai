@@ -1,26 +1,23 @@
-Spell_Instance :: struct @Tag {
-
+Effect :: struct @Component {
 }
 
-//when a spell instance is spawned into the world it will be in a state where it gathers power known as Powering_Up, no interaction with the world.
-//once a spell is fully charged or sent out for whatever reason it becomes Active and can interact with the world. 
-Powering_Up :: struct @Component {}
-Active :: struct @Component {}
-
-Spell_Instance_Bundle :: struct @Bundle {
+Effect_Bundle :: struct @Bundle {
     power: Power; 
-    energy_change_queue: Energy_Change_Queue; 
-    position: Position;
-    spell_instance: Spell_Instance;
-    fragment_storage: Fragment_Storage;
     networking_id: Networked;
+    fragment_storage: Fragment_Storage;
+    effect: Effect;
+    position: Position;
+    active: Active;
     duration: Duration;
 }
 
-CastBy :: struct @Pair { }
+AppliedTo :: struct @Pair { }
+
+//an effect is an entity that gets initialized when components such as HASTE get added to a vector. it will create the effect which will then be 
+//attached to the intended target, once it's attached it will run it's course and do whatever is in the HASTE system 
 #if SERVER{
 
-    spawn_triggered_spell_instance :: (world: *World, from: Entity, to: Entity) {
+    spawn_triggered_effect :: (world: *World, from: Entity, to: Entity) {
         //first all the apropriate relationships will be propagated to the triggered spell
         cast_by := ecs_get_target(world, from, CastBy);
         if entity_is_valid(world, cast_by) {
@@ -39,8 +36,8 @@ CastBy :: struct @Pair { }
         position := ecs_get(world, from, Position);
         //[TODO] some validation here would be needed
 
-        //initialise the new entity
-        ecs_add_bundle(world, to, Spell_Instance_Bundle.{
+        //finally initialise the new entity
+        ecs_add_bundle(world, to, Effect_Bundle.{
             duration.base_value = 5, //temporary not all spells should have a duration some will likely have their own termination condition
             power = power,
             position = position,

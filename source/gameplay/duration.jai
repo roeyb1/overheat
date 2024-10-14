@@ -1,3 +1,5 @@
+Collision_Write_Fence :: struct @Component {}
+
 Duration :: struct @Component { 
     value: float; @Sync
     base_value: float; @Sync
@@ -12,7 +14,7 @@ update_duration :: (q: Query) {
             entity_destroy(q.world, q.entities[it]);
         }
     }
-} @System(PostUpdate) @Write(Duration) @Read() 
+} @System(OnUpdate) @Write(Duration) @Read() @OptionalRead(Collision_Write_Fence)
 
 reset_duration :: (world: *World, entity: Entity) {
     duration := ecs_get(world, entity, Duration);

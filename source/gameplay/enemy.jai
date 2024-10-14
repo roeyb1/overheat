@@ -60,7 +60,7 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
 spawn_enemy_pack :: (world: *World, center: Vector2, radius: float, type: Enemy_Type) {
     #if SERVER {
         // for now, always just spawn 4 enemies around the center within radius distance:
-        count :: 4;
+        count :: 1;
         for 0..count-1 {
             angle := TAU * random_get_zero_to_one();
             distance := radius * random_get_zero_to_one();

@@ -74,7 +74,7 @@ init_player :: (position: Vector2) -> Entity {
         cooldown = .{base_value=1.},
     });
 
-    {
+    #if SERVER{
         gameplay_ability := entity_spawn(*g_world,Networked);
         ecs_add_bundle(*g_world, gameplay_ability, Gameplay_Ability_Bundle.{
             cooldown = .{0.5,0.5},
@@ -83,15 +83,16 @@ init_player :: (position: Vector2) -> Entity {
         ecs_add(*g_world, gameplay_ability, Bound_To_1);
         ecs_add_pair(*g_world, gameplay_ability, OwnedBy, entity);
 
-        spell := entity_spawn(*g_world,Networked);
+        spell := entity_spawn(*g_world, Networked, parent = entity);
         ecs_add_bundle(*g_world, spell, Spell_Bundle.{
             focus_info = sword_anim,
             name = .{"banana"},
         });
-        fragments := ecs_get(*g_world, spell, Fragments);
-        array_add(*fragments.components, Projectile);
-        array_add(*fragments.components, Cooldown);
-        ecs_add_pair(*g_world, spell, TriggeredBy, gameplay_ability);
+        fragments := *ecs_get(*g_world, spell, Fragment_Storage).fragments_to_pass;
+        array_add(fragments, .Projectile_Fragment);
+        //array_add(fragments, .Touch);
+        //array_add(fragments, .Projectile_Fragment);
+        ecs_add_pair(*g_world, spell, CastFrom, gameplay_ability);
     }
 
     // set up a test inventory
