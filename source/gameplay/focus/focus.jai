@@ -86,7 +86,7 @@ end_focusing :: (world: *World, entity: Entity) {
     }          
 } @Event(EcsOnRemove,Focusing)
 
-#load "foci.jai";
+#load "focus_definitions.jai";
 #load "energy_cost.jai";
 
 
