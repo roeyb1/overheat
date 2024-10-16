@@ -85,7 +85,7 @@ process_deferred_operations :: (using world: *World) {
             case .ADD;
                 // it's possible that the entity was destroyed after component add was queued
                 if entity_is_alive(world.stage, it.entity) {
-                    ptr := ecs_add(world, it.entity, it.cid);
+                    ptr := ecs_add(world, it.entity, it.cid, broadcast=false);
                     ci := ecs_get(world, entity_from_cid(it.cid), EcsComponent);
                     assert(ci != null);
                     memcpy(ptr, it.component_data, ci.runtime_size);
