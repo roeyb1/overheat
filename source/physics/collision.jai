@@ -101,6 +101,7 @@ emit_overlap_events :: (q: Query) {
 resolve_overlap :: (q: Query) {
     collision_list := ecs_singleton_get(q.world, Collision_List);
     for pair : collision_list.blocking_pairs {
+        if !entity_is_valid(q.world, pair.a) || !entity_is_valid(q.world, pair.b) then continue;
 
         a_pos := ecs_get(q.world, pair.a, Position);
         a_collider := ecs_get(q.world, pair.a, Collider_AABB);

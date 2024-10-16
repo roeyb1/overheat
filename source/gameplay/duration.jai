@@ -12,7 +12,7 @@ update_duration :: (q: Query) {
             entity_destroy(q.world, q.entities[it]);
         }
     }
-} @System(OnValidate) @Write(Duration) @Read() 
+} @System(PostUpdate) @Write(Duration) @Read() 
 
 reset_duration :: (world: *World, entity: Entity) {
     duration := ecs_get(world, entity, Duration);
