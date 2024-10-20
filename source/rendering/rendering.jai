@@ -153,7 +153,23 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
 
     add_clear_image_pass(rg, scene_color_image_view, clear_color);
 
+    lightmap_image_view: RDGResourceViewHandle;
+    lightmap_image_desc := RDGImageDescription.{
+        debug_name = "Lightmap Buffer",
+        width = view_data.scene_texture_size.width,
+        height = view_data.scene_texture_size.height,
+        format = .R16G16B16A16_SFLOAT,
+        usage_flags = .COLOR_ATTACHMENT_BIT,
+    };
+
+    lightmap_image_handle := rdg_create_image(rg, lightmap_image_desc);
+    lightmap_image_view = rdg_create_image_view(rg, lightmap_image_handle, "Lightmap Buffer View");
+
+    add_clear_image_pass(rg, scene_color_image_view, clear_color);
+
     render_sprite_pass(rg, *view_data, scene_color_image_view);
+
+    render_lightmap_pass(rg, *view_data, lightmap_image_view);
 
     // render post process
     tonemap_result_image_view := render_post_process_pass(rg, *view_data, scene_color_image_view);
@@ -499,6 +515,8 @@ init_rendering_resources :: () {
 
 
     init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
+    init_lightmap_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
+    init_jump_flood_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
     init_post_process_pipelines(*g_view_registry.descriptor_set_layout);
     init_imgui_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
 }
@@ -541,6 +559,8 @@ destroy_rendering_resources :: () {
 #load "texture_loader.jai";
 #load "texture_manager.jai";
 #load "sprite_rendering.jai";
+#load "utils/jump_flood.jai";
+#load "lightmap_rendering.jai";
 #load "post_process.jai";
 #load "imgui_rendering.jai";
 #load "render_graph_utils.jai";
