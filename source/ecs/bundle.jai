@@ -20,14 +20,18 @@ ecs_add_bundle :: (using world: *World, entity: Entity, bundle: $T) {
     ti :: cast(*Type_Info_Struct) type_info(T);
     assert(ti.type == .STRUCT);
 
-    for ti.members {
-        // components can only be structs
-        if it.type.type == .STRUCT {
-            member_type_info := cast(*Type_Info_Struct) it.type;
-            if has_note(member_type_info, "Component") || has_note(member_type_info, "Tag") {
-                event_broadcast(world, cid_pair(world, EcsOnAdd, cid_get(world, (cast(*Type)(*it.type)).*)), entity);
-            } else {
-                log_warning("Member (%) of bundle (%) does not have a @Component tag? It will not be added to the entity, was this intentional?", member_type_info.name, ti.name);
+
+    // EcsOnAdd is broadcasted when the deferred components are added to the entity. Do not do it now if we are deferring.
+    if !is_deferring {
+        for ti.members {
+            // components can only be structs
+            if it.type.type == .STRUCT {
+                member_type_info := cast(*Type_Info_Struct) it.type;
+                if has_note(member_type_info, "Component") || has_note(member_type_info, "Tag") {
+                    event_broadcast(world, cid_pair(world, EcsOnAdd, cid_get(world, (cast(*Type)(*it.type)).*)), entity);
+                } else {
+                    log_warning("Member (%) of bundle (%) does not have a @Component tag? It will not be added to the entity, was this intentional?", member_type_info.name, ti.name);
+                }
             }
         }
     }

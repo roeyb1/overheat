@@ -221,14 +221,6 @@ ecs_add :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = tru
         return ecs_get(world, entity, cid);
     }
 
-    if entity_is_alive(deferred_stage, entity) {
-        result := stage_component_add(*deferred_stage, entity, cid);
-        if broadcast {
-            event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low(cid)), entity);
-        }
-        return result;
-    }
-
     if is_deferring {
         return ecs_defer_add(world, entity, cid);
     }
