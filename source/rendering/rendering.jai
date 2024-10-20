@@ -118,8 +118,6 @@ RenderViewData :: struct {
     index_buffer_allocator: *RHILinearGPUAllocator;
 }
 
-MAX_RECEIVE_SHADOW_LAYER :: 4;
-
 render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     rg := *g_render_graph;
     frame_number := rdg_next_frame(rg);
@@ -138,85 +136,27 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     });
 
 
-    // render sprites that should receive shadows:
-    lit_image_desc := RDGImageDescription.{
-        debug_name = "Lit Image",
+    scene_color_image_view: RDGResourceViewHandle;
+    scene_color_image_desc := RDGImageDescription.{
+        debug_name = "Scene Color Buffer",
         width = view_data.scene_texture_size.width,
         height = view_data.scene_texture_size.height,
         format = .R16G16B16A16_SFLOAT,
         usage_flags = .COLOR_ATTACHMENT_BIT,
     };
 
-    lit_image_handle := rdg_create_image(rg, lit_image_desc);
-    lit_image_view := rdg_create_image_view(rg, lit_image_handle, "Lit Image View");
+    scene_color_image_handle := rdg_create_image(rg, scene_color_image_desc);
+    scene_color_image_view = rdg_create_image_view(rg, scene_color_image_handle, "Sprite Color Buffer View");
 
     clear_color: RHIClearColorValue;
     clear_color._float32 = .[0, 0, 0, 0];
 
-    add_clear_image_pass(rg, lit_image_view, clear_color);
+    add_clear_image_pass(rg, scene_color_image_view, clear_color);
 
-    lightmap_image_view: RDGResourceViewHandle;
-    {
-        color_image_view: RDGResourceViewHandle;
-        color_image_desc := RDGImageDescription.{
-            debug_name = "Sprite Color Buffer",
-            width = view_data.scene_texture_size.width,
-            height = view_data.scene_texture_size.height,
-            format = .R8G8B8A8_SRGB,
-            usage_flags = .COLOR_ATTACHMENT_BIT,
-        };
-
-        color_image_handle := rdg_create_image(rg, color_image_desc);
-        color_image_view = rdg_create_image_view(rg, color_image_handle, "Sprite Color Buffer View");
-
-        clear_color: RHIClearColorValue;
-        clear_color._float32 = .[0, 0, 0, 0];
-
-        add_clear_image_pass(rg, color_image_handle, clear_color);
-
-        render_sprite_pass(rg, *view_data, color_image_view, 0, MAX_RECEIVE_SHADOW_LAYER);
-
-        lightmap_image_desc := RDGImageDescription.{
-            debug_name = "Lightmap Buffer",
-            width = view_data.scene_texture_size.width,
-            height = view_data.scene_texture_size.height,
-            format = .R16G16B16A16_SFLOAT,
-            usage_flags = .COLOR_ATTACHMENT_BIT,
-        };
-        lightmap_image_desc.clear_value.color._float32 = .[0., 0., 0, 1.];
-
-        lightmap_image_handle := rdg_create_image(rg, lightmap_image_desc);
-        lightmap_image_view = rdg_create_image_view(rg, lightmap_image_handle, "Lightmap Buffer View");
-        render_light_passes(rg, *view_data, color_image_view, lightmap_image_view, lit_image_view, true);
-    }
-
-    // render a second pass for sprites that should not receive shadows but should still receive lights:
-    unshadowed_image_view: RDGResourceViewHandle;
-    {
-        color_image_view: RDGResourceViewHandle;
-        color_image_desc := RDGImageDescription.{
-            debug_name = "Sprite Color Buffer",
-            width = view_data.scene_texture_size.width,
-            height = view_data.scene_texture_size.height,
-            format = .R8G8B8A8_SRGB,
-            usage_flags = .COLOR_ATTACHMENT_BIT,
-        };
-
-        color_image_handle := rdg_create_image(rg, color_image_desc);
-        color_image_view = rdg_create_image_view(rg, color_image_handle, "Sprite Color Buffer View");
-
-        clear_color: RHIClearColorValue;
-        clear_color._float32 = .[0, 0, 0, 0];
-
-        add_clear_image_pass(rg, color_image_handle, clear_color);
-
-        render_sprite_pass(rg, *view_data, color_image_view, MAX_RECEIVE_SHADOW_LAYER, U32_MAX);
-
-        render_light_passes(rg, *view_data, color_image_view, lightmap_image_view, lit_image_view, false);
-    }
+    render_sprite_pass(rg, *view_data, scene_color_image_view);
 
     // render post process
-    tonemap_result_image_view := render_post_process_pass(rg, *view_data, lit_image_view);
+    tonemap_result_image_view := render_post_process_pass(rg, *view_data, scene_color_image_view);
 
     render_imgui_pass(rg, *view_data, tonemap_result_image_view);
 
@@ -281,46 +221,6 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
 }
 
 g_ambient_color: Vector4 = .{0.5, 0.5, 0.5, 1.};
-
-render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, color_texture_view: RDGResourceViewHandle, lightmap_texture_view: RDGResourceViewHandle, lit_image_view: RDGResourceViewHandle, with_shadows: bool) {
-    RDG_SCOPED_GPU_LABEL("Lights");
-
-    clear_color: RHIClearColorValue;
-    clear_color._float32 = .[g_ambient_color.x, g_ambient_color.y, g_ambient_color.z, 1.];
-
-    add_clear_image_pass(rg, lightmap_texture_view, clear_color);
-
-    for q : iter_make(*g_world, Position, Point_Light) {
-        positions := query_get(q, Position);
-        point_lights := query_get(q, Point_Light);
-
-        for 0..q.count-1 {
-            RDG_SCOPED_GPU_LABEL("Point Light");
-
-            // calculate light bounds in screenspace so we can optimize render regions to only render within those bounds
-            light_bounds := make_aabb(positions[it], make_vector2(point_lights[it].radius));
-
-            min_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.min);
-            max_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.max);
-            min_ss.y, max_ss.y = swap(min_ss.y, max_ss.y);
-
-            scissor_offset := min_ss;
-            scissor_extent := max_ss - min_ss;
-            
-            render_rect := RHIRect.{
-                offset = .{clamp(cast(s32) scissor_offset.x, 0, cast(s32) view_data.scene_texture_size.width), clamp(cast(s32) scissor_offset.y, 0, cast(s32) view_data.scene_texture_size.height)},
-                extent = .{max(cast(u32) 1, cast(u32) scissor_extent.x), max(cast(u32) 1, cast(u32) scissor_extent.y)},
-            };
-
-            if with_shadows {
-                render_shadowmap_pass(rg, view_data, lightmap_texture_view, positions[it], render_rect);
-            }
-            render_lightmap_pass(rg, view_data, lightmap_texture_view, positions[it], point_lights[it], render_rect);
-        }
-    }
-
-    render_lighting_pass(rg, view_data, color_texture_view, lightmap_texture_view, lit_image_view);
-}
 
 init_view_data_for_frame :: (rg: *RenderGraph, view_proj: Matrix4, view_pos: Vector2, resource_index: u64) -> RenderViewData {
     view_data := RenderViewData.{
@@ -599,8 +499,6 @@ init_rendering_resources :: () {
 
 
     init_sprite_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
-    init_shadowmap_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
-    init_lightmap_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
     init_post_process_pipelines(*g_view_registry.descriptor_set_layout);
     init_imgui_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
 }
@@ -620,8 +518,6 @@ destroy_rendering_resources :: () {
 
     destroy_imgui_pipeline();
     destroy_post_process_pipelines();
-    destroy_lightmap_pipeline();
-    destroy_shadowmap_pipeline();
     destroy_sprite_pipeline();
 
     for 0..RDG_NUM_FRAMES-1 {
@@ -647,8 +543,6 @@ destroy_rendering_resources :: () {
 #load "sprite_rendering.jai";
 #load "post_process.jai";
 #load "imgui_rendering.jai";
-#load "shadowmap_rendering.jai";
-#load "lightmap_rendering.jai";
 #load "render_graph_utils.jai";
 
 #if OS == .WINDOWS {

@@ -110,12 +110,12 @@ SpritePassData :: struct {
     buckets: [..] SpriteDrawBucket;
 };
 
-render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_image_view: RDGResourceViewHandle, min_sprite_z_layer: u32, max_sprite_z_layer: u32) {
+render_sprite_pass :: (rg: *RenderGraph, view_data: *RenderViewData, color_image_view: RDGResourceViewHandle) {
     draws: [..] SpriteDrawData;
     draws.allocator = temp;
     buckets: [..] SpriteDrawBucket;
     buckets.allocator = temp;
-    collect_sprite_draw_batches(*draws, *buckets, min_sprite_z_layer, max_sprite_z_layer);
+    collect_sprite_draw_batches(*draws, *buckets);
 
     depth_image_desc := RDGImageDescription.{
         debug_name = "Sprite Depth Buffer",
@@ -256,7 +256,7 @@ sprite_sort_predicate :: (a: SpriteDrawData, b: SpriteDrawData) -> s64 {
     return cast(s64) a.z_order - cast(s64) b.z_order;
 } @NoProfile
 
-collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[..] SpriteDrawBucket, min_sprite_z_layer: u32, max_sprite_z_layer: u32) {
+collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[..] SpriteDrawBucket) {
     // #todo: automatically register all sprites instead of doing this by specific entity types:
     add_sprite_draw :: (out_draws: *[..] SpriteDrawData, sprite: Sprite, position: Vector2) {
         draw := SpriteDrawData.{
@@ -277,12 +277,10 @@ collect_sprite_draw_batches :: (out_draws: *[..] SpriteDrawData, out_buckets: *[
             positions := query_get(q, Position);
             sprites := query_get(q, Sprite);
             for 0..q.count-1 {
-                if sprites[it].z_order >= min_sprite_z_layer && sprites[it].z_order < max_sprite_z_layer {
-                    if sprites[it].sheet == null {
-                        sprites[it].sheet = get_spritesheet(sprites[it].sheet_path);
-                    }
-                    add_sprite_draw(out_draws, sprites[it], positions[it]);
+                if sprites[it].sheet == null {
+                    sprites[it].sheet = get_spritesheet(sprites[it].sheet_path);
                 }
+                add_sprite_draw(out_draws, sprites[it], positions[it]);
             }
         }
     }
