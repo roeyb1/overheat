@@ -1,5 +1,4 @@
-
-init_jump_flood_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
+init_jump_flood_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
     render_target_formats := RHIFormat.[
         .R16G16B16A16_SFLOAT,
     ];
@@ -16,14 +15,9 @@ init_jump_flood_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, 
         }
     ];
 
-    attribute_descs := RHIVertexInputAttributeDesc.[
-        //.{ "VERTEX_POSITION", 0, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "pos")},
-        //.{ "TEXCOORD", 1, 0, .R32G32_SFLOAT, xx offset_of(Vertex2D, "uv")},
-    ];
+    attribute_descs := RHIVertexInputAttributeDesc.[];
 
-    binding_descs := RHIVertexInputBindingDesc.[
-        //.{0, size_of(Vertex2D), .VERTEX },
-    ];
+    binding_descs := RHIVertexInputBindingDesc.[];
 
     used_bindless_bindings := RHIDescriptorSetLayoutBinding.[
         rhi_bindless_descriptor_set_layout_binding(.TEXTURE, 0, .PIXEL_BIT), // input tex
@@ -96,10 +90,8 @@ create_transient_jfa_texture :: (rg: *RenderGraph, resolution: Extent2D, debug_n
 }
 
 render_jump_flood :: (rg: *RenderGraph, view_data: *RenderViewData, input: RDGResourceViewHandle) -> RDGResourceViewHandle {
-
     jfa_a := create_transient_jfa_texture(rg, view_data.scene_texture_size, "JumpFlood RT A");
     jfa_b := create_transient_jfa_texture(rg, view_data.scene_texture_size, "JumpFlood RT B");
-    result := create_transient_jfa_texture(rg, view_data.scene_texture_size, "JumpFlood Result");
 
     clear_color: RHIClearColorValue;
     clear_color._float32 = .[0, 0, 0, 0];
@@ -221,7 +213,7 @@ render_jump_flood :: (rg: *RenderGraph, view_data: *RenderViewData, input: RDGRe
         current_rt, current_seed = swap(current_rt, current_seed);
     }
 
-    return result;
+    return current_seed;
 }
 
 #scope_file
