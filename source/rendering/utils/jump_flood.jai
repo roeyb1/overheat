@@ -28,7 +28,7 @@ init_jump_flood_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
     ];
 
     static_samplers := RHIStaticSamplerDesc.[
-        rhi_static_point_clamp_sampler(0, 0, .PIXEL_BIT),
+        rhi_static_linear_clamp_sampler(0, 0, .PIXEL_BIT),
     ];
 
 

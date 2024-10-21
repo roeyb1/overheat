@@ -16,7 +16,7 @@ struct DrawConstants {
 
 Texture2D<float4> g_textures[65536] : REGISTER_SRV(0, 0, 0);
 
-SamplerState g_point_clamp_sampler : REGISTER_SAMPLER(0, 0, 1);
+SamplerState g_linear_clamp_sampler : REGISTER_SAMPLER(0, 0, 1);
 
 PUSH_CONSTS(DrawConstants, g_draw_consts);
 
@@ -26,9 +26,7 @@ PSOutput main(PSInput input) {
     float4 nearest_seed = float4(0, 0, 0, 0);
     float nearest_dist = 999999.9;
 
-    float2 res;
-    g_textures[g_draw_consts.in_texture].GetDimensions(res.x, res.y);
-    float2 u_offset_over_res = g_draw_consts.u_offset_over_res;
+    const float2 u_offset_over_res = g_draw_consts.u_offset_over_res;
 
     for (float y = -1.; y <= 1.; y += 1.0) {
         for (float x = -1.; x <= 1.; x += 1.0) {
@@ -38,7 +36,7 @@ PSOutput main(PSInput input) {
                 continue;
             }
 
-            float4 sample_value = g_textures[g_draw_consts.in_texture].SampleLevel(g_point_clamp_sampler, sample_uv, 0);
+            float4 sample_value = g_textures[g_draw_consts.in_texture].SampleLevel(g_linear_clamp_sampler, sample_uv, 0);
             float2 sample_seed = sample_value.xy;
 
             if (sample_seed.x != 0. || sample_seed.y != 0.) {
