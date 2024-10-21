@@ -524,9 +524,9 @@ RHIVertexInputState :: struct {
     MAX_VERTEX_BINDING_DESCRIPTIONS     :: 8;
     MAX_VERTEX_ATTRIBUTE_DESCRIPTIONS   :: 8;
 
-    vertex_binding_count: u32 = 0;
+    vertex_binding_count: s32 = 0;
     vertex_binding_descs: [MAX_VERTEX_BINDING_DESCRIPTIONS] RHIVertexInputBindingDesc;
-    vertex_attribute_count: u32 = 0;
+    vertex_attribute_count: s32 = 0;
     vertex_attribute_descs: [MAX_VERTEX_ATTRIBUTE_DESCRIPTIONS] RHIVertexInputAttributeDesc;
 }
 

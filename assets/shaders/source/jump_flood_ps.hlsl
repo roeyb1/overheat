@@ -11,26 +11,28 @@ struct PSOutput {
 
 struct DrawConstants {
     uint in_texture;
-    float u_over_res;
+    float u_offset;
 };
 
-Texture2D<float4> g_textures[65536] : REGISTER_SRV(0, 0, 1);
+Texture2D<float4> g_textures[65536] : REGISTER_SRV(0, 0, 0);
 
-SamplerState g_point_clamp_sampler : REGISTER_SAMPLER(0, 0, 2);
+SamplerState g_point_clamp_sampler : REGISTER_SAMPLER(0, 0, 1);
 
 PUSH_CONSTS(DrawConstants, g_draw_consts);
 
 PSOutput main(PSInput input) {
     PSOutput output;
 
-    float4 nearest_seed = float4(-1., -1, -1, -1);
-    float nearest_dist = 99999.9;
+    float4 nearest_seed = float4(-2., -2, -2, -2);
+    float nearest_dist = 999999.9;
 
-    float resolution = 0;
+    float2 res;
+    g_textures[g_draw_consts.in_texture].GetDimensions(res.x, res.y);
+    float2 u_offset_over_res = g_draw_consts.u_offset / res;
 
     for (float y = -1.; y <= 1.; y += 1.0) {
-        for (float x = -1.; x <= 1.; x += 1.) {
-            float2 sample_uv = input.tex_coord + float2(x, y) * g_draw_consts.u_over_res;
+        for (float x = -1.; x <= 1.; x += 1.0) {
+            float2 sample_uv = input.tex_coord + float2(x, y) * u_offset_over_res;
             
             if (sample_uv.x < 0. || sample_uv.x > 1. || sample_uv.y < 0. || sample_uv.y > 1.) {
                 continue;

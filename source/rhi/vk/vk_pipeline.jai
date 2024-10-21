@@ -147,9 +147,9 @@ rhi_graphics_pipeline_build :: (create_info: RHIGraphicsPipelineCreateInfo) -> R
     vertex_binding_descs: [RHIVertexInputState.MAX_VERTEX_BINDING_DESCRIPTIONS] VkVertexInputBindingDescription;
     vertex_attribute_descs: [RHIVertexInputState.MAX_VERTEX_ATTRIBUTE_DESCRIPTIONS] VkVertexInputAttributeDescription;
     {
-        vertex_input_state.vertexBindingDescriptionCount = create_info.vertex_input_state.vertex_binding_count;
+        vertex_input_state.vertexBindingDescriptionCount = xx create_info.vertex_input_state.vertex_binding_count;
         vertex_input_state.pVertexBindingDescriptions = vertex_binding_descs.data;
-        vertex_input_state.vertexAttributeDescriptionCount = create_info.vertex_input_state.vertex_attribute_count;
+        vertex_input_state.vertexAttributeDescriptionCount = xx create_info.vertex_input_state.vertex_attribute_count;
         vertex_input_state.pVertexAttributeDescriptions = vertex_attribute_descs.data;
 
         for 0..create_info.vertex_input_state.vertex_binding_count-1 {

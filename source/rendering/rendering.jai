@@ -159,7 +159,7 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
         width = view_data.scene_texture_size.width,
         height = view_data.scene_texture_size.height,
         format = .R16G16B16A16_SFLOAT,
-        usage_flags = .COLOR_ATTACHMENT_BIT,
+        usage_flags = .COLOR_ATTACHMENT_BIT | .TEXTURE_BIT,
     };
 
     lightmap_image_handle := rdg_create_image(rg, lightmap_image_desc);
@@ -170,6 +170,8 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
     render_sprite_pass(rg, *view_data, scene_color_image_view);
 
     render_lightmap_pass(rg, *view_data, lightmap_image_view);
+
+    render_jump_flood(rg, *view_data, lightmap_image_view);
 
     // render post process
     tonemap_result_image_view := render_post_process_pass(rg, *view_data, scene_color_image_view);
@@ -536,6 +538,8 @@ destroy_rendering_resources :: () {
 
     destroy_imgui_pipeline();
     destroy_post_process_pipelines();
+    destroy_jump_flood_pipeline();
+    destroy_lightmap_pipeline();
     destroy_sprite_pipeline();
 
     for 0..RDG_NUM_FRAMES-1 {

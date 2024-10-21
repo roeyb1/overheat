@@ -92,7 +92,7 @@ render_lightmap_pass :: (rg: *RenderGraph, view_data: *RenderViewData, lightmap_
     }
 
     lightmap_pass_usages := RDGResourceUsageDesc.[
-        .{lightmap_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT}, .{}},
+        .{lightmap_image_view, .{resource_state = .WRITE_COLOR_ATTACHMENT, stage_mask = .PIXEL_SHADER_BIT}, .{ }},
     ];
 
     pass_data := rdg_allocate_pass_data(rg, Lightmap_Pass_Data);

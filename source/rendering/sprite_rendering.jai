@@ -26,7 +26,7 @@ SpriteInstanceData :: struct {
 
 init_sprite_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bindless_set_layout: *RHIDescriptorSetLayout) {
     render_target_formats := RHIFormat.[
-        .R8G8B8A8_SRGB,
+        .R16G16B16A16_SFLOAT,
     ];
 
     blend_states := RHIPipelineColorBlendAttachmentState.[

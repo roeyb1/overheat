@@ -306,6 +306,10 @@ rhi_cmd_bind_index_buffer :: (cmd_list: *RHICmdList, buffer: *RHIBuffer, offset:
     vkCmdBindIndexBuffer(cmd_list.handle, buffer.handle, offset, rhi_translate(type));
 }
 
+rhi_cmd_draw :: (cmd_list: *RHICmdList, vertex_count: u32, instance_count: u32, first_vertex: u32, first_instance: u32) {
+    vkCmdDraw(cmd_list.handle, vertex_count, instance_count, first_vertex, first_instance);
+}
+
 rhi_cmd_draw_indexed :: (cmd_list: *RHICmdList, index_count: u32, instance_count: u32, first_index: u32, vertex_offset: s32, first_instance: u32) {
     vkCmdDrawIndexed(cmd_list.handle, index_count, instance_count, first_index, vertex_offset, first_instance);
 }
