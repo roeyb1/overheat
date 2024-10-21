@@ -10,8 +10,8 @@ struct PSOutput {
 };
 
 struct DrawConstants {
+    float2 u_offset_over_res;
     uint in_texture;
-    float u_offset;
 };
 
 Texture2D<float4> g_textures[65536] : REGISTER_SRV(0, 0, 0);
@@ -28,7 +28,7 @@ PSOutput main(PSInput input) {
 
     float2 res;
     g_textures[g_draw_consts.in_texture].GetDimensions(res.x, res.y);
-    float2 u_offset_over_res = g_draw_consts.u_offset / res;
+    float2 u_offset_over_res = g_draw_consts.u_offset_over_res;
 
     for (float y = -1.; y <= 1.; y += 1.0) {
         for (float x = -1.; x <= 1.; x += 1.0) {

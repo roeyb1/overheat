@@ -168,7 +168,8 @@ render_jump_flood :: (rg: *RenderGraph, view_data: *RenderViewData, input: RDGRe
             .{pass_data.seed_tex, .{resource_state = .READ_RESOURCE, stage_mask = .PIXEL_SHADER_BIT}, .{}},
         ];
 
-        pass_data.u_offset = pow(2., cast(float) (num_passes - it - 1));
+        u_offset := pow(2., cast(float) (num_passes - it - 1));
+        pass_data.u_offset_over_res = Vector2.{u_offset, u_offset} / Vector2.{ cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height};
 
         rdg_add_pass(rg, tprint("Jump Flood Iter: %", it), .GRAPHICS, jump_flood_pass_usages, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) {
             pass_data := cast(*Jump_Flood_Pass_Data) pass_data_ptr;
@@ -201,7 +202,7 @@ render_jump_flood :: (rg: *RenderGraph, view_data: *RenderViewData, input: RDGRe
 
                 push_const: Jump_Flood_Push_Consts = .{
                     input_tex = rdg_get_bindless_handle(seed_tex, .TEXTURE),
-                    u_offset = pass_data.u_offset,
+                    u_offset_over_res = pass_data.u_offset_over_res,
                 };
                 rhi_cmd_push_constants(cmd_list, *jump_flood_pipeline, .PIXEL_BIT, 0, size_of(Jump_Flood_Push_Consts), *push_const);
 
@@ -222,7 +223,7 @@ Jump_Flood_Pass_Data :: struct {
     view_data: *RenderViewData;
     seed_tex: RDGResourceViewHandle;
     jfa_rt: RDGResourceViewHandle;
-    u_offset: float;
+    u_offset_over_res: Vector2;
 }
 
 Jump_Flood_Seed_Push_Consts :: struct {
@@ -230,8 +231,8 @@ Jump_Flood_Seed_Push_Consts :: struct {
 }
 
 Jump_Flood_Push_Consts :: struct {
+    u_offset_over_res: Vector2;
     input_tex: u32;
-    u_offset: float;
 }
 
 jump_flood_seed_pipeline: RHIGraphicsPipeline;
