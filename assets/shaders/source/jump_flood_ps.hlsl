@@ -23,7 +23,7 @@ PUSH_CONSTS(DrawConstants, g_draw_consts);
 PSOutput main(PSInput input) {
     PSOutput output;
 
-    float4 nearest_seed = float4(-2., -2, -2, -2);
+    float4 nearest_seed = float4(0, 0, 0, 0);
     float nearest_dist = 999999.9;
 
     float2 res;

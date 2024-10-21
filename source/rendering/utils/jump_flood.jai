@@ -5,7 +5,7 @@ init_jump_flood_pipeline :: (bindless_set_layout: *RHIDescriptorSetLayout) {
 
     blend_states := RHIPipelineColorBlendAttachmentState.[
         .{
-            blend_enable = true,
+            blend_enable = false,
             src_color_blend_factor = .SRC_ALPHA,
             dst_color_blend_factor = .ONE_MINUS_SRC_ALPHA,
             color_blend_op = .ADD,

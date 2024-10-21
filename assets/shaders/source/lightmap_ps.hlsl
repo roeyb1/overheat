@@ -35,7 +35,11 @@ PSOutput main(PSInput input) {
 
     const float4 light_sample = g_textures[light_texture_index].SampleLevel(g_aniso_repeat_sampler, input.tex_coord, 0);
     output.color = input.color * input.intensity * light_sample;
-    output.color.a = light_sample.r;
+    if (light_sample.r > 0.1) {
+        output.color.a = 1.;
+    } else {
+        output.color.a = 0.;
+    }
 
     return output;
 }
