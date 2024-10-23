@@ -175,6 +175,8 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
 
     lighting_distance_field := render_distance_field(rg, *view_data, jfa_image);
 
+    render_radiance_cascades(rg, *view_data, lighting_distance_field, lightmap_image_view);
+
     // render post process
     tonemap_result_image_view := render_post_process_pass(rg, *view_data, scene_color_image_view);
 
@@ -522,6 +524,7 @@ init_rendering_resources :: () {
     init_lightmap_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
     init_jump_flood_pipeline(*g_view_registry.descriptor_set_layout);
     init_distance_field_pipeline(*g_view_registry.descriptor_set_layout);
+    init_radiance_cascades_pipeline(*g_view_registry.descriptor_set_layout);
     init_post_process_pipelines(*g_view_registry.descriptor_set_layout);
     init_imgui_pipeline(*offset_buffer_descriptor_set_layout, *g_view_registry.descriptor_set_layout);
 }
@@ -541,6 +544,7 @@ destroy_rendering_resources :: () {
 
     destroy_imgui_pipeline();
     destroy_post_process_pipelines();
+    destroy_radiance_cascades_pipeline();
     destroy_distance_field_pipeline();
     destroy_jump_flood_pipeline();
     destroy_lightmap_pipeline();
@@ -570,6 +574,7 @@ destroy_rendering_resources :: () {
 #load "utils/jump_flood.jai";
 #load "distance_field.jai";
 #load "lightmap_rendering.jai";
+#load "radiance_cascades.jai";
 #load "post_process.jai";
 #load "imgui_rendering.jai";
 #load "render_graph_utils.jai";

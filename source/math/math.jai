@@ -139,4 +139,31 @@ equals :: inline (a: float, b: float, ERROR_MARGIN := 0.0001) -> bool {
     return abs(a - b) <= ERROR_MARGIN;
 }
 
+round_up_power_2 :: (a: int) -> int {
+    a -= 1;
+    a |= a >> 1;
+    a |= a >> 2;
+    a |= a >> 4;
+    a |= a >> 8;
+    a |= a >> 16;
+    return a + 1;
+}
+
+round_up_power_2 :: (a: float) -> float {
+    return pow(2., ceil(log(a) / log(2.)));
+}
+
+round_up_multiple_of_n :: (a: int, n: int) -> int {
+    if n == 0 then return a;
+
+    remainder := abs(a) % n;
+    if remainder == 0 then return a;
+    if a < 0 return -(abs(a) - remainder);
+    else return a + n - remainder;
+}
+
+round_up_multiple_of_n :: (a: float, n: float) -> float {
+    return ifx n == 0 then a else ceil(a / n) * n;
+}
+
 #load "aabb_tree.jai";

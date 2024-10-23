@@ -71,6 +71,9 @@ import_ldtk_level :: (world: *World, path: string) {
     for root.toc {
         if it.identifier == "playerstart" {
             g_player_start = Vector2.{it.instancesData[0].worldX / 32., (root.levels[0].pxHei - it.instancesData[0].worldY) / 32.};
+            light := entity_spawn(world);
+            ecs_add(world, light, Position.{g_player_start - .{5, 5}});
+            ecs_add(world, light, Point_Light.{intensity = 2., color = .{ 0. / 255., 0. / 255., 0. / 255.}, radius = 2.});
         }
     }
 
