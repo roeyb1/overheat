@@ -138,7 +138,7 @@
         {
             "label": "build client",
             "type": "shell",
-            "command": "jai ${workspaceFolder}/build.jai - -natvis -client -compileshaders -vkdebug",
+            "command": "jai ${workspaceFolder}/build.jai - -natvis -client -compileshaders",
             "problemMatcher": [
                 {
                     "severity": "error",

@@ -72,7 +72,7 @@ render_radiance_cascades :: (rg: *RenderGraph, view_data: *RenderViewData, df_in
     render_extent := Vector2.{ cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height };
 
     render_linear :: 1;
-    render_interval := length(.{render_linear, render_linear});
+    render_interval := length(.{render_linear, render_linear}) * 0.5;
     cascade_count := ceil(log(length(render_extent)) / log(4));
 
     cascade_interval := round_up_multiple_of_n(render_interval, 2);
