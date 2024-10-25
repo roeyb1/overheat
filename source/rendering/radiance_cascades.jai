@@ -68,11 +68,13 @@ create_transient_rc_texture :: (rg: *RenderGraph, resolution: Extent2D, debug_na
     return rc_image_view;
 }
 
+cascade_render_linear := 1.;
+
 render_radiance_cascades :: (rg: *RenderGraph, view_data: *RenderViewData, df_input: RDGResourceViewHandle, lightmap_input: RDGResourceViewHandle) -> RDGResourceViewHandle {
     render_extent := Vector2.{ cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height };
 
-    render_linear :: 0.5;
-    render_interval := length(.{render_linear, render_linear}) * 0.5;
+    render_linear := cascade_render_linear;
+    render_interval := length(.{render_linear, render_linear});
     cascade_count := ceil(log(length(render_extent)) / log(4));
 
     cascade_interval := round_up_multiple_of_n(render_interval, 2);
@@ -86,8 +88,8 @@ render_radiance_cascades :: (rg: *RenderGraph, view_data: *RenderViewData, df_in
 
     cascades_extent := Extent2D.{cast(u32) floor(render_extent.x / cascade_linear), cast(u32) floor(render_extent.y / cascade_linear)};
 
-    rc_a := create_transient_rc_texture(rg, Extent2D.{xx render_extent.x, xx render_extent.y}, "Radiance Cascades RT A");
-    rc_b := create_transient_rc_texture(rg, Extent2D.{xx render_extent.x, xx render_extent.y}, "Radiance Cascades RT B");
+    rc_a := create_transient_rc_texture(rg, Extent2D.{xx cascades_extent.width, xx cascades_extent.height}, "Radiance Cascades RT A");
+    rc_b := create_transient_rc_texture(rg, Extent2D.{xx cascades_extent.width, xx cascades_extent.height}, "Radiance Cascades RT B");
 
     clear_color: RHIClearColorValue;
     clear_color._float32 = .[0, 0, 0, 0];
@@ -119,7 +121,7 @@ render_radiance_cascades :: (rg: *RenderGraph, view_data: *RenderViewData, df_in
             .{df_input,                 .{resource_state = .READ_RESOURCE,          stage_mask = .PIXEL_SHADER_BIT}, .{}},
             .{lightmap_input,           .{resource_state = .READ_RESOURCE,          stage_mask = .PIXEL_SHADER_BIT}, .{}},
         ];
-
+        
         rdg_add_pass(rg, tprint("Radiance Cascades Iter: %", it), .GRAPHICS, rc_pass_usages, pass_data, (cmd_list: *RHICmdList, pass_data_ptr: *void) {
             pass_data := cast(*Radiance_Cascades_Pass_Data) pass_data_ptr;
             view_data := pass_data.view_data;
@@ -130,11 +132,10 @@ render_radiance_cascades :: (rg: *RenderGraph, view_data: *RenderViewData, df_in
                 store_op = .STORE,
             };
 
-            render_rect := RHIRect.{ .{0, 0}, .{ xx pass_data.render_extent.x, xx pass_data.render_extent.y }};
-            viewport := RHIViewport.{ 0, 0, pass_data.render_extent.x, pass_data.render_extent.y, 0., 1.};
-            scissor := RHIRect.{.{0, 0}, .{ xx pass_data.render_extent.x, xx pass_data.render_extent.y }};
+            render_rect := RHIRect.{ .{0, 0}, .{ xx pass_data.cascades_extent.width, xx pass_data.cascades_extent.height }};
+            viewport := RHIViewport.{ 0, 0, xx pass_data.cascades_extent.width, xx pass_data.cascades_extent.height, 0., 1.};
+            scissor := RHIRect.{.{0, 0}, .{ xx pass_data.cascades_extent.width, xx pass_data.cascades_extent.height }};
 
-            // seed the input into RT A:
             rhi_cmd_begin_renderpass(cmd_list, .[rc_rt_buffer_desc], null, render_rect, true);
             {
                 rhi_cmd_set_viewport(cmd_list, 0, .[viewport]);
