@@ -24,7 +24,7 @@ load_all_assets :: () {
     stbi_set_flip_vertically_on_load(1);
 
     g_default_grid = load_texture("assets/grid.png");
-    g_point_light_texture = load_texture("assets/point_light_2.png");
+    g_point_light_texture = load_texture("assets/point_light.png");
 
     load_spritesheet("assets/players/player_character1.png",48, 0, 0,23,4);
     load_spritesheet("assets/players/player_character2.png", 48, 0, 0,23,4);

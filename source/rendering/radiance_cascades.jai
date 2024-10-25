@@ -71,7 +71,7 @@ create_transient_rc_texture :: (rg: *RenderGraph, resolution: Extent2D, debug_na
 render_radiance_cascades :: (rg: *RenderGraph, view_data: *RenderViewData, df_input: RDGResourceViewHandle, lightmap_input: RDGResourceViewHandle) -> RDGResourceViewHandle {
     render_extent := Vector2.{ cast(float) view_data.scene_texture_size.width, cast(float) view_data.scene_texture_size.height };
 
-    render_linear :: 1;
+    render_linear :: 0.5;
     render_interval := length(.{render_linear, render_linear}) * 0.5;
     cascade_count := ceil(log(length(render_extent)) / log(4));
 

@@ -67,7 +67,7 @@ init_player :: (position: Vector2) -> Entity {
         position = .{ position },
         invoker = .{ id = cast(u64) entity.raw },
         move_speed =  .{ 6 },
-        point_light = .{ intensity = 1., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 5. },
+        point_light = .{ intensity = 5., color = .{ 255. / 255., 197. / 255., 143. / 255. }, radius = 5 },
         sprite = .{ spritesheet, null, PLAYER_SIZE, 0, 4, 0 },
         collider = .{ aabb = make_aabb(.{ 0, 0 }, PLAYER_COLLIDER_SIZE) },
         health = .{90., 100.},

@@ -7,12 +7,12 @@ init_lightmap_pipeline :: (offset_buffer_set_layout: *RHIDescriptorSetLayout, bi
     blend_states := RHIPipelineColorBlendAttachmentState.[
         .{
             blend_enable = true,
-            src_color_blend_factor = .SRC_ALPHA,
-            dst_color_blend_factor = .ONE_MINUS_SRC_ALPHA,
+            src_color_blend_factor = .ONE,
+            dst_color_blend_factor = .ONE,
             color_blend_op = .ADD,
             src_alpha_blend_factor = .ONE,
-            dst_alpha_blend_factor = .ONE_MINUS_SRC_ALPHA,
-            alpha_blend_op = .ADD,
+            dst_alpha_blend_factor = .ONE,
+            alpha_blend_op = .MAX,
         }
     ];
 

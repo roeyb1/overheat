@@ -83,7 +83,7 @@ import_ldtk_level :: (world: *World, path: string) {
                         y := cast(float) ((layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / layer.__gridSize);
                         light := entity_spawn(world);
                         ecs_add(world, light, Position.{.{x,y}});
-                        ecs_add(world, light, Point_Light.{intensity = 2., color = .{ 255. / 255., 115. / 255., 23. / 255.}, radius = 10.});
+                        ecs_add(world, light, Point_Light.{intensity = 20., color = .{ 255. / 255., 115. / 255., 23. / 255.}, radius = 0.5});
                     } else if ldtk_entity.__identifier == "collider" {
                         x := (cast(float) ldtk_entity.__worldX / cast(float) TILE_PIXEL_SIZE) - ldtk_entity.__pivot[0];
                         y := cast(float)(layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / cast(float)(TILE_PIXEL_SIZE) + ldtk_entity.__pivot[1];

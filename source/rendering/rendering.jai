@@ -176,10 +176,10 @@ render_scene :: (view_proj: Matrix4, view_pos: Vector2) {
 
     lighting_distance_field := render_distance_field(rg, *view_data, jfa_image);
 
-    render_radiance_cascades(rg, *view_data, lighting_distance_field, lightmap_image_view);
+    final_lighting := render_radiance_cascades(rg, *view_data, lighting_distance_field, lightmap_image_view);
 
     // render post process
-    tonemap_result_image_view := render_post_process_pass(rg, *view_data, scene_color_image_view);
+    tonemap_result_image_view := render_post_process_pass(rg, *view_data, scene_color_image_view, final_lighting);
 
     render_imgui_pass(rg, *view_data, tonemap_result_image_view);
 
