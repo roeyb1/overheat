@@ -124,30 +124,34 @@ generate_delta_snapshot :: (world: *World, a: State_Snapshot, b: State_Snapshot,
                         field_a: *ByteBuffer = table_find_pointer(*state_a.fields, cid_get(world, %1));
                         field_b: *ByteBuffer = table_find_pointer(*state_b.fields, cid_get(world, %1));
 
-                        if field_a == null || field_b == null then continue;
+                        // if the field is newly added, we serialize it as if it changed because it cannot be delta compressed.
+                        if field_a == null && field_b != null {
+                            changed = true;
+                        } else if (field_b == null) {
+                            continue;
+                        } else {
+                            field_a.only_note = "Sync";
+                            field_b.only_note = "Sync";
 
-                        field_a.only_note = "Sync";
-                        field_b.only_note = "Sync";
+                            a_data: %1;
+                            b_data: %1;
+                            field_a.cursor = 0;
+                            byte_buffer_read(field_a, *a_data);
+                            field_b.cursor = 0;
+                            byte_buffer_read(field_b, *b_data);
 
-                        a_data: %1;
-                        b_data: %1;
-                        field_a.cursor = 0;
-                        byte_buffer_read(field_a, *a_data);
-                        field_b.cursor = 0;
-                        byte_buffer_read(field_b, *b_data);
-
-                        // always sync properties for newly added entities
-                        #insert -> string {
-                            sb: String_Builder;
-                            for member : type_info(%1).members {
-                                if has_note(*member, "Sync") {
-                                    sbprint(*sb, "changed |= a_data.%%1 != b_data.%%1;\n", member.name);
+                            // always sync properties for newly added entities
+                            #insert -> string {
+                                sb: String_Builder;
+                                for member : type_info(%1).members {
+                                    if has_note(*member, "Sync") {
+                                        sbprint(*sb, "changed |= a_data.%%1 != b_data.%%1;\n", member.name);
+                                    }
                                 }
+
+                                return builder_to_string(*sb);
                             }
-
-                            return builder_to_string(*sb);
                         }
-
                     }
                 }
 
