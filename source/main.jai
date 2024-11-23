@@ -1,5 +1,11 @@
 DEBUG :: true;
 
+// Define both server and client for the Jai Language Server diagnostic build to ensure all symbols are visible.
+#if #exists(JAILS_DIAGNOSTICS_BUILD) {
+    SERVER :: true;
+    CLIENT :: true;
+}
+
 // #todo: we probably want this value to vary so that the window size can't just show you more of the world.
 // The number of tiles visible should mostly remain a constant value
 PIXELS_PER_METER :: 64;
@@ -27,6 +33,7 @@ Program_Args :: struct {
     port: u16 = 27015;
     host := false;
 }
+
 g_args: Program_Args;
 
 main :: () {
