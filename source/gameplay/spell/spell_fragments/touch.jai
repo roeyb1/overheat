@@ -4,9 +4,8 @@ Touch :: struct @Component {
 
 Touch_fragment :: struct @Component {}
 
-VALID_TOUCH_OVERLAPS: [2]Type = .[Enemy,Player];
+#if SERVER {  
 
-#if SERVER{  
 //every entity that could collide should have a collider, touch should piggy back off it to size it's own
 add_touch_from_cast :: (world: *World, entity: Entity) {
         touch := cast(*Touch)ecs_add(world, entity, Touch);
@@ -59,18 +58,21 @@ get_spell_from_overlap_pair :: (world: *World, a: Entity, b: Entity) -> skill: E
 
 //why does it require the cid bake if the value of the array is constant, cant it bake it?
 valid_target_for_overlap_event :: (world: *World, skill: Entity, target: Entity) -> bool {
-    //check if the target can be hit
-    for 0..VALID_TOUCH_OVERLAPS.count-1 {
-        value := cid_get(world, VALID_TOUCH_OVERLAPS[it]);
-        if ecs_has(world, target, value) {
-            //check if the target has already been hit
-            hit_entities := *ecs_get(world, skill, Touch).hit_entities;
-            if !array_find(<<hit_entities, target, compare_entities){
-                array_add(hit_entities,target);
-                return true;
-            }
+    if should_overlap(world, skill, target) {
+        //check if the target has already been hit
+        hit_entities := *ecs_get(world, skill, Touch).hit_entities;
+        if !array_find(<<hit_entities, target, compare_entities){
+            array_add(hit_entities,target);
+            return true;
         }
     }
     return false;
 }
+}
+
+#scope_file
+
+should_overlap :: (world: *World, skill: Entity, target: Entity) -> bool {
+    valid_hit_types := Type.[ Player, Enemy ];
+    return ecs_has_any(world, target, valid_hit_types);
 }

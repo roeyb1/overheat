@@ -90,8 +90,8 @@ init_player :: (position: Vector2) -> Entity {
         });
         fragments := *ecs_get(*g_world, spell, Fragment_Storage).fragments_to_pass;
         array_add(fragments, .Projectile);
-        //array_add(fragments, .Touch);
-        //array_add(fragments, .Projectile);
+        array_add(fragments, .Touch);
+        array_add(fragments, .Projectile);
         ecs_add_pair(*g_world, spell, CastFrom, gameplay_ability);
     }
 
