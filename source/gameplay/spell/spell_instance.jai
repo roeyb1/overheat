@@ -32,7 +32,8 @@ CastBy :: struct @Pair { }
             ecs_add_pair(world, to, Child_Of, parent_spell);
         }
 
-        ecs_add_pair(*g_world, to, InheritFragmentsFrom, from);
+        from_fragments := ecs_get(world, from, Fragment_Storage);
+        assert(from_fragments != null);
         
         //then all the components that are to be propageted baseline, special propagation can be handled case by case 
         power := ecs_get(world, from, Power); 
@@ -46,6 +47,7 @@ CastBy :: struct @Pair { }
             duration.base_value = 5, //temporary not all spells should have a duration some will likely have their own termination condition
             power = power,
             position = position,
+            fragment_storage = make_child_fragments(from_fragments.payload),
         });
     }
 }

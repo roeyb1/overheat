@@ -10,8 +10,6 @@ Fragment :: enum u8 {
     Projectile;
 }
 
-InheritFragmentsFrom :: struct @Pair { }
-
 is_component_blocking :: (frag: Fragment) -> bool {
     if frag == {
         case .Touch;        return true;
@@ -22,18 +20,15 @@ is_component_blocking :: (frag: Fragment) -> bool {
 
 #if SERVER {
     //when a new spell instance is created it will take the fragments his creator was meant to pass and seperate them based on what it's using and passing itself
-    transfer_fragments :: (world: *World, entity: Entity) {
-        inherited_from := ecs_get_target(world, entity, InheritFragmentsFrom);
-        if entity_is_valid(world, inherited_from) {
-            payload := ecs_get(world, inherited_from, Fragment_Storage).payload;
-            new_fragments := ecs_get(world, entity, Fragment_Storage);
+    make_child_fragments :: (source: [] Fragment) -> Fragment_Storage {
+        result: Fragment_Storage;
 
-            new_self_view, new_payload_view := split_fragment_list(payload);
+        new_self_view, new_payload_view := split_fragment_list(source);
+        array_copy(*result.self, new_self_view);
+        array_copy(*result.payload, new_payload_view);
 
-            array_copy(*new_fragments.self, new_self_view);
-            array_copy(*new_fragments.payload, new_payload_view);
-        }
-    } @Event(EcsOnAdd,Fragment_Storage)
+        return result;
+    }
 
     //once the fragents are ready the spell isntance will apply the components from the fragments
     //TODO would need a not here
@@ -80,6 +75,15 @@ split_fragment_list :: (fragments: [] Fragment) -> (self: [] Fragment, payload: 
     payload := array_view(fragments, self_end + 1, max(0, fragments.count - (self_end + 1)));
 
     return self, payload;
+}
+
+self_fragments :: (fragments: [] Fragment) -> [] Fragment {
+    return split_fragment_list(fragments);
+}
+
+payload_fragments :: (fragments: [] Fragment) -> [] Fragment {
+    self, payload := split_fragment_list(fragments);
+    return payload;
 }
 
 #load "projectile.jai";

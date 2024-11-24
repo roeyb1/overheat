@@ -28,12 +28,15 @@ Spell_Dormant :: struct @Component { }
 
             spell_instance := entity_spawn(world, parent = spell);
             
-            ecs_add_pair(*g_world, spell_instance, InheritFragmentsFrom, spell);
             ecs_add_pair(*g_world, spell_instance, CastBy, caster); 
+
+            from_fragments := ecs_get(world, spell, Fragment_Storage);
+            assert(from_fragments != null);
 
             ecs_add_bundle(world, spell_instance, Spell_Instance_Bundle.{
                 duration.base_value = 5,
                 position.value = ecs_get(world, caster, Position).value,
+                fragment_storage = make_child_fragments(from_fragments.payload),
             });
 
             ecs_remove(world, spell, Spell_Dormant);
