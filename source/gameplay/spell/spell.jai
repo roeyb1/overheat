@@ -1,7 +1,5 @@
-
 //spells live in the players spell inventory and contain the information required to cast spell_instances
-Spell :: struct @Component {
-}
+Spell :: struct @Component { }
 
 Spell_Bundle :: struct @Bundle {
     spell: Spell;
@@ -15,17 +13,17 @@ CastFrom :: struct @Pair { }
 
 //the spell charging tag is added to a spell to indicate that the player has casted and it is now draining energy 
 //and sending it as power to the instance it created
-Spell_Active :: struct @Component {}
+Spell_Active :: struct @Component { }
+
 Spell_Waiting :: struct @Component {
     waiting := true;
 }
-Spell_Dormant :: struct @Component {}
 
-
+Spell_Dormant :: struct @Component { }
 
 #if SERVER{
     cast_spell :: (world: *World, spell: Entity) {
-        if ecs_has(world, spell, Spell_Dormant){
+        if ecs_has(world, spell, Spell_Dormant) {
             caster := ecs_get_target(world, spell, Child_Of);
 
             spell_instance := entity_spawn(world, parent = spell);
@@ -67,26 +65,16 @@ Spell_Dormant :: struct @Component {}
         }
     } @System(OnUpdate) @Write(Spell_Waiting) @Read()  
 
-    test_power :: (q: Query) {
-        powers := query_get(q, Power);
-
-        for 0..q.count-1 {
-        //log("entity % has % power", q.entities[it],powers[it].total);
-        }
-
-        
-    } @System(OnUpdate) @Write() @Read(Spell_Instance,Power)   
-
     finalise_spell_casting :: (world: *World, entity: Entity) {
-            for * iter : iter_make_pair(world, Child_Of, entity, Spell_Instance,Powering_Up) {
-                    for iter.entities {
-                        if entity_is_valid(world, it) {
-                            ecs_remove(world, it, Powering_Up);
-                            ecs_add(world, it, Active);
-                        }
+        for * iter : iter_make_pair(world, Child_Of, entity, Spell_Instance, Powering_Up) {
+                for iter.entities {
+                    if entity_is_valid(world, it) {
+                        ecs_remove(world, it, Powering_Up);
+                        ecs_add(world, it, Active);
                     }
-            }  
-            ecs_add(world, entity, Spell_Dormant);
+                }
+        }  
+        ecs_add(world, entity, Spell_Dormant);
     } @Event(EcsOnRemove,Spell_Active)
 }
 

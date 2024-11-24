@@ -13,7 +13,6 @@ Projectile_Bundle :: struct @Bundle {
 }
 
 #if SERVER {
-
     //when the projectile fragment is added, a projectile entity is created in a seperate spell instance
     add_projectile_fragment :: (world: *World, entity: Entity) {
         new_projectile := entity_spawn(world);
@@ -78,9 +77,11 @@ Projectile_Bundle :: struct @Bundle {
             projectile.direction = unit_vector(targeting-position);
         }
     } @Event(EcsOnAdd,Active)
+}
 
-    random_target_direction :: (position: Vector2) -> Vector2{
-        random_degree := random_get_within_range(0, 360);
-        return position + rotate(.{0,1},random_degree);
-    }
+#scope_file
+
+random_target_direction :: (position: Vector2) -> Vector2{
+    random_degree := random_get_within_range(0, 360);
+    return position + rotate(.{0,1},random_degree);
 }

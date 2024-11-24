@@ -15,8 +15,7 @@ AppliedTo :: struct @Pair { }
 
 //an effect is an entity that gets initialized when components such as HASTE get added to a vector. it will create the effect which will then be 
 //attached to the intended target, once it's attached it will run it's course and do whatever is in the HASTE system 
-#if SERVER{
-
+#if SERVER {
     spawn_triggered_effect :: (world: *World, from: Entity, to: Entity) {
         //first all the apropriate relationships will be propagated to the triggered spell
         cast_by := ecs_get_target(world, from, CastBy);

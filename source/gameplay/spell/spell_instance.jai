@@ -18,8 +18,8 @@ Spell_Instance_Bundle :: struct @Bundle {
 }
 
 CastBy :: struct @Pair { }
-#if SERVER{
 
+#if SERVER {
     spawn_triggered_spell_instance :: (world: *World, from: Entity, to: Entity) {
         //first all the apropriate relationships will be propagated to the triggered spell
         cast_by := ecs_get_target(world, from, CastBy);
