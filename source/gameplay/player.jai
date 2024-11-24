@@ -89,9 +89,9 @@ init_player :: (position: Vector2) -> Entity {
             name = .{"banana"},
         });
         frag_storage := ecs_get(*g_world, spell, Fragment_Storage);
-        array_add(*frag_storage.fragments_to_pass, .Projectile);
-        array_add(*frag_storage.fragments_to_pass, .Touch);
-        array_add(*frag_storage.fragments_to_pass, .Projectile);
+        array_add(*frag_storage.payload, .Projectile);
+        array_add(*frag_storage.payload, .Touch);
+        array_add(*frag_storage.payload, .Projectile);
         ecs_add_pair(*g_world, spell, CastFrom, gameplay_ability);
     }
 

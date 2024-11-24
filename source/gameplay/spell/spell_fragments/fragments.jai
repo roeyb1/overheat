@@ -1,6 +1,6 @@
 Fragment_Storage :: struct @Component {
-    fragments_to_apply: [..] Fragment;
-    fragments_to_pass: [..] Fragment;
+    self: [..] Fragment;
+    payload: [..] Fragment;
     initialised := false;
 }
 
@@ -27,20 +27,20 @@ is_component_blocking :: (frag: Fragment) -> bool {
         inherited_from := ecs_get_target(world, entity, InheritFragmentsFrom);
         if entity_is_valid(world, inherited_from) {
             blocked := false;
-            fragments_to_pass := ecs_get(world, inherited_from, Fragment_Storage).fragments_to_pass;
+            payload := ecs_get(world, inherited_from, Fragment_Storage).payload;
             fragments := ecs_get(world, entity, Fragment_Storage);
 
-            if fragments_to_pass {
-                for fragments_to_pass {
+            if payload {
+                for payload {
                     
                     if !blocked{
-                        array_add(*fragments.fragments_to_apply, it);
+                        array_add(*fragments.self, it);
 
                         //if the componenet that was added is "blocking" ie. demands a new behavior, then the rest fo the componenets will be stashed such
                         //that the next spell apply them using it's own modifiers
                         blocked = is_component_blocking(it);
                     } else {
-                        array_add(*fragments.fragments_to_pass, it);
+                        array_add(*fragments.payload, it);
                     }
                 }
             }
@@ -59,8 +59,8 @@ is_component_blocking :: (frag: Fragment) -> bool {
             }
 
             if !fragment_storage[index].initialised {
-                fragments_to_apply := fragment_storage[index].fragments_to_apply;
-                for fragments_to_apply {
+                self := fragment_storage[index].self;
+                for self {
                     if it == {
                         case .Touch;
                             add_touch_from_cast(q.world, q.entities[index]);
