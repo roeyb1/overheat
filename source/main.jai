@@ -1,5 +1,11 @@
 DEBUG :: true;
 
+// Define both server and client for the Jai Language Server diagnostic build to ensure all symbols are visible.
+#if #exists(JAILS_DIAGNOSTICS_BUILD) {
+    SERVER :: true;
+    CLIENT :: true;
+}
+
 // #todo: we probably want this value to vary so that the window size can't just show you more of the world.
 // The number of tiles visible should mostly remain a constant value
 PIXELS_PER_METER :: 64;
@@ -27,16 +33,21 @@ Program_Args :: struct {
     port: u16 = 27015;
     host := false;
 }
+
 g_args: Program_Args;
 
 main :: () {
+    // set the working direction to be the root of the project (should always two directories up from the executable)
+    working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
+    set_working_directory(working_dir);
+
     {
         success, args := parse_arguments(Program_Args);
         assert(success, "failed to parse program arguments!");
         g_args = args;
     }
 
-    log_initialize();
+    log_initialize(#ifx SERVER then "server" else "client");
     execute_unit_tests();
 
     ecs_world_init(*g_world);
@@ -45,10 +56,6 @@ main :: () {
     } else {
         entity_set_range(*g_world, 1000, 50000);
     }
-
-    // set the working direction to be the root of the project (should always two directories up from the executable)
-    working_dir := (tprint("%/../..", path_strip_filename(get_path_of_running_executable())));
-    set_working_directory(working_dir);
 
     register_system_functions(*g_world);
 

@@ -496,7 +496,7 @@ write_value :: (using out_buffer: *ByteBuffer, data: *u8, size: s64) {
         }
     }
     else {
-        for < size-1..0 {
+        for #v2 < 0..size-1 {
             array_add(*buff, data[it]);
         }
     }

@@ -327,7 +327,7 @@ server_shutdown :: (server: *Server) {
 
 server_net_connection_status_changed_callback :: (info: *ConnectionStatusChanged) -> void #c_call {
     new_ctx: Context;
-    new_ctx.logger = logger;
+    init_context_logger(*new_ctx);
     push_context new_ctx {
         handle_server_net_connection_status_changed(*g_server, info);
     }

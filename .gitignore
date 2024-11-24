@@ -6,3 +6,4 @@ bin/
 *.10x
 imgui.ini
 *.DS_STORE
+saved/
