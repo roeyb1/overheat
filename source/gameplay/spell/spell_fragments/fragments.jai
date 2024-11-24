@@ -1,18 +1,18 @@
 Fragment_Storage :: struct @Component {
-    fragments_to_apply: [..] Fragments;
-    fragments_to_pass: [..] Fragments;
+    fragments_to_apply: [..] Fragment;
+    fragments_to_pass: [..] Fragment;
     initialised := false;
 }
 
 //TODO: auto generate this
-Fragments :: enum u8 {
+Fragment :: enum u8 {
     Touch;
     Projectile;
 }
 
 InheritFragmentsFrom :: struct @Pair { }
 
-is_component_blocking :: (frag: Fragments) -> bool {
+is_component_blocking :: (frag: Fragment) -> bool {
     if frag == {
         case .Touch;        return true;
         case .Projectile;   return true;
