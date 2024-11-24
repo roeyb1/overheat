@@ -23,27 +23,15 @@ is_component_blocking :: (frag: Fragment) -> bool {
 #if SERVER {
     //when a new spell instance is created it will take the fragments his creator was meant to pass and seperate them based on what it's using and passing itself
     transfer_fragments :: (world: *World, entity: Entity) {
-        //ensure there is info to be passed
         inherited_from := ecs_get_target(world, entity, InheritFragmentsFrom);
         if entity_is_valid(world, inherited_from) {
-            blocked := false;
             payload := ecs_get(world, inherited_from, Fragment_Storage).payload;
-            fragments := ecs_get(world, entity, Fragment_Storage);
+            new_fragments := ecs_get(world, entity, Fragment_Storage);
 
-            if payload {
-                for payload {
-                    
-                    if !blocked{
-                        array_add(*fragments.self, it);
+            new_self_view, new_payload_view := split_fragment_list(payload);
 
-                        //if the componenet that was added is "blocking" ie. demands a new behavior, then the rest fo the componenets will be stashed such
-                        //that the next spell apply them using it's own modifiers
-                        blocked = is_component_blocking(it);
-                    } else {
-                        array_add(*fragments.payload, it);
-                    }
-                }
-            }
+            array_copy(*new_fragments.self, new_self_view);
+            array_copy(*new_fragments.payload, new_payload_view);
         }
     } @Event(EcsOnAdd,Fragment_Storage)
 
@@ -73,6 +61,25 @@ is_component_blocking :: (frag: Fragment) -> bool {
             }
         }
     } @System(OnValidate) @Write() @Read(Fragment_Storage)
+}
+
+#scope_file
+
+split_fragment_list :: (fragments: [] Fragment) -> (self: [] Fragment, payload: [] Fragment) {
+    blocked := false;
+
+    self_end := fragments.count - 1;
+
+    for fragments {
+        if is_component_blocking(it) {
+            self_end = it_index;
+            break;
+        }
+    }
+    self := array_view(fragments, 0, self_end + 1);
+    payload := array_view(fragments, self_end + 1, max(0, fragments.count - (self_end + 1)));
+
+    return self, payload;
 }
 
 #load "projectile.jai";
