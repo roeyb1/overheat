@@ -127,7 +127,7 @@ resolve_overlap :: (q: Query) {
 
     array_reset(*collision_list.blocking_pairs);
     array_reset(*collision_list.event_pairs);
-} @Predict @System(PostUpdate) @Write() @Read(Collision_List) @OptionalWrite(Position)
+} @Predict @System(PostUpdate) @Write() @Read(Collision_List) @OptionalWrite(Position,Collision_Write_Fence)
 
 generate_overlap_pairs_for_entity :: (spatial: *Collision_Spatial, bounds: AABB, self: Entity, sort_key: u64) -> [..] Overlap_Pair {
     result: [..] Overlap_Pair;

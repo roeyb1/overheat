@@ -13,6 +13,10 @@ operator == :: (a: Entity, b: Entity) -> bool {
     return a.raw == b.raw;
 }
 
+compare_entities :: (a: Entity, b: Entity) -> bool {
+    return a.raw == b.raw;
+}
+
 entity_from_raw :: inline (raw: s64) -> Entity {
     return .{ raw = raw };
 }

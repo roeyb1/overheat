@@ -30,6 +30,7 @@ event_broadcast :: (world: *World, cid: s64, source: Entity) {
             array_add(*callbacks, events[it].desc.callback);
         }
     }
+
     for callbacks {
         it(world, source);
     }

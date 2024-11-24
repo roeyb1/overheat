@@ -33,8 +33,14 @@ ecs_defer_add :: (using world: *World, entity: Entity, cid: s64) -> *void {
     assert(is_deferring);
 
     ci := ecs_get(world, entity_from_cid(cid), EcsComponent);
+    cti := cid_to_type_info(world, cid);
 
     ptr := talloc(ci.runtime_size);
+    if cti.ti.initializer {
+        cti.ti.initializer(ptr);
+    } else {
+        memset(ptr, 0, ci.runtime_size);
+    }
     array_add(*deferred_ops, .{ type = .ADD, entity = entity, cid = cid, component_data = ptr });
 
     return ptr;

@@ -220,7 +220,6 @@ ecs_add :: (using world: *World, entity: Entity, cid: s64, broadcast: bool = tru
     if ecs_has(world, entity, cid) {
         return ecs_get(world, entity, cid);
     }
-
     if is_deferring {
         return ecs_defer_add(world, entity, cid);
     }

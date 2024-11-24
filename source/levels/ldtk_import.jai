@@ -102,7 +102,7 @@ import_ldtk_level :: (world: *World, path: string) {
                         x := (cast(float) ldtk_entity.__worldX / cast(float) TILE_PIXEL_SIZE) - ldtk_entity.__pivot[0];
                         y := cast(float)(layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / cast(float)(TILE_PIXEL_SIZE) + ldtk_entity.__pivot[1];
 
-                        //spawn_enemy_pack(world, .{x, y}, 2, .BAT);
+                        spawn_enemy_pack(world, .{x, y}, 2, .BAT);
                     }
                 }
             }

@@ -73,10 +73,7 @@ activate_gameplay_ability :: (q: Query) {
         cooldowns[it].current_value = cooldowns[it].base_value;
         
         //find all spells that are to be triggered by this gameplay_ability
-        for query: iter_make_pair(q.world, TriggeredBy, q.entities[it], Spell) {
-            ecs_get(q.world, query.entities[it_index], Spell).casting_entity = ecs_get_target(q.world, q.entities[it], OwnedBy);
-            //workaround
-            ecs_get(q.world, query.entities[it_index], Spell).debug_allow_activation = true;
+        for query: iter_make_pair(q.world, CastFrom, q.entities[it], Spell) {
 
             cast_spell(q.world, query.entities[it_index]);
         }
