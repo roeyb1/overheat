@@ -3,7 +3,6 @@ Fragment_Storage :: struct @Component {
     payload: [..] Fragment;
 }
 
-//TODO: auto generate this
 Fragment :: enum u8 {
     Touch;
     Projectile;

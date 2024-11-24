@@ -2,8 +2,6 @@ Touch :: struct @Component {
     hit_entities: [..] Entity;
 }
 
-Touch_fragment :: struct @Component {}
-
 #if SERVER {  
     //every entity that could collide should have a collider, touch should piggy back off it to size it's own
     add_touch_from_cast :: (world: *World, entity: Entity) {

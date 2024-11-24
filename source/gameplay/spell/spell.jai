@@ -1,5 +1,5 @@
 //spells live in the players spell inventory and contain the information required to cast spell_instances
-Spell :: struct @Component { }
+Spell :: struct @Tag {}
 
 Spell_Bundle :: struct @Bundle {
     spell: Spell;
@@ -9,17 +9,17 @@ Spell_Bundle :: struct @Bundle {
     fragments: Fragment_Storage;
 }
 
-CastFrom :: struct @Pair { }
+CastFrom :: struct @Pair {}
 
 //the spell charging tag is added to a spell to indicate that the player has casted and it is now draining energy 
 //and sending it as power to the instance it created
-Spell_Active :: struct @Component { }
+Spell_Active :: struct @Tag {}
 
 Spell_Waiting :: struct @Component {
     waiting := true;
 }
 
-Spell_Dormant :: struct @Component { }
+Spell_Dormant :: struct @Tag {}
 
 #if SERVER{
     cast_spell :: (world: *World, spell: Entity) {

@@ -1,4 +1,3 @@
-
 Projectile :: struct @Component {
     direction: Vector2;
 }

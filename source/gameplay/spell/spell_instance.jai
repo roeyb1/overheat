@@ -1,11 +1,9 @@
-Spell_Instance :: struct @Tag {
-
-}
+Spell_Instance :: struct @Tag {}
 
 //when a spell instance is spawned into the world it will be in a state where it gathers power known as Powering_Up, no interaction with the world.
 //once a spell is fully charged or sent out for whatever reason it becomes Active and can interact with the world. 
-Powering_Up :: struct @Component {}
-Active :: struct @Component {}
+Powering_Up :: struct @Tag {}
+Active :: struct @Tag {}
 
 Spell_Instance_Bundle :: struct @Bundle {
     power: Power; 
@@ -17,7 +15,7 @@ Spell_Instance_Bundle :: struct @Bundle {
     duration: Duration;
 }
 
-CastBy :: struct @Pair { }
+CastBy :: struct @Pair {}
 
 #if SERVER {
     spawn_triggered_spell_instance :: (world: *World, from: Entity, to: Entity) {
