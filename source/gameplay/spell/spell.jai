@@ -25,7 +25,7 @@ Spell_Dormant :: struct @Component {}
 
 #if SERVER{
     cast_spell :: (world: *World, spell: Entity) {
-        if ecs_get(world, spell, Spell_Dormant){
+        if ecs_has(world, spell, Spell_Dormant){
             caster := ecs_get_target(world, spell, Child_Of);
 
             spell_instance := entity_spawn(world, parent = spell);

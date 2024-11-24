@@ -39,7 +39,7 @@ Projectile_Bundle :: struct @Bundle {
         position := ecs_get(world, entity, Position).value;
         ecs_add(world, new_projectile, Target_Location.{ random_target_direction(position) });
 
-        if ecs_get(world, entity, Active) {
+        if ecs_has(world, entity, Active) {
             ecs_add(world, new_projectile, Active);
         }
     }
@@ -69,7 +69,7 @@ Projectile_Bundle :: struct @Bundle {
     //if events could implicit check for additional components that would be pog
     //also if validating components exist it would be nice, i feel like a query here would be annoying due to the trigger nature of this event
     finalise_projectile_casting :: (world: *World, entity: Entity) {
-        if ecs_get(world, entity, Projectile){
+        if ecs_has(world, entity, Projectile){
             position := ecs_get(world, entity, Position).value;
             projectile := ecs_get(world, entity, Projectile);
             targeting := ecs_get(world, entity, Target_Location).value;

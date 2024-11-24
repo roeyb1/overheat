@@ -55,7 +55,7 @@ initialize_Fragments :: (q: Query) {
 
     for index: 0..q.count-1 {
         //a not would allow to remove this check
-        if ecs_get(q.world, q.entities[index], Spell) {
+        if ecs_has(q.world, q.entities[index], Spell) {
             fragment_storage[index].initialised = true;
         }
         if !fragment_storage[index].initialised {

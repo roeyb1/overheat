@@ -19,7 +19,7 @@ add_touch_from_cast :: (world: *World, entity: Entity) {
 
 finalise_touch_casting :: (world: *World, entity: Entity) {
     //add the caster so he cant hit himself
-    if ecs_get(world, entity, Touch){
+    if ecs_has(world, entity, Touch) {
         touch := *ecs_get(world, entity, Touch).hit_entities;
         caster := ecs_get_target(world, entity, CastBy);
         array_add(touch, caster);
@@ -47,10 +47,10 @@ touch_overlap :: (world: *World, entity: Entity) {
 } @Event(EcsOnAdd,Overlap_Pair)
 
 get_spell_from_overlap_pair :: (world: *World, a: Entity, b: Entity) -> skill: Entity, target: Entity, found: bool {
-    if ecs_get(world, a, Spell_Instance) {
+    if ecs_has(world, a, Spell_Instance) {
         return a,b,true;
     } 
-    if ecs_get(world, b, Spell_Instance) {
+    if ecs_has(world, b, Spell_Instance) {
         return b,a,true;
     } 
 
@@ -62,7 +62,7 @@ valid_target_for_overlap_event :: (world: *World, skill: Entity, target: Entity)
     //check if the target can be hit
     for 0..VALID_TOUCH_OVERLAPS.count-1 {
         value := cid_get(world, VALID_TOUCH_OVERLAPS[it]);
-        if ecs_get(world, target, value){
+        if ecs_has(world, target, value) {
             //check if the target has already been hit
             hit_entities := *ecs_get(world, skill, Touch).hit_entities;
             if !array_find(<<hit_entities, target, compare_entities){
