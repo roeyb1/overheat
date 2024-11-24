@@ -1,7 +1,6 @@
 Fragment_Storage :: struct @Component {
     self: [..] Fragment;
     payload: [..] Fragment;
-    initialised := false;
 }
 
 //TODO: auto generate this
@@ -31,31 +30,19 @@ is_component_blocking :: (frag: Fragment) -> bool {
     }
 
     //once the fragents are ready the spell isntance will apply the components from the fragments
-    //TODO would need a not here
-    initialize_Fragments :: (q: Query) {
-        fragment_storage := query_get(q, Fragment_Storage);
+    initialize_fragments :: (world: *World, entity: Entity) {
+        fragment_storage := ecs_get(world, entity, Fragment_Storage);
 
-        for index: 0..q.count-1 {
-            //a not would allow to remove this check
-            if ecs_has(q.world, q.entities[index], Spell) {
-                fragment_storage[index].initialised = true;
-            }
+        for fragment_storage.self {
+            if it == {
+                case .Touch;
+                    add_touch_from_cast(world, entity);
 
-            if !fragment_storage[index].initialised {
-                self := fragment_storage[index].self;
-                for self {
-                    if it == {
-                        case .Touch;
-                            add_touch_from_cast(q.world, q.entities[index]);
-
-                        case .Projectile;
-                            add_projectile_fragment(q.world, q.entities[index]);
-                    }
-                }
-                fragment_storage[index].initialised = true;
+                case .Projectile;
+                    add_projectile_fragment(world, entity);
             }
         }
-    } @System(OnValidate) @Write() @Read(Fragment_Storage)
+    } @Event(EcsOnAdd,Fragment_Storage)
 }
 
 #scope_file
