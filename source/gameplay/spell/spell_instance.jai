@@ -37,7 +37,9 @@ CastBy :: struct @Pair { }
         //then all the components that are to be propageted baseline, special propagation can be handled case by case 
         power := ecs_get(world, from, Power); 
         position := ecs_get(world, from, Position);
-        //[TODO] some validation here would be needed
+
+        assert(power != null);
+        assert(position != null);
 
         //initialise the new entity
         ecs_add_bundle(world, to, Spell_Instance_Bundle.{

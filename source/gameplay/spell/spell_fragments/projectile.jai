@@ -1,5 +1,3 @@
-Projectile_Fragment :: struct @Component {    
-}
 
 Projectile :: struct @Component {
     direction: Vector2;
@@ -13,37 +11,35 @@ Projectile_Bundle :: struct @Bundle {
     invoker: Collision_Invoker;
     projectile: Projectile;
 }
-#if SERVER{
-    add_projectile :: (world: *World, entity: Entity) {
-        cast_by := ecs_get_target(world, entity, CastBy);
-        
-        if entity_is_valid(world,cast_by){
-            spritesheet := "assets/skills/blue_orb.png";
-            
-             PROJECTILE_BASE_SIZE :: 1;
-             PROJECTILE_BASE_SPEED :: 10.0;
 
-            ecs_add_bundle(world, entity, Projectile_Bundle.{
-                sprite = .{spritesheet, null, .{0,0}, 0, 4, 0},
-                size = .{PROJECTILE_BASE_SIZE,0},
-                move_speed = .{PROJECTILE_BASE_SPEED},
-            }); 
-            
-            // //set the default target of the projectile, this can be overwritten by other systems
-            position := ecs_get(world, entity, Position).value;
-            ecs_add(world, entity, Target_Location.{random_target_direction(position)});
-        }
-    }
+#if SERVER {
 
-    //when the projectile fragment is added a projectile entity is created in a seperate spell instance
+    //when the projectile fragment is added, a projectile entity is created in a seperate spell instance
     add_projectile_fragment :: (world: *World, entity: Entity) {
-        projectile_fragments := cast(*Projectile_Fragment)ecs_add(world, entity, Projectile_Fragment);
         new_projectile := entity_spawn(world);
-        //make sure the next created entity is a projectile proper
-        array_add(*ecs_get(world, entity, Fragment_Storage).fragments_to_pass, .Projectile);
+
         spawn_triggered_spell_instance(world, entity, new_projectile);
 
-        if(ecs_get(world, entity, Active)) {
+        cast_by := ecs_get_target(world, entity, CastBy);
+
+        assert(entity_is_valid(world, cast_by));
+
+        spritesheet := "assets/skills/blue_orb.png";
+        
+        PROJECTILE_BASE_SIZE :: 1;
+        PROJECTILE_BASE_SPEED :: 10.0;
+
+        ecs_add_bundle(world, new_projectile, Projectile_Bundle.{
+            sprite = .{spritesheet, null, .{0,0}, 0, 4, 0},
+            size = .{PROJECTILE_BASE_SIZE,0},
+            move_speed = .{PROJECTILE_BASE_SPEED},
+        }); 
+        
+        //set the default target of the projectile, this can be overwritten by other systems
+        position := ecs_get(world, entity, Position).value;
+        ecs_add(world, new_projectile, Target_Location.{ random_target_direction(position) });
+
+        if ecs_get(world, entity, Active) {
             ecs_add(world, new_projectile, Active);
         }
     }
@@ -74,7 +70,6 @@ Projectile_Bundle :: struct @Bundle {
     //also if validating components exist it would be nice, i feel like a query here would be annoying due to the trigger nature of this event
     finalise_projectile_casting :: (world: *World, entity: Entity) {
         if ecs_get(world, entity, Projectile){
-
             position := ecs_get(world, entity, Position).value;
             projectile := ecs_get(world, entity, Projectile);
             targeting := ecs_get(world, entity, Target_Location).value;

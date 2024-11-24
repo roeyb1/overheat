@@ -6,15 +6,19 @@ Fragment_Storage :: struct @Component {
 
 //TODO: auto generate this
 Fragments :: enum u8 {
-        Touch;
-        Projectile_Fragment;
-        Projectile;
+    Touch;
+    Projectile;
 }
 
 InheritFragmentsFrom :: struct @Pair { }
 
-FRAGMENTS_COMPONENTS: [3]Type = .[Touch,Projectile_Fragment,Projectile];
-BLOCKING_COMPONENTS: [3]Fragments = .[.Touch,.Projectile_Fragment,.Projectile];
+is_component_blocking :: (frag: Fragments) -> bool {
+    if frag == {
+        case .Touch;        return true;
+        case .Projectile;   return true;
+        case;               return false;
+    }
+}
 
 #if SERVER {
 //when a new spell instance is created it will take the fragments his creator was meant to pass and seperate them based on what it's using and passing itself
@@ -34,9 +38,7 @@ transfer_fragments :: (world: *World, entity: Entity) {
 
                         //if the componenet that was added is "blocking" ie. demands a new behavior, then the rest fo the componenets will be stashed such
                         //that the next spell apply them using it's own modifiers
-                        if array_find(BLOCKING_COMPONENTS, it) {
-                            blocked = true;    
-                        }
+                        blocked = is_component_blocking(it);
                     }
                     else {
                         array_add(*fragments.fragments_to_pass, it);
@@ -63,11 +65,8 @@ initialize_Fragments :: (q: Query) {
                 case .Touch;
                     add_touch_from_cast(q.world, q.entities[index]);
 
-                case .Projectile_Fragment;
-                    add_projectile_fragment(q.world, q.entities[index]);
-
                 case .Projectile;
-                    add_projectile(q.world, q.entities[index]);
+                    add_projectile_fragment(q.world, q.entities[index]);
             
                 }
             }
