@@ -18,9 +18,9 @@ Touch_fragment :: struct @Component {}
     finalise_touch_casting :: (world: *World, entity: Entity) {
         //add the caster so he cant hit himself
         if ecs_has(world, entity, Touch) {
-            touch := *ecs_get(world, entity, Touch).hit_entities;
+            touch := ecs_get(world, entity, Touch);
             caster := ecs_get_target(world, entity, CastBy);
-            array_add(touch, caster);
+            array_add(*touch.hit_entities, caster);
             ecs_get(world, entity, Collision_Invoker).generate_overlap_events = true;
         }
     } @Event(EcsOnAdd,Active)
@@ -62,9 +62,9 @@ get_spell_from_overlap_pair :: (world: *World, a: Entity, b: Entity) -> (skill: 
 valid_target_for_overlap_event :: (world: *World, skill: Entity, target: Entity) -> bool {
     if should_overlap(world, skill, target) {
         //check if the target has already been hit
-        hit_entities := *ecs_get(world, skill, Touch).hit_entities;
-        if !array_find(<<hit_entities, target, compare_entities) {
-            array_add(hit_entities,target);
+        touch := ecs_get(world, skill, Touch);
+        if !array_find(touch.hit_entities, target, compare_entities) {
+            array_add(*touch.hit_entities,target);
             return true;
         }
     }
