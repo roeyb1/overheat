@@ -2,7 +2,7 @@ show_system_graph := false;
 show_imgui_demo_window := false;
 show_stats := true;
 show_settings := false;
-show_scene_graph := false;
+show_scene_graph := true;
 
 render_debug_ui :: () {
     if ImGui.BeginMainMenuBar() {

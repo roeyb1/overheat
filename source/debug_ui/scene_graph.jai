@@ -48,44 +48,63 @@ draw_entry_for_entity :: (world: *World, entity: Entity) {
 
 draw_members_property_editor :: (data: *void, ti: *Type_Info_Struct) {
     last_offset := 0;
+
+    max_length_name: string;
+    for member : ti.members {
+        // skip #placed members
+        if member.offset_in_bytes < last_offset then continue;
+        if member.name.count > max_length_name.count then max_length_name = member.name;
+    }
+    name_align := ImGui.CalcTextSize(max_length_name).x + ImGui.CalcTextSize("  ").x;
+
+    last_offset = 0;
+
     for member : ti.members {
         // skip #placed members
         if member.offset_in_bytes < last_offset then continue;
 
-        draw_property_editor(data + member.offset_in_bytes, member.name, member.type);
+        draw_property_editor(data + member.offset_in_bytes, member.name, member.type, name_align);
 
         last_offset = member.offset_in_bytes;
     }
 }
 
-draw_property_editor :: (data: *void, name: string, ti: *Type_Info) {
-    default_size: ImGui.ImVec2;
+draw_property_editor :: (data: *void, name: string, ti: *Type_Info, align_char_width: float) {
+    default_size: ImGui.ImVec2 = ImGui.CalcTextSize("  00.0  ");
     label := temp_c_string(tprint("##%", name));
+
+    name_size := ImGui.CalcTextSize(tprint("%", name));
+    align_spacing := align_char_width - name_size.x;
 
     if ti.type == {
         case .BOOL;
+
             ImGui.Text("%", name);
-            ImGui.SameLine();
+            ImGui.SameLine(spacing=align_spacing);
 
             index : s32 = xx <<cast(*bool)data;
             if ImGui.Combo(label, *index, "false\0true\0\0") { <<cast(*bool)data = xx index; };
 
         case .INTEGER;
             ImGui.Text("%", name);
-            ImGui.SameLine();
+            ImGui.SameLine(spacing=align_spacing);
 
-            ImGui.InputInt(label, data);
+            ImGui.PushItemWidth(default_size.x);
+            ImGui.DragInt(label, data);
+            ImGui.PopItemWidth();
 
         case .FLOAT;
             ImGui.Text("%", name);
-            ImGui.SameLine();
+            ImGui.SameLine(spacing=align_spacing);
 
-            ImGui.InputFloat(label, data);
+            ImGui.PushItemWidth(default_size.x);
+            ImGui.DragFloat(label, data, format="%.1f");
+            ImGui.PopItemWidth();
 
         case .ENUM;
             info_enum := cast(*Type_Info_Enum) ti;
             ImGui.Text("%", name);
-            ImGui.SameLine();
+            ImGui.SameLine(spacing=align_spacing);
 
             if info_enum.enum_type_flags & .FLAGS {
                 // #todo: flags
@@ -112,7 +131,7 @@ draw_property_editor :: (data: *void, name: string, ti: *Type_Info) {
 
         case .STRING;
             ImGui.Text("%", name);
-            ImGui.SameLine();
+            ImGui.SameLine(spacing=align_spacing);
 
             s := << cast(*string) data;
             if s.count ImGui.InputText(label, s.data, xx s.count, ImGui.InputTextFlags.ReadOnly);    // @@ We could allow editing of strings too.
@@ -120,13 +139,16 @@ draw_property_editor :: (data: *void, name: string, ti: *Type_Info) {
 
         case .POINTER;
             ImGui.Text("%", name);
-            ImGui.SameLine();
+            ImGui.SameLine(spacing=align_spacing);
 
             ImGui.Text("(pointer)");
 
         case .STRUCT;
+            ImGui.Text("%", name);
+            ImGui.SameLine(spacing=align_spacing);
+
             struct_info := cast(*Type_Info_Struct) ti;
-            if ImGui.TreeNode(temp_c_string(tprint("% %", name, struct_info.name))) {
+            if ImGui.TreeNode(temp_c_string(tprint("%##%", name, struct_info.name))) {
                 draw_members_property_editor(data, struct_info);
                 ImGui.TreePop();
             }
