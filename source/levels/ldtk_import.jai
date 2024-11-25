@@ -98,6 +98,7 @@ import_ldtk_level :: (world: *World, path: string) {
                         ecs_add(world, collider, Position.{.{x,y} });
                         ecs_add(world, collider, Shadow_Caster.{bounds});
                         ecs_add(world, collider, Collider_AABB.{bounds, true});
+                        ecs_add(world, collider, Hidden_From_SceneGraph);
                     } else if ldtk_entity.__identifier == "pack_spawner" {
                         x := (cast(float) ldtk_entity.__worldX / cast(float) TILE_PIXEL_SIZE) - ldtk_entity.__pivot[0];
                         y := cast(float)(layer.__gridSize * layer.__cHei - xx ldtk_entity.__worldY) / cast(float)(TILE_PIXEL_SIZE) + ldtk_entity.__pivot[1];
@@ -144,6 +145,7 @@ spawn_entities_for_tiles :: (world: *World, tiles: [] LDTK_Tile, grid_size: u32,
         sprite.index = tile.t;
         sprite.flip = cast(Flip_Flags) tile.f;
         ecs_add(world, tile_entity, sprite);
+        ecs_add(world, tile_entity, Hidden_From_SceneGraph);
     }
 }
 

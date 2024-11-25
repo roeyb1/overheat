@@ -46,11 +46,13 @@ spawn_enemy :: (world: *World, position: Vector2, type: Enemy_Type) {
             collider_size = Vector2.{0.6, 0.6};
             spritesheet_path = "assets/enemies/skeleton.png";
             ecs_add(world, entity, Skeleton_Animation);
+            ecs_add(world, entity, Name.{"Skeleton"});
         case .BAT;
             size = Vector2.{2.3, 2.3};
             collider_size = Vector2.{0.6, 0.8};
             spritesheet_path = "assets/enemies/bat2.png";
             ecs_add(world, entity, Bat_Animation);
+            ecs_add(world, entity, Name.{"Bat"});
     }
 
     sprite := ecs_add(world, entity, Sprite.{spritesheet_path, null, size, 0, 4, 0});
