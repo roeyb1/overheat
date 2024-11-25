@@ -14,6 +14,23 @@ show_scene_graph_window :: (open: *bool) {
             for q : iter_make(*g_world) {
 
                 if archetype_type_has(q.current_archetype, cid_get(*g_world, Hidden_From_SceneGraph)) then continue;
+                if archetype_type_has(q.current_archetype, cid_get(*g_world, Event)) then continue;
+
+                // Hide EcsComponent entities. There's not really a reason the average person will need to show them and they clutter the ui.
+                // however, there is an exception for singletons where this entity actually contains the singleton data too
+                if archetype_type_has(q.current_archetype, cid_get(*g_world, EcsComponent)) {
+                    entity_is_singleton := false;
+
+                    for cid : q.current_archetype.type_ids {
+                        cti := cid_to_type_info(*g_world, cid);
+
+                        if cti.is_singleton {
+                            entity_is_singleton = true;
+                            break cid;
+                        }
+                    }
+                    if !entity_is_singleton then continue q;
+                }
 
                 for entity : q.entities {
                     name := ifx ecs_has(*g_world, entity, Name) then ecs_get(*g_world, entity, Name).name else "Entity";
@@ -45,7 +62,7 @@ show_scene_graph_window :: (open: *bool) {
         ImGui.EndChild();
 
         if ImGui.BeginChild("##Footer", child_flags=.AutoResizeY) {
-            ImGui.Text("% entities", entities_matching_filter);
+            ImGui.Text("% entities (% shown)", g_world.stage.entity_records.count, entities_matching_filter);
         }
         ImGui.EndChild();
     }
