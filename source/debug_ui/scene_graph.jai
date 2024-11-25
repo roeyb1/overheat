@@ -59,7 +59,9 @@ draw_members_property_editor :: (data: *void, ti: *Type_Info_Struct) {
 }
 
 draw_property_editor :: (data: *void, name: string, ti: *Type_Info) {
+    default_size: ImGui.ImVec2;
     label := temp_c_string(tprint("##%", name));
+
     if ti.type == {
         case .BOOL;
             ImGui.Text("%", name);
@@ -81,7 +83,32 @@ draw_property_editor :: (data: *void, name: string, ti: *Type_Info) {
             ImGui.InputFloat(label, data);
 
         case .ENUM;
-            ImGui.Text("(enum)");
+            info_enum := cast(*Type_Info_Enum) ti;
+            ImGui.Text("%", name);
+            ImGui.SameLine();
+
+            if info_enum.enum_type_flags & .FLAGS {
+                // #todo: flags
+                ImGui.Text("(flags)");
+            } else {
+                value := Reflection.get_enum_value(data, info_enum);
+                value_name := "";
+                for info_enum.names {
+                    if value == info_enum.values[it_index]  value_name = it;
+                }
+
+                if ImGui.BeginCombo(label, temp_c_string(value_name)) {
+                    for info_enum.names {
+                        is_selected := value == info_enum.values[it_index];
+                        if ImGui.Selectable(temp_c_string(it), is_selected, size=*default_size) {
+                            Reflection.set_enum_value(data, info_enum, info_enum.values[it_index]);
+                        }
+                        if is_selected ImGui.SetItemDefaultFocus();
+                    }
+
+                    ImGui.EndCombo();
+                }
+            }
 
         case .STRING;
             ImGui.Text("%", name);
@@ -114,3 +141,5 @@ filter_text: [64] u8;
 matches_filter :: (text: string, filter: string) -> bool {
     return find_index_from_left(to_lower_copy_new(text,, temp), to_lower_copy_new(filter,, temp)) != -1;
 }
+
+Reflection :: #import "Reflection";
