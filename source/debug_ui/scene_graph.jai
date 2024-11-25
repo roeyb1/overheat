@@ -83,23 +83,22 @@ draw_property_editor :: (data: *void, name: string, ti: *Type_Info, align_char_w
             ImGui.SameLine(spacing=align_spacing);
 
             index : s32 = xx <<cast(*bool)data;
+            ImGui.SetNextItemWidth(ImGui.CalcTextSize(" ").x * 32);
             if ImGui.Combo(label, *index, "false\0true\0\0") { <<cast(*bool)data = xx index; };
 
         case .INTEGER;
             ImGui.Text("%", name);
             ImGui.SameLine(spacing=align_spacing);
 
-            ImGui.PushItemWidth(default_size.x);
+            ImGui.SetNextItemWidth(default_size.x);
             ImGui.DragInt(label, data);
-            ImGui.PopItemWidth();
 
         case .FLOAT;
             ImGui.Text("%", name);
             ImGui.SameLine(spacing=align_spacing);
 
-            ImGui.PushItemWidth(default_size.x);
+            ImGui.SetNextItemWidth(default_size.x);
             ImGui.DragFloat(label, data, format="%.1f");
-            ImGui.PopItemWidth();
 
         case .ENUM;
             info_enum := cast(*Type_Info_Enum) ti;
@@ -116,6 +115,7 @@ draw_property_editor :: (data: *void, name: string, ti: *Type_Info, align_char_w
                     if value == info_enum.values[it_index]  value_name = it;
                 }
 
+                ImGui.PushItemWidth(ImGui.CalcTextSize(" ").x * 32);
                 if ImGui.BeginCombo(label, temp_c_string(value_name)) {
                     for info_enum.names {
                         is_selected := value == info_enum.values[it_index];
@@ -127,6 +127,7 @@ draw_property_editor :: (data: *void, name: string, ti: *Type_Info, align_char_w
 
                     ImGui.EndCombo();
                 }
+                ImGui.PopItemWidth();
             }
 
         case .STRING;
