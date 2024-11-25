@@ -38,10 +38,74 @@ draw_entry_for_entity :: (world: *World, entity: Entity) {
 
         ti := cti.ti;
 
+        data := ecs_get(world, entity, cid);
         if ImGui.TreeNode(temp_c_string(ti.name)) {
-
+            draw_members_property_editor(data, ti);
             ImGui.TreePop();
         }
+    }
+}
+
+draw_members_property_editor :: (data: *void, ti: *Type_Info_Struct) {
+    last_offset := 0;
+    for member : ti.members {
+        // skip #placed members
+        if member.offset_in_bytes < last_offset then continue;
+
+        draw_property_editor(data + member.offset_in_bytes, member.name, member.type);
+
+        last_offset = member.offset_in_bytes;
+    }
+}
+
+draw_property_editor :: (data: *void, name: string, ti: *Type_Info) {
+    label := temp_c_string(tprint("##%", name));
+    if ti.type == {
+        case .BOOL;
+            ImGui.Text("%", name);
+            ImGui.SameLine();
+
+            index : s32 = xx <<cast(*bool)data;
+            if ImGui.Combo(label, *index, "false\0true\0\0") { <<cast(*bool)data = xx index; };
+
+        case .INTEGER;
+            ImGui.Text("%", name);
+            ImGui.SameLine();
+
+            ImGui.InputInt(label, data);
+
+        case .FLOAT;
+            ImGui.Text("%", name);
+            ImGui.SameLine();
+
+            ImGui.InputFloat(label, data);
+
+        case .ENUM;
+            ImGui.Text("(enum)");
+
+        case .STRING;
+            ImGui.Text("%", name);
+            ImGui.SameLine();
+
+            s := << cast(*string) data;
+            if s.count ImGui.InputText(label, s.data, xx s.count, ImGui.InputTextFlags.ReadOnly);    // @@ We could allow editing of strings too.
+            else ImGui.InputText(label, "(null)", 6, ImGui.InputTextFlags.ReadOnly);
+
+        case .POINTER;
+            ImGui.Text("%", name);
+            ImGui.SameLine();
+
+            ImGui.Text("(pointer)");
+
+        case .STRUCT;
+            struct_info := cast(*Type_Info_Struct) ti;
+            if ImGui.TreeNode(temp_c_string(tprint("% %", name, struct_info.name))) {
+                draw_members_property_editor(data, struct_info);
+                ImGui.TreePop();
+            }
+        
+        case;
+            ImGui.Text("");
     }
 }
 
