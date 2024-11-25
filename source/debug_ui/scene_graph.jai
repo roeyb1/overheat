@@ -1,6 +1,8 @@
 show_scene_graph_window :: (open: *bool) {
     if ImGui.Begin("Scene Graph") {
 
+        style := ImGui.GetStyle();
+
         if ImGui.BeginChild("##FilterFrame", child_flags=.AutoResizeY) {
             ImGui.InputText("##Filter", filter_text.data, 64);
         }
@@ -19,12 +21,22 @@ show_scene_graph_window :: (open: *bool) {
                     
                     if filter_text[0] == 0 || matches_filter(name, to_string(filter_text.data)) {
                         entities_matching_filter += 1;
+                        
+                        use_networked_color := ecs_has(*g_world, entity, Networked);
+                        if use_networked_color {
+                            ImGui.PushStyleColor(ImGui.Col.Text, style_color_text_highlight);
+                        } else {
+                            ImGui.PushStyleColor(ImGui.Col.Text, style_color_white);
+                        }
 
                         if ImGui.TreeNode(temp_c_string(label), "% [%v%]", name, entity.index, entity.generation) {
-                            
-                            draw_entry_for_entity(*g_world, entity);
+                            ImGui.PopStyleColor();
+
+                            draw_entry_for_entity(*g_world, entity, use_networked_color);
 
                             ImGui.TreePop();
+                        } else {
+                            ImGui.PopStyleColor();
                         }
                     }
                 }
@@ -43,7 +55,7 @@ show_scene_graph_window :: (open: *bool) {
 
 #scope_file
 
-draw_entry_for_entity :: (world: *World, entity: Entity) {
+draw_entry_for_entity :: (world: *World, entity: Entity, draw_networked: bool) {
     cids := entity_types_get(world, entity);
     for cid : cids {
         cti := cid_to_type_info(world, cid);
@@ -53,10 +65,29 @@ draw_entry_for_entity :: (world: *World, entity: Entity) {
 
         ti := cti.ti;
 
+
+        has_networked_field := false;
+        for * ti.members {
+            if has_note(it, "Sync") {
+                has_networked_field = true;
+                break;
+            }
+        }
+
+        if draw_networked && has_networked_field {
+            ImGui.PushStyleColor(ImGui.Col.Text, style_color_text_highlight);
+        } else {
+            ImGui.PushStyleColor(ImGui.Col.Text, style_color_white);
+        }
+
         data := ecs_get(world, entity, cid);
         if ImGui.TreeNode(temp_c_string(ti.name)) {
+            ImGui.PopStyleColor();
+
             draw_members_property_editor(data, ti);
             ImGui.TreePop();
+        } else {
+            ImGui.PopStyleColor();
         }
     }
 }
@@ -93,7 +124,6 @@ draw_property_editor :: (data: *void, name: string, ti: *Type_Info, align_char_w
 
     if ti.type == {
         case .BOOL;
-
             ImGui.Text("%", name);
             ImGui.SameLine(spacing=align_spacing);
 
