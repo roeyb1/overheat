@@ -87,12 +87,14 @@ cid_register :: (using world: *World, type: Type) {
     cti.cid = cid;
     table_add(*type_info_map, cid, cti);
 
-    log("Registered CID %: %", ti.name, cid);
+    log_verbose("Registered CID %: %", ti.name, cid);
 
     if cti.is_singleton {
         // singletons are entities which have theirselves as a component:
         ecs_add(world, cent, cid);
     }
+
+    ecs_add(world, cent, Name.{sprint("TypeInfo(%)",ti.name)});
 }
 
 cid_to_type_info :: (using world: *World, cid: s64) -> Component_Type_Info {

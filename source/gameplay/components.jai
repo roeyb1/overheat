@@ -52,6 +52,8 @@ Shadow_Caster :: struct @Component {
     box: AABB;
 }
 
+Hidden_From_SceneGraph :: struct @Tag {};
+
 /** Entities with the Transient component will be destroyed automatically before the next frame */
 Transient :: struct @Tag {}
 

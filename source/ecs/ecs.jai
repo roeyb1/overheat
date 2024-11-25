@@ -41,13 +41,20 @@ ecs_world_init :: (using world: *World) {
     
     // we need to bootstrap EcsOnAdd and Event so they are available when the rest of the components are registered
     // component registration will fire off some (EcsOnAdd,EcsComponent) events
-    bootstrap_component(world, EcsOnAdd, 1);
-    bootstrap_component(world, Event, 2);
+    ecs_on_add := bootstrap_component(world, EcsOnAdd, 1);
+    event := bootstrap_component(world, Event, 2);
+    name := bootstrap_component(world, Name, 3);
+
+    ecs_add(world, ecs_on_add, Name.{"TypeInfo(EcsOnAdd)"});
+    ecs_add(world, event, Name.{"TypeInfo(Event)"});
+    ecs_add(world, name, Name.{"TypeInfo(Name)"});
+
 
     for ALL_COMPONENT_TYPES {
         if it == EcsComponent then continue;
         if it == EcsOnAdd then continue;
         if it == Event then continue;
+        if it == Name then continue;
         cid_register(world, it);
     }
 
@@ -336,7 +343,7 @@ bootstrap_component_id :: (using world: *World, type: Type, id: s64) {
     table_add(*type_info_map, entity.raw, cti);
 }
 
-bootstrap_component :: (using world: *World, type: Type, id: s64) {
+bootstrap_component :: (using world: *World, type: Type, id: s64) -> Entity {
     entity := entity_from_raw(id);
     entity_make(*world.stage, entity, .[]);
 
@@ -348,6 +355,7 @@ bootstrap_component :: (using world: *World, type: Type, id: s64) {
     table_add(*type_info_map, entity.raw, cti);
 
     ecs_add(world, entity, EcsComponent.{runtime_size = cti.ti.runtime_size}, broadcast=false);
+    return entity;
 }
 
 entity_destroy_children :: (using world: *World, parent: Entity, broadcast: bool = true) {

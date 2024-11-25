@@ -46,6 +46,7 @@ register_static_events :: (using world: *World) {
             ecs_add(world, event, cid_get(world, desc.source));
         }
         ecs_add(world, event, Event.{desc});
+        ecs_add(world, event, Name.{sprint("Event(%)",desc.debug_name)});
     }
 }
 
