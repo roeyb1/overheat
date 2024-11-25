@@ -88,10 +88,10 @@ init_player :: (position: Vector2) -> Entity {
             focus_info = sword_anim,
             name = .{"banana"},
         });
-        fragments := *ecs_get(*g_world, spell, Fragment_Storage).fragments_to_pass;
-        array_add(fragments, .Projectile_Fragment);
-        //array_add(fragments, .Touch);
-        //array_add(fragments, .Projectile_Fragment);
+        frag_storage := ecs_get(*g_world, spell, Fragment_Storage);
+        array_add(*frag_storage.payload, .Projectile);
+        array_add(*frag_storage.payload, .Touch);
+        array_add(*frag_storage.payload, .Projectile);
         ecs_add_pair(*g_world, spell, CastFrom, gameplay_ability);
     }
 

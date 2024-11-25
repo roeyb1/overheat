@@ -116,7 +116,7 @@ resolve_overlap :: (q: Query) {
             penetration_vector := closest_point_on_aabb(minkowsky, .{0, 0});
 
             // if the second entity has a collision invoker, we will handle half of the resolution here
-            if ecs_get(q.world, pair.b, Collision_Invoker) {
+            if ecs_has(q.world, pair.b, Collision_Invoker) {
                 a_pos.value -= penetration_vector / 2.;
                 b_pos.value += penetration_vector / 2.;
             } else {

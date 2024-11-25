@@ -96,9 +96,18 @@ process_deferred_operations :: (using world: *World) {
                     assert(ci != null);
                     memcpy(ptr, it.component_data, ci.runtime_size);
                     // ptr was allocated from temp storage, don't need to free it
-
-                    event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low(it.cid)), it.entity);
                 }
+        }
+    }
+
+    // broadcast all the component add events for each entity once all deferred components are added.
+    // Maybe the deferred ops should be batch processed for each entity?
+    for world.deferred_ops {
+        if it.type == {
+            case .ADD;
+                // it's possible that the entity was destroyed after component add was queued
+                assert(ecs_has(world, it.entity, it.cid));
+                event_broadcast(world, cid_pair(world, EcsOnAdd, cid_low(it.cid)), it.entity);
         }
     }
     world.deferred_ops.count = 0;

@@ -169,6 +169,38 @@ ecs_has :: (using world: *World, entity: Entity, cid: s64) -> bool {
     return archetype_type_has(arch, cid);
 }
 
+ecs_has_any :: (using world: *World, entity: Entity, types: [] Type) -> bool {
+    assert(entity_is_valid(world, entity));
+
+    arch: *Archetype;
+    if entity_is_alive(*deferred_stage, entity) {
+        arch = entity_archetype_get(deferred_stage, entity);
+    } else {
+        arch = entity_archetype_get(stage, entity);
+    }
+
+    for type : types {
+        if archetype_type_has(arch, cid_get(world, type)) return true;
+    }
+    return false;
+}
+
+ecs_has_all :: (using world: *World, entity: Entity, types: [] Type) -> bool {
+    assert(entity_is_valid(world, entity));
+
+    arch: *Archetype;
+    if entity_is_alive(*deferred_stage, entity) {
+        arch = entity_archetype_get(deferred_stage, entity);
+    } else {
+        arch = entity_archetype_get(stage, entity);
+    }
+
+    for type : types {
+        if !archetype_type_has(arch, cid_get(world, type)) return false;
+    }
+    return true;
+}
+
 ecs_get :: (using world: *World, entity: Entity, $type: Type) -> *type {
     return cast(*type) ecs_get(world, entity, cid_get(world, type));
 }
