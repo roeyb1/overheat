@@ -1,26 +1,41 @@
 show_scene_graph_window :: (open: *bool) {
     if ImGui.Begin("Scene Graph") {
 
-        ImGui.InputText("##Filter", filter_text.data, 64);
+        if ImGui.BeginChild("##FilterFrame", child_flags=.AutoResizeY) {
+            ImGui.InputText("##Filter", filter_text.data, 64);
+        }
+        ImGui.EndChild();
 
-        for q : iter_make(*g_world) {
+        entities_matching_filter := 0;
 
-            if archetype_type_has(q.current_archetype, cid_get(*g_world, Hidden_From_SceneGraph)) then continue;
+        if ImGui.BeginChild("##ListFrame") {
+            for q : iter_make(*g_world) {
 
-            for entity : q.entities {
-                name := ifx ecs_has(*g_world, entity, Name) then ecs_get(*g_world, entity, Name).name else "Entity";
-                label := tprint("%", entity.raw);
-                
-                if filter_text[0] == 0 || matches_filter(name, to_string(filter_text.data)) {
-                    if ImGui.TreeNode(temp_c_string(label), "% [%v%]", name, entity.index, entity.generation) {
-                        
-                        draw_entry_for_entity(*g_world, entity);
+                if archetype_type_has(q.current_archetype, cid_get(*g_world, Hidden_From_SceneGraph)) then continue;
 
-                        ImGui.TreePop();
+                for entity : q.entities {
+                    name := ifx ecs_has(*g_world, entity, Name) then ecs_get(*g_world, entity, Name).name else "Entity";
+                    label := tprint("%", entity.raw);
+                    
+                    if filter_text[0] == 0 || matches_filter(name, to_string(filter_text.data)) {
+                        entities_matching_filter += 1;
+
+                        if ImGui.TreeNode(temp_c_string(label), "% [%v%]", name, entity.index, entity.generation) {
+                            
+                            draw_entry_for_entity(*g_world, entity);
+
+                            ImGui.TreePop();
+                        }
                     }
                 }
             }
         }
+        ImGui.EndChild();
+
+        if ImGui.BeginChild("##Footer", child_flags=.AutoResizeY) {
+            ImGui.Text("% entities", entities_matching_filter);
+        }
+        ImGui.EndChild();
     }
 
     ImGui.End();
