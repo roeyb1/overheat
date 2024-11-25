@@ -159,6 +159,20 @@ draw_property_editor :: (data: *void, name: string, ti: *Type_Info, align_char_w
 
             ImGui.Text("(pointer)");
 
+        case .ARRAY;
+            info_array := cast(*Type_Info_Array) ti;
+            array_count, array_data := Reflection.get_array_count_and_data(data, info_array);
+            element_size := info_array.element_type.runtime_size;
+
+            name_align := ImGui.CalcTextSize("    ").x;
+            if ImGui.TreeNode(label, "% (count = %)", name, array_count) {
+                for 0..array_count-1 {
+                    item_name := tprint("%[%]", name, it);
+                    draw_property_editor(array_data + it * element_size, item_name, info_array.element_type, name_align);
+                }
+                ImGui.TreePop();
+            }
+
         case .STRUCT;
             ImGui.Text("%", name);
             ImGui.SameLine(spacing=align_spacing);
