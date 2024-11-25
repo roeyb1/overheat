@@ -32,6 +32,10 @@ iter_make_raw :: (world: *World, cids: [] s64) -> ECS_Iter {
     return iter;
 }
 
+iter_make :: (world: *World) -> ECS_Iter {
+    return iter_make_raw(world, .[]);
+}
+
 iter_make :: (world: *World, types: ..Type) -> ECS_Iter {
     cids := cids_from_types(world, types);
     return iter_make_raw(world, cids);

@@ -2,12 +2,14 @@ show_system_graph := false;
 show_imgui_demo_window := false;
 show_stats := true;
 show_settings := false;
+show_scene_graph := true;
 
 render_debug_ui :: () {
     if ImGui.BeginMainMenuBar() {
         if ImGui.BeginMenu("Tools") {
             if ImGui.MenuItem("Settings", null, *show_settings) {}
             if ImGui.MenuItem("Stats", null, *show_stats) {}
+            if ImGui.MenuItem("Scene Graph", null, *show_scene_graph) {}
             if ImGui.MenuItem("View System Graph", null, *show_system_graph) {}
             ImGui.EndMenu();
         }
@@ -29,6 +31,9 @@ render_debug_ui :: () {
     }
     if show_imgui_demo_window {
         ImGui.ShowDemoWindow(*show_imgui_demo_window);
+    }
+    if show_scene_graph {
+        show_scene_graph_window(*show_scene_graph);
     }
 }
 
@@ -244,3 +249,4 @@ visualize_system_execution :: () {
     ImGui.End();
 }
 
+#load "scene_graph.jai";

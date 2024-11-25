@@ -237,6 +237,8 @@ init_style :: () {
     }
 }
 
+#scope_export
+
 style_color_white :: ImGui.ImVec4.{ 1., 1., 1., 1. };
 
 style_color_orange :: ImGui.ImVec4.{ 0.819, 0.278, 0.007, 1. };
@@ -250,6 +252,8 @@ style_color_green_inactive :: ImGui.ImVec4.{ 0.596, 0.592, 0.101, 0.7 };
 style_color_primary :: ImGui.ImVec4.{ 0.250, 0.474, 0.549, 1. };
 style_color_primary_light :: ImGui.ImVec4.{ 0.439, 0.662, 0.631, 1. };
 style_color_primary_dark :: ImGui.ImVec4.{ 0.066, 0.294, 0.372, 1. };
+
+style_color_text_highlight :: ImGui.ImVec4.{255. / 255., 231. / 255., 148. / 255., 1.};
 
 style_color_surface :: ImGui.ImVec4.{ 0.059, 0.059, 0.059, 1. };
 style_color_overlay_1 :: ImGui.ImVec4.{ 0.07, 0.07, 0.07, 1. };
