@@ -23,7 +23,7 @@ entity_is_alive :: (using stage: Stage, entity: Entity) -> bool {
     if entities[entity.index].index == INVALID_ENTITY_INDEX then return false;
     if entity.generation != entities[entity.index].generation then return false;
     return true;
-}
+} @NoProfile
 
 entity_init :: (using stage: *Stage, entity: Entity, components: [] s64) {
     assert(entity.index != INVALID_ENTITY_INDEX);
@@ -151,7 +151,7 @@ stage_entity_get_types :: (using stage: *Stage, entity: Entity) -> [] s64 {
     assert(success);
 
     return archetypes[record.archetype_id].type_ids;
-}
+} @NoProfile
 
 entity_record_get_ptr :: (using stage: Stage, entity: Entity) -> *Entity_Record {
     return table_find_pointer(*entity_records, entity.raw);
@@ -174,7 +174,7 @@ stage_component_get :: (using stage: Stage, entity: Entity, cid: s64) -> *void {
 
     archetype := *stage.archetypes[record.archetype_id];
     return archetype_component_get(archetype, record.row, cid);
-}
+} @NoProfile
 
 stage_component_get_target :: (using stage: *Stage, entity: Entity, type: Type, index: s64 = 0) -> Entity {
     // use a wildcard to search for any potential targets of this relation:
@@ -189,7 +189,7 @@ stage_component_get_target :: (using stage: *Stage, entity: Entity, type: Type, 
         }
     }
     return INVALID_ENTITY;
-}
+} @NoProfile
 
 stage_component_add :: (using stage: *Stage, entity: Entity, cid: s64) -> *void {
     assert(entity_is_alive(stage, entity));

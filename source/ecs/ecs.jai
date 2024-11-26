@@ -230,7 +230,7 @@ ecs_get_target :: (using world: *World, entity: Entity, type: Type, index: s64 =
     }
 
     return stage_component_get_target(*stage, entity, type, index);
-}
+} @NoProfile
 
 ecs_add :: (using world: *World, entity: Entity, val: $type, broadcast: bool = true) -> *type {
     ptr := cast(*type) ecs_add(world, entity, type, broadcast = false);

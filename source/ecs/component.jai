@@ -29,7 +29,7 @@ cid_get :: (using world: *World, type: Type) -> s64 {
     assert(success, "Failed to find CID for type: %", ti.name);
 
     return cid;
-}
+} @NoProfile
 
 cid_low :: inline (cid: s64) -> s32 {
     return cast,no_check(s32) cid;
@@ -56,7 +56,7 @@ cid_match :: (a: s64, b: s64) -> bool {
     b_hi: s32 = cid_high(b);
 
     return match(a_lo, b_lo) && match(a_hi, b_hi);
-}
+} @NoProfile
 
 get_component_type_info :: (type: Type) -> Component_Type_Info {
     cti: Component_Type_Info;
@@ -67,7 +67,7 @@ get_component_type_info :: (type: Type) -> Component_Type_Info {
     if has_note(cti.ti, "Pair") then cti.is_pair = true;
 
     return cti;
-}
+} @NoProfile
 
 cid_register :: (using world: *World, type: Type) {
     cent := entity_spawn(world);
@@ -132,7 +132,7 @@ cid_pair :: (using world: *World, source: s32, target: s32) -> s64 {
     result.generation = cast(s32) cid_high;
 
     return result.raw;
-}
+} @NoProfile
 
 cid_pair :: inline (using world: *World, type: Type, entity: Entity) -> s64 {
     return cid_pair(world, type, cast(s64) entity.index);
