@@ -75,8 +75,8 @@ networking_init :: () -> bool {
     }
 
     // Simulate lag
-    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Send, 10);
-    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Recv, 10);
+    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Send, 0);
+    Utils.SetGlobalConfigValueInt32(ConfigValueLabel.FakePacketLag_Recv, 0);
 
     Utils.SetDebugOutputFunction(.Msg, gns_debug_callback);
 
