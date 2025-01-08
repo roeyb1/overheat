@@ -11,7 +11,7 @@ VMA_PATH :: "source/vk_mem_alloc.cpp";
     os := OS;
     cpu := CPU;
     if target_android {
-        os = .ANDROID;
+        os = .ANDROID, binary_path, binary_path));
         cpu = .ARM64;
     }
 
@@ -38,24 +38,24 @@ compile_vma :: (os: Operating_System_Tag, cpu: CPU_Tag) -> bool {
     if os == {
         case .WINDOWS;
             make_directory_if_it_does_not_exist("windows");
-            return build_cpp_dynamic_lib("windows/libvma", VMA_PATH,
-                extra = .["/I", VULKAN_PATHS.include, "/DVMA_IMPLEMENTATION", "/DVMA_VULKAN_VERSION=1002000", "/DVMA_CALL_PRE=__declspec(dllexport)", "/std:c++14"],
+            return build_cpp_dynamic_lib("win/libvma", VMA_PATH,
+                extra = .["/I", VULKAN_PATHS.include, "/DVMA_IMPLEMENTATION", "/DVK_ERROR_UNKNOWN=((VkResult)-13)", "/DVMA_CALL_PRE=__declspec(dllexport)", "/std:c++14"],
                 library_files = .[VULKAN_PATHS.import_library]
             );
 
         case .LINUX;
             make_directory_if_it_does_not_exist("linux");
-            return build_cpp_dynamic_lib("linux/libvma", VMA_PATH, extra = .["-I", VULKAN_PATHS.include, "-DVMA_IMPLEMENTATION", "-DVK_ERROR_UNKNOWN=((VkResult)-13)", "-x", "c++", "-std=c++14", "-lstdc++", "-lvulkan.1", "-fno-exceptions", "-fno-rtti"]);
+            return build_cpp_dynamic_lib("linux/libvma", VMA_PATH, extra = .["-I", VULKAN_PATHS.include, "-DVMA_IMPLEMENTATION", "-x", "c++", "-std=c++17", "-lstdc++", "-fno-exceptions", "-fno-rtti", "-lvulkan"]);
 
         case .ANDROID;
             make_directory_if_it_does_not_exist("android");
             ndk := get_ndk_paths();
             target_triple := get_android_target_triple(cpu);
-            return build_cpp_dynamic_lib("android/libvma", VMA_PATH, target = .LINUX, extra = .["-I", VULKAN_PATHS.include, "-DVMA_IMPLEMENTATION", "-DVK_ERROR_UNKNOWN=((VkResult)-13)", "-x", "c++", "-std=c++14", "--sysroot", ndk.sysroot, "-L", tprint("%/usr/lib/%/%", ndk.sysroot, target_triple, ANDROID_SDK_LEVEL), "-target", target_triple, "-nostartfiles", "-fno-exceptions", "-fno-rtti", "-static-libstdc++"]);
+            return build_cpp_dynamic_lib("android/libvma", VMA_PATH, target = .LINUX, extra = .["-I", VULKAN_PATHS.include, "-DVMA_IMPLEMENTATION", "-DVK_ERROR_UNKNOWN=((VkResult)-13)", "-x", "c++", "-std=c++17", "--sysroot", ndk.sysroot, "-L", tprint("%/usr/lib/%/%", ndk.sysroot, target_triple, ANDROID_SDK_LEVEL), "-target", target_triple, "-nostartfiles", "-fno-exceptions", "-fno-rtti", "-static-libstdc++"]);
 
         case .MACOS;
             make_directory_if_it_does_not_exist("macos");
-            success := build_cpp_dynamic_lib("macos/libvma", VMA_PATH, extra = .["-I", VULKAN_PATHS.include, "-DVMA_IMPLEMENTATION", "-DVK_ERROR_UNKNOWN=((VkResult)-13)", "-x", "c++", "-std=c++14", "-lc++", "-lvulkan.1", "-fno-exceptions", "-fno-rtti"]);
+            success := build_cpp_dynamic_lib("macos/libvma", VMA_PATH, extra = .["-I", VULKAN_PATHS.include, "-DVMA_IMPLEMENTATION", "-DVK_ERROR_UNKNOWN=((VkResult)-13)", "-x", "c++", "-std=c++17", "-lc++", "-lvulkan.1", "-fno-exceptions", "-fno-rtti"]);
             if !success return false;
 
             // Update the Vulkan rpath to point to the system library location
@@ -120,7 +120,7 @@ generate_bindings :: (target_os: Operating_System_Tag, target_cpu: CPU_Tag) -> b
 
 VMA_FOOTER :: #string END
 #if OS == .WINDOWS {
-    libvma :: #library "windows/libvma";
+    libvma :: #library "win/libvma";
 } else #if OS == .LINUX {
     libvma :: #library "linux/libvma";
 } else #if OS == .MACOS {
@@ -128,11 +128,11 @@ VMA_FOOTER :: #string END
 } else #if OS == .ANDROID {
     libvma :: #library "android/libvma";
 } else {
-    #assert false, "Unsupported OS";
+    #assert false "Unsupported OS";
 }
 END
 
-#import "Android_Toolchain";
+#import "Toolchains/Android";
 #import "Basic";
 #import "Bindings_Generator";
 #import "BuildCpp";

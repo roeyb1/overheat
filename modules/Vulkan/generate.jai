@@ -2,6 +2,7 @@
 // Tested with vulkan 1.0 and 1.2
 // You can use this file to generate any version of vulkan bindings.
 // You only need to set the vulkan.h and vulkan lib paths.
+// Modified by Ryan Capote for Vulkan 1.3
 
 // config
 AT_COMPILE_TIME   :: true;
@@ -16,7 +17,7 @@ vulkan_h_location :: "source/vulkan.h";
 
 
 #if AT_COMPILE_TIME {
-    #run,stallable {
+    #run {
         set_build_options_dc(.{do_output=false});
         if !generate_bindings() {
             compiler_set_workspace_status(.FAILED);
@@ -59,16 +60,16 @@ OMIT_LIST :: string.[
 
 generate_bindings :: () -> bool {
     output_filename: string;
-    options: Generate_Bindings_Options;
+    opts: Generate_Bindings_Options;
     {
-        using options;
+        using opts;
 
         #if OS == .WINDOWS {
             array_add(*libnames, "vulkan-1");
             array_add(*extra_clang_arguments, "-x", "c", "-DWIN32_LEAN_AND_MEAN");
             output_filename  = "generated_windows.jai";
         } else #if OS == .LINUX {
-            array_add(*system_library_names, "libvulkan.so.1");
+            array_add(*libnames, "libvulkan.so.1");
             output_filename  = "generated_linux.jai";
         } else #if OS == .MACOS {
             // @ToDo
@@ -80,40 +81,26 @@ generate_bindings :: () -> bool {
         if vulkan_lib_path then array_add(*libpaths, vulkan_lib_path);
 
         array_add(*source_files, vulkan_h_location);
+        array_add(*system_include_paths, GENERATOR_DEFAULT_SYSTEM_INCLUDE_PATH);
 
-        generate_library_declarations = true;
+        generate_library_declarations = false;
+        omit_global_declarations = false;
         will_print_bindings = () {
             // Change the library name to be the same on all platforms
             // so that we don't have to generate identical bindings for every platform just because the library name is different.
             context.generator.libraries[0].name = "libvulkan";
         };
+        footer = VULKAN_FOOTER;
 
         visitor     = vulkan_visitor;
-        log_stripped_declarations = false;
         generate_compile_time_struct_checks = false;
     }
 
-    init_string_builder(*enumeration_wrapper_builder);
-
-    bindings_builder, success := generate_bindings(options, log_results = true);
-    if !success return false;
-
-    append(*bindings_builder, "\n#import \"Basic\";\n\n#scope_export\n\n// Enumeration helpers\n\n");
-    append_and_steal_buffers(*bindings_builder, *enumeration_wrapper_builder);
-
-    success = write_entire_file(output_filename, *bindings_builder);
-    if !success {
-        log_error("Could not write generated output to \"%\"", output_filename);
-        return false;
-    }
-    log("\nOK! generated '%'", output_filename);
-    return true;
+    return generate_bindings(opts, output_filename);
 }
 
 available_flag_bits: Table(string, *Enum);
 struct_type_decl: *Enum;
-
-enumeration_wrapper_builder: String_Builder;
 
 vulkan_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration_Visit_Result {
     // Omit header definitions (ex: VULKAN_H_)
@@ -135,7 +122,7 @@ vulkan_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration
         if en.name == "VkStructureType" {
             struct_type_decl = en; // Save for later
         }
-
+        
         // Almost all enums should be unsigned
         if en.type && decl.name != "VkResult" {
             if en.type.size == {
@@ -175,10 +162,45 @@ vulkan_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration
     }
 
     // Set the default value for sType.
-    if parent_decl && parent_decl.kind == .STRUCT && parent_decl.name != "VkBaseInStructure" && parent_decl.name != "VkBaseOutStructure" &&
+    if parent_decl && parent_decl.kind == .STRUCT && parent_decl.name != "VkBaseInStructure" && parent_decl.name != "VkBaseOutStructure" && 
             decl.kind == .DECLARATION && decl.name == "sType" {
 
         enum_value_name := get_sType_default_value_from_struct_name(parent_decl.name);
+
+        // Vulkan has inconsisant naming for things, so the generator can't find these enum values because it splits or doesn't split
+        // numbers correctly in newer cases. This manually changes the name of the enum so the generator can find it.
+        if enum_value_name == "PHYSICAL_DEVICE_VULKAN_11_FEATURES" then enum_value_name = "PHYSICAL_DEVICE_VULKAN_1_1_FEATURES";
+        if enum_value_name == "PHYSICAL_DEVICE_VULKAN_11_PROPERTIES" then enum_value_name = "PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES";
+        if enum_value_name == "PHYSICAL_DEVICE_VULKAN_12_FEATURES" then enum_value_name = "PHYSICAL_DEVICE_VULKAN_1_2_FEATURES";
+        if enum_value_name == "PHYSICAL_DEVICE_VULKAN_12_PROPERTIES" then enum_value_name = "PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES";
+        if enum_value_name == "PHYSICAL_DEVICE_VULKAN_13_FEATURES" then enum_value_name = "PHYSICAL_DEVICE_VULKAN_1_3_FEATURES";
+        if enum_value_name == "PHYSICAL_DEVICE_VULKAN_13_PROPERTIES" then enum_value_name = "PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES";
+        if enum_value_name == "PHYSICAL_DEVICE_SHADER_ATOMIC_INT_64_FEATURES" then enum_value_name = "PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES";
+        if enum_value_name == "PHYSICAL_DEVICE_SHADER_FLOAT_16_INT_8_FEATURES" then enum_value_name = "PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES";
+        if enum_value_name == "PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTCHDR_FEATURES" then enum_value_name = "PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES";
+        if enum_value_name == "PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT_64_FEATURES_EXT" then enum_value_name = "PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT";
+        if enum_value_name == "PHYSICAL_DEVICE_INDEX_TYPE_UINT_8_FEATURES_EXT" then enum_value_name = "PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT";
+        if enum_value_name == "PHYSICAL_DEVICE_RGB_A_10_X_6_FORMATS_FEATURES_EXT" then enum_value_name = "PHYSICAL_DEVICE_RGBA10X6_FORMATS_FEATURES_EXT";
+        if enum_value_name == "PHYSICAL_DEVICE_IMAGE_2_D_VIEW_OF_3_D_FEATURES_EXT" then enum_value_name = "PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT";
+        if enum_value_name == "PHYSICAL_DEVICE_IMAGE_SLICED_VIEW_OF_3_D_FEATURES_EXT" then enum_value_name = "PHYSICAL_DEVICE_IMAGE_SLICED_VIEW_OF_3D_FEATURES_EXT";
+
+        if enum_value_name == "VIDEO_DECODE_H_264_PROFILE_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H264_PROFILE_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_264_CAPABILITIES_KHR" then enum_value_name = "VIDEO_DECODE_H264_CAPABILITIES_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_264_SESSION_PARAMETERS_ADD_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_264_SESSION_PARAMETERS_CREATE_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H264_SESSION_PARAMETERS_CREATE_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_264_PICTURE_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H264_PICTURE_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_264_DPB_SLOT_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_264_PROFILE_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H264_PROFILE_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_265_PROFILE_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H265_PROFILE_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_265_CAPABILITIES_KHR" then enum_value_name = "VIDEO_DECODE_H265_CAPABILITIES_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_265_SESSION_PARAMETERS_ADD_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_265_SESSION_PARAMETERS_CREATE_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H265_SESSION_PARAMETERS_CREATE_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_265_PICTURE_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H265_PICTURE_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_265_DPB_SLOT_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H265_DPB_SLOT_INFO_KHR";
+        if enum_value_name == "VIDEO_DECODE_H_265_PROFILE_INFO_KHR" then enum_value_name = "VIDEO_DECODE_H265_PROFILE_INFO_KHR";
+
+
+
         enum_value: *Enum.Enumerate;
         for * struct_type_decl.enumerates {
             if it.output_name == enum_value_name {
@@ -186,7 +208,7 @@ vulkan_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration
                 break;
             }
         }
-        assert(enum_value != null, "Could not find % enum value for \"%\" (%)", struct_type_decl.name, enum_value_name, parent_decl.name);
+        assert(enum_value != null, "Could not find % enum value for \"%\"", struct_type_decl.name, enum_value_name);
 
         literal := New(Literal);
         literal.literal_kind = .ENUM;
@@ -195,94 +217,7 @@ vulkan_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration
         decl.expression = literal;
     }
 
-    if decl.kind == .FUNCTION {
-        function := cast(*Function) decl;
-        maybe_add_enumeration_wrapper(*enumeration_wrapper_builder, function);
-    }
-
     return .RECURSE;
-}
-
-maybe_add_enumeration_wrapper :: (builder: *String_Builder, function: *Function) {
-    func_type := function.type.type_of_function;
-    assert(func_type != null);
-
-    if func_type.arguments.count < 2 return;
-
-    count_arg := func_type.arguments[func_type.arguments.count - 2];
-    data_arg := func_type.arguments[func_type.arguments.count - 1];
-
-    // Make sure that the count is a *u32, that data is a pointer and that the return values is a VkResult (if present)
-    if count_arg.type.pointer_to != context.generator.type_def_u32 return;
-    if !data_arg.type.pointer_to return;
-    assert(func_type.return_type != null);
-    has_return_value := (func_type.return_type != context.generator.type_def_void);
-    if has_return_value && get_type_name(func_type.return_type) != "VkResult" return;
-
-    print_to_builder(builder, "% :: (", function.name);
-
-    for i: 0..func_type.arguments.count - 3 {
-        if i append(builder, ", ");
-        arg := func_type.arguments[i];
-        print_to_builder(builder, "%: ", arg.name);
-        print_type_to_builder(builder, arg.type, null);
-    }
-
-    append(builder, ") -> [] ");
-    print_type_to_builder(builder, data_arg.type.pointer_to, null);
-
-    if has_return_value {
-        append(builder, ", VkResult #must");
-    }
-
-    append(builder, " {\n");
-    append(builder, "    count: u32;\n    data: [] ");
-    print_type_to_builder(builder, data_arg.type.pointer_to, null);
-    append(builder, ";\n");
-
-    if has_return_value {
-        append(builder, "    result: VkResult;\n");
-    }
-
-    print_call :: () #expand {
-        append(builder, "    ");
-        if has_return_value {
-            append(builder, "result = ");
-        }
-
-        print_to_builder(builder, "%(", function.name);
-
-        for 0..func_type.arguments.count - 3 {
-            arg := func_type.arguments[it];
-            print_to_builder(builder, "%, ", arg.name);
-        }
-
-        append(builder, "*count, data.data);\n");
-    }
-
-    print_call();
-
-    if has_return_value {
-        append(builder, "    if result return .[], result;\n");
-    }
-
-    append(builder, "    if count == 0 return .[]");
-    if has_return_value {
-        append(builder, ", .SUCCESS");
-    }
-    append(builder, ";\n");
-
-    append(builder, "    data = NewArray(count, ");
-    print_type_to_builder(builder, data_arg.type.pointer_to, null);
-    append(builder, ", initialized = false);\n");
-
-    print_call();
-
-    append(builder, "    return data");
-    if has_return_value {
-        append(builder, ", result");
-    }
-    append(builder, ";\n}\n\n");
 }
 
 get_sType_default_value_from_struct_name :: (name: string) -> string {
@@ -296,50 +231,6 @@ get_sType_default_value_from_struct_name :: (name: string) -> string {
     is_num :: (byte: u8) -> bool {
         if byte >= #char "0" && byte <= #char "9" return true;
         return false;
-    }
-
-    // special case hack for certain structs containing numbers without spaces:
-    if name == "VkPhysicalDeviceVulkan11Features" {
-        return "PHYSICAL_DEVICE_VULKAN_1_1_FEATURES";
-    }
-    else if name == "VkPhysicalDeviceVulkan11Properties" {
-        return "PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES";
-    }
-    else if name == "VkPhysicalDeviceVulkan12Features" {
-        return "PHYSICAL_DEVICE_VULKAN_1_2_FEATURES";
-    }
-    else if name == "VkPhysicalDeviceVulkan12Properties" {
-        return "PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES";
-    }
-    else if name == "VkPhysicalDeviceVulkan13Features" {
-        return "PHYSICAL_DEVICE_VULKAN_1_3_FEATURES";
-    }
-    else if name == "VkPhysicalDeviceVulkan13Properties" {
-        return "PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES";
-    }
-    else if name == "VkPhysicalDeviceShaderAtomicInt64Features" {
-        return "PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES";
-    }
-    else if name == "VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT" {
-        return "PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT";
-    }
-    else if name == "VkPhysicalDeviceIndexTypeUint8FeaturesEXT" {
-        return "PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT";
-    }
-    else if name == "VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT" {
-        return "PHYSICAL_DEVICE_RGBA10X6_FORMATS_FEATURES_EXT";
-    }
-    else if name == "VkPhysicalDeviceShaderFloat16Int8Features" {
-        return "PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES";
-    }
-    else if name == "VkPhysicalDeviceTextureCompressionASTCHDRFeatures" {
-        return "PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES";
-    }
-    else if name == "VkPhysicalDeviceImage2DViewOf3DFeaturesEXT" {
-        return "PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT";
-    }
-    else if name == "VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT" {
-        return "PHYSICAL_DEVICE_IMAGE_SLICED_VIEW_OF_3D_FEATURES_EXT";
     }
 
     builder: String_Builder;
@@ -377,3 +268,14 @@ get_sType_default_value_from_struct_name :: (name: string) -> string {
 #import "String";
 #import "Hash_Table";
 
+VULKAN_FOOTER :: #string END
+#scope_file
+
+#if OS == .WINDOWS {
+    libvulkan :: #library "win/vulkan-1";
+} else #if OS == .LINUX {
+    libvulkan :: #system_library "libvulkan.so.1";
+} else {
+    #assert(false);
+}
+END

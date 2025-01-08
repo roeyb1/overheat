@@ -71,7 +71,7 @@ SDL_ClearError :: () #foreign SDL2;
     #library,system,link_always "libm";
 } else #if OS == .LINUX {
     #import "X11";
-    SDL2 :: #library "linux/libSDL2";
+    SDL2 :: #library,system "libSDL2";
     #library,system,link_always "libdl";
     #library,system,link_always "libm";
     #library,system,link_always "libpthread";

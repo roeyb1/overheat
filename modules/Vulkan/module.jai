@@ -43,7 +43,7 @@ VK_API_VERSION_1_2 :: #run VK_MAKE_VERSION(1, 2, 0);
 
 // These are the new versions:
 VK_MAKE_API_VERSION :: (variant:u32, major: u32, minor: u32, patch: u32) -> u32 {
-    return (variant << 29) | (major << 22) | (minor << 12) | patch;
+    return (variant << 22) | (major << 22) | (minor << 12) | patch;
 }
 
 VK_API_VERSION_VARIANT :: (version: u32) -> u32 { return (version >> 29); }
@@ -58,11 +58,13 @@ VK_API_VERSION_PATCH   :: (version: u32) -> u32 { return version & 0xfff; }
     vkCreateWin32SurfaceKHR :: (instance: VkInstance, pCreateInfo: *VkWin32SurfaceCreateInfoKHR, pAllocator: *VkAllocationCallbacks, pSurface: *VkSurfaceKHR) -> VkResult #foreign libvulkan;
     vkGetPhysicalDeviceWin32PresentationSupportKHR :: (physicalDevice: VkPhysicalDevice, queueFamilyIndex: u32) -> VkBool32 #foreign libvulkan;
     #scope_file
-    libvulkan :: #library, no_dll "win/vulkan-1";
-} else #if OS == .LINUX || OS == .ANDROID {
+    libvulkan :: #library "win/vulkan-1";
+} else #if OS == .LINUX {
     #load "generated_linux.jai";
     libvulkan :: #system_library "libvulkan";
-} else {
-    #assert false  "Unsupported OS";
 }
+
+#scope_module
+
+size_t  :: u64;
 
