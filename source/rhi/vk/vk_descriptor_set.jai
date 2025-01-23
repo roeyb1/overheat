@@ -127,7 +127,7 @@ rhi_descriptor_pool_create :: (max_sets: u32, layout: *RHIDescriptorSetLayout) -
     assert(pool_size_count > 0);
 
     create_info := VkDescriptorPoolCreateInfo.{
-        flags = .UPDATE_AFTER_BIND_BIT,
+        flags = .UPDATE_AFTER_BIND_BIT_EXT,
         maxSets = max_sets,
         poolSizeCount = pool_size_count,
         pPoolSizes = pool_sizes.data,

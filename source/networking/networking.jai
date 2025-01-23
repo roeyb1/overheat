@@ -121,7 +121,7 @@ networking_update :: () {
 #scope_file
 
 gns_debug_callback :: (level: DebugOutputLevel, msg: *s8) -> void #c_call {
-    new_ctx: Context;
+    new_ctx: #Context;
     push_context new_ctx 
     {
         msg_view := view_of_c_string(msg);

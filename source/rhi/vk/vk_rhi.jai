@@ -675,7 +675,8 @@ rhi_translate :: (flags: RHIBufferUsageFlags) -> VkBufferUsageFlags {
         result |= .TRANSFER_DST_BIT;
     }
     if test_flag_bit(flags, RHIBufferUsageFlags.SHADER_DEVICE_ADDRESS_BIT) {
-        result |= .SHADER_DEVICE_ADDRESS_BIT;
+        assert(false);
+        //result |= .SHADER_DEVICE_ADDRESS_BIT;
     }
 
     return result;

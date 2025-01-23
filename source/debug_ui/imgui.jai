@@ -1,7 +1,5 @@
 imgui_init :: () {
     ctx := ImGui.CreateContext();
-    ImNodes.SetImGuiContext(ctx);
-    ImNodes.CreateContext();
 
     init_style();
 
@@ -38,7 +36,12 @@ imgui_init :: () {
     wmInfo: SDL_SysWMinfo ;
     SDL_VERSION(*wmInfo.version);
     SDL_GetWindowWMInfo(g_window, *wmInfo);
-    ImGui.GetMainViewport().PlatformHandleRaw = wmInfo.info.win.window;
+    #if OS == .WINDOWS {
+        ImGui.GetMainViewport().PlatformHandleRaw = wmInfo.info.win.window;
+    }
+    #if OS == .LINUX {
+        ImGui.GetMainViewport().PlatformHandleRaw = cast(*void) wmInfo.info.x11.window;
+    }
 
     cursor_arrow = SDL_CreateSystemCursor(.ARROW);
     cursor_text_input = SDL_CreateSystemCursor(.IBEAM);
@@ -50,7 +53,6 @@ imgui_init :: () {
 }
 
 imgui_shutdown :: () {
-    ImNodes.DestroyContext();
     ImGui.DestroyContext();
 }
 
@@ -136,8 +138,6 @@ imgui_new_frame :: (window: *SDL_Window) {
         case .ResizeNWSE;    SDL_SetCursor(cursor_resize_nwse);
     }
 }
-
-ImNodes :: #import "imnodes";
 
 #scope_file
 

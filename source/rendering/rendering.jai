@@ -302,7 +302,7 @@ render_light_passes :: (rg: *RenderGraph, view_data: *RenderViewData, color_text
 
             min_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.min);
             max_ss := worldspace_to_viewspace(view_data.camera_proj, view_data.camera_position.xy, light_bounds.max);
-            min_ss.y, max_ss.y = swap(min_ss.y, max_ss.y);
+            min_ss.y, max_ss.y = max_ss.y, min_ss.y;
 
             scissor_offset := min_ss;
             scissor_extent := max_ss - min_ss;

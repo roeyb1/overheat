@@ -8,13 +8,13 @@ compile_shaders :: (base_directory: string, debug_symbols := false) -> bool {
     #if OS == .WINDOWS {
         shader_compiler := "utils/win/dxc.exe";
     } else #if OS == .LINUX {
-        #assert false, "Vulkan shader compilation is not supported in this platform";
+        shader_compiler := "utils/linux/dxc";
     } else #if OS == .MACOS {
         shader_compiler := "dxc";
     } else {
-        #assert false, "Vulkan shader compilation is not supported in this platform";
+        assert(false, "Vulkan shader compilation is not supported in this platform");
     }
-    //assert(file_exists(shader_compiler), "%", shader_compiler);
+    assert(file_exists(shader_compiler), "%", shader_compiler);
 
     if file_exists(output_dir) delete_directory(output_dir);
     make_directory_if_it_does_not_exist(output_dir, recursive=true);

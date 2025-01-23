@@ -5,7 +5,15 @@ server_process: Process;
 
 start_local_server :: () {
     assert(!local_server_started);
-    local_server_started = create_process(*server_process, "overheat-server", "-port", tprint("%", g_args.port));
+    
+    #if OS == .WINDOWS {
+        binary_path :: "bin/win";
+    }
+    #if OS == .LINUX {
+        binary_path :: "bin/linux";
+    }
+
+    local_server_started = create_process(*server_process, tprint("%/overheat-server", binary_path), "-port", tprint("%", g_args.port));
     assert(local_server_started);
 }
 

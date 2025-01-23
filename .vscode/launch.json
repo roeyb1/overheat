@@ -6,58 +6,52 @@
     "configurations": [
         {
             "name": "Server",
-            "type": "cppvsdbg",
+            "type": "cppdbg",
             "request": "launch",
-            "program": "overheat-server.exe",
+            "program": "${workspaceFolder}/bin/linux/overheat-server",
             "args": [],
-            "console":"integratedTerminal",
             "logging": {
                 "moduleLoad": true,
                 "trace": true
             },
             "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
-            "cwd": "${workspaceRoot}/bin/win",
-            "preLaunchTask": "build server"
+            "cwd": "${workspaceRoot}/bin/linux",
         },
         {
             "name": "Client",
-            "type": "cppvsdbg",
+            "type": "cppdbg",
             "request": "launch",
-            "program": "overheat-client.exe",
+            "program": "${workspaceFolder}/bin/linux/overheat-client",
             "args": [],
-            "console":"integratedTerminal",
             "logging": {
                 "moduleLoad": true,
                 "trace": true
             },
             "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
-            "cwd": "${workspaceRoot}/bin/win",
-            "preLaunchTask": "build client"
+            "cwd": "${workspaceRoot}/bin/linux"
         },
         {
             "name": "Client + Server",
-            "type": "cppvsdbg",
+            "type": "cppdbg",
             "request": "launch",
-            "program": "overheat-client.exe",
+            "program": "${workspaceRoot}/bin/linux/overheat-client",
             "args": [
                 "-host"
             ],
-            "console":"integratedTerminal",
             "logging": {
                 "moduleLoad": true,
                 "trace": true
             },
             "visualizerFile": "${workspaceFolder}/.vscode/jai.natvis",
-            "cwd": "${workspaceRoot}/bin/win",
+            "cwd": "${workspaceRoot}/bin/linux",
             "preLaunchTask": "build all"
         },
         {
             "name": "Client (Release)",
-            "type": "cppvsdbg",
+            "type": "cppdbg",
             "request": "launch",
             "program": "overheat-client.exe",
             "args": [],
-            "console":"integratedTerminal",
             "logging": {
                 "moduleLoad": true,
                 "trace": true
@@ -68,11 +62,10 @@
         },
         {
             "name": "Server (Release)",
-            "type": "cppvsdbg",
+            "type": "cppdbg",
             "request": "launch",
             "program": "overheat-server.exe",
             "args": [],
-            "console":"integratedTerminal",
             "logging": {
                 "moduleLoad": true,
                 "trace": true
@@ -83,11 +76,10 @@
         },
         {
             "name": "Client (Profile)",
-            "type": "cppvsdbg",
+            "type": "cppdbg",
             "request": "launch",
             "program": "overheat-client.exe",
             "args": [],
-            "console":"integratedTerminal",
             "logging": {
                 "moduleLoad": true,
                 "trace": true
@@ -98,11 +90,10 @@
         },
         {
             "name": "Server (Profile)",
-            "type": "cppvsdbg",
+            "type": "cppdbg",
             "request": "launch",
             "program": "overheat-server.exe",
             "args": [],
-            "console":"integratedTerminal",
             "logging": {
                 "moduleLoad": true,
                 "trace": true

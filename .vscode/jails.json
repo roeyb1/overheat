@@ -4,7 +4,6 @@
     ],
     "roots": [
         "source/main.jai",
-        "source/rhi/vk/vk_rhi.jai",
         "build.jai"
     ],
     "build_root": "build.jai"

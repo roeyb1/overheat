@@ -326,7 +326,7 @@ server_shutdown :: (server: *Server) {
 }
 
 server_net_connection_status_changed_callback :: (info: *ConnectionStatusChanged) -> void #c_call {
-    new_ctx: Context;
+    new_ctx: #Context;
     init_context_logger(*new_ctx);
     push_context new_ctx {
         handle_server_net_connection_status_changed(*g_server, info);
@@ -335,7 +335,7 @@ server_net_connection_status_changed_callback :: (info: *ConnectionStatusChanged
 
 handle_server_net_connection_status_changed :: (server: *Server, info: *ConnectionStatusChanged) {
     if info.m_info.m_eState == {
-        case .None;
+        case .None; #through;
         case .ClosedByPeer; #through;
         case .ProblemDetectedLocally; {
             // Only consider problems if connection was already established

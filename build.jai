@@ -15,6 +15,8 @@ build :: () {
 
     options := get_build_options(w);
 
+    #if #exists(JAILS_DIAGNOSTICS_BUILD) options.output_type = .NO_OUTPUT;
+
     // Set up the output directory based on the target operating system:
     {
         // bin folder should contain per-os subdirs:

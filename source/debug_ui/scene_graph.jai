@@ -238,7 +238,7 @@ draw_property_editor :: (data: *void, name: string, ti: *Type_Info, align_char_w
 filter_text: [64] u8;
 
 matches_filter :: (text: string, filter: string) -> bool {
-    return find_index_from_left(to_lower_copy_new(text,, temp), to_lower_copy_new(filter,, temp)) != -1;
+    return find_index_from_left(to_lower_copy(text,, temp), to_lower_copy(filter,, temp)) != -1;
 }
 
 Reflection :: #import "Reflection";

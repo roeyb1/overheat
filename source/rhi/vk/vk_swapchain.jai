@@ -127,7 +127,7 @@ rhi_swapchain_init :: (width: u32, height: u32) {
     }
 
     swapchain.format = cast(RHIFormat) format.format;
-    swapchain.extent = xx extent;
+    swapchain.extent = cast,force(Extent2D) extent;
     swapchain.image_count = image_count;
     swapchain.present_mode = PRESENT_MODE;
     swapchain.present_queue = *rhi_queues[RHIQueueType.GRAPHICS];
