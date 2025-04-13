@@ -655,7 +655,7 @@ get_connection_stats :: () -> QuickConnectionStatus {
 }
 
 client_net_connection_status_changed_callback :: (info: *ConnectionStatusChanged) -> void #c_call {
-    new_ctx: Context;
+    new_ctx: #Context;
     init_context_logger(*new_ctx);
     push_context new_ctx {
         handle_client_net_connection_status_changed(*g_client, info);

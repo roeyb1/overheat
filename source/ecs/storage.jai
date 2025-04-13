@@ -3,7 +3,7 @@ Component_Storage :: struct {
     count: s64 = 0;
     size: s64 = 0;
     component_size: s64 = 0;
-    initializer: (*void);
+    initializer: (*void) #no_context;
 }
 
 ecs_storage_row_get :: (using cs: Component_Storage, row: s64) -> *void {

@@ -19,7 +19,7 @@ log_initialize :: (log_file_name: string) {
 }
 
 /** Initialize the passed in context with the logger data. Callable from c calls so it can initialize the context before pushing any. */
-init_context_logger :: (ctx: *Context) #c_call {
+init_context_logger :: (ctx: *#Context) #c_call {
     ctx.logger = logger;
     ctx.logger_data = *logger_data;
 }
